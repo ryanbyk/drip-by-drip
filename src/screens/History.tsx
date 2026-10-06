@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight, NotebookPen } from "../components/Icons";
 import { OpenPassageLink } from "../components/OpenPassageLink";
 import { Button, Sheet } from "../components/ui";
 
-const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 export function History({ onOpenToday }: { onOpenToday: () => void }) {
   const { snapshot, today, online } = useApp();
