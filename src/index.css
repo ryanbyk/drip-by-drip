@@ -60,8 +60,10 @@
   --on-accent: #fffdf8;
   --tab: calc(64px + env(safe-area-inset-bottom));
   --radius: 18px;
-  /* iOS can report a 0 top inset while the status glass still covers the page.
-     62px is the Status Bar frame in drip-by-drip.pen. */
+  /* Pen screens start 8px below the 62px Status Bar frame. That frame is the
+     status chrome, so this is only the real inset — not a 62px floor. A floor
+     left an empty band above every screen on phones whose viewport already
+     starts below the status bar. */
   --safe-top: env(safe-area-inset-top, 0px);
   /* Spacing steps are the distinct gap and padding values in drip-by-drip.pen.
      The token name is that pixel step (a 2px rhythm, plus the odd steps the
@@ -119,14 +121,6 @@
   --ripple-1: #5c939526;
   --ripple-2: #5c939540;
   --ripple-3: #5c939566;
-}
-
-@supports (-webkit-touch-callout: none) {
-  @media (display-mode: standalone), ((hover: none) and (pointer: coarse)) {
-    :root {
-      --safe-top: max(env(safe-area-inset-top, 0px), 62px);
-    }
-  }
 }
 
 @media (prefers-color-scheme: dark) {
