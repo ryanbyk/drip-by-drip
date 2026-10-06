@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BOOKS, totalVerses, verseCount } from "./books";
-import { addDays } from "./dates";
+import { addDays, monthGrid, startOfWeek } from "./dates";
 import { dripFromPlace, placeAfter } from "./drip";
 import { formatRef, parsePassage } from "./refs";
 import { resolvePassage } from "./resolve";
@@ -87,6 +87,24 @@ describe("streaks", () => {
     expect(powerOfFour(days, "2026-10-08").engaged).toBe(2);
   });
 
+  it("leaves today unmarked as unanswered until the day is over", () => {
+    expect(markForDate(today, today, start, undefined)).toBe("today");
+    expect(markForDate(today, today, start, day({ date: today, answer: "unanswered" }))).toBe("today");
+    expect(markForDate("2026-10-07", today, start, undefined)).toBe("unanswered");
+    expect(markForDate(today, today, start, day({ date: today, readDone: true }))).toBe("read");
+  });
+
+  it("counts Power of Four on a Monday–Sunday week", () => {
+    const days = {
+      "2026-10-04": day({ date: "2026-10-04", readDone: true }),
+      "2026-10-05": day({ date: "2026-10-05", readDone: true }),
+      "2026-10-11": day({ date: "2026-10-11", readDone: true }),
+    };
+    expect(powerOfFour(days, "2026-10-04").engaged).toBe(1);
+    expect(powerOfFour(days, "2026-10-11").engaged).toBe(2);
+    expect(powerOfFour(days, "2026-10-12").engaged).toBe(0);
+  });
+
   it("breaks a past day that was Yes without a finished read", () => {
     const days = {
       "2026-10-05": day({ date: "2026-10-05", readDone: true }),
@@ -163,5 +181,14 @@ function onboarded(): Snapshot {
 describe("dates", () => {
   it("steps local calendar days", () => {
     expect(addDays("2026-10-06", 1)).toBe("2026-10-07");
+  });
+
+  it("starts weeks and month grids on Monday", () => {
+    expect(startOfWeek("2026-10-05")).toBe("2026-10-05");
+    expect(startOfWeek("2026-10-11")).toBe("2026-10-05");
+    expect(startOfWeek("2026-10-04")).toBe("2026-09-28");
+    const october = monthGrid("2026-10-08");
+    expect(october[0]).toEqual({ iso: "2026-09-28", inMonth: false });
+    expect(october[3]).toEqual({ iso: "2026-10-01", inMonth: true });
   });
 });

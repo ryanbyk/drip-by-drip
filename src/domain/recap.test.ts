@@ -61,6 +61,24 @@ describe("book recap", () => {
     expect(recap.powerWeeks).toEqual({ hit: 0, total: 1 });
   });
 
+  it("counts a Monday–Sunday run as one Power of Four week", () => {
+    const snapshot = createSnapshot();
+    snapshot.prefs.planStartDate = "2026-10-05";
+    snapshot.prefs.bookId = "philemon";
+    const range = { bookId: "philemon", startChapter: 1, startVerse: 1, endChapter: 1, endVerse: 25 };
+    const read = (date: string): DailyCommitment =>
+      day({ date, readDone: true, range, passageRef: "Philemon 1" });
+    snapshot.days = {
+      "2026-10-05": read("2026-10-05"),
+      "2026-10-06": read("2026-10-06"),
+      "2026-10-07": read("2026-10-07"),
+      "2026-10-08": read("2026-10-08"),
+      "2026-10-11": read("2026-10-11"),
+    };
+
+    expect(bookRecap(snapshot, "2026-10-11").powerWeeks).toEqual({ hit: 1, total: 1 });
+  });
+
   it("counts earlier chapters as one sitting and leaves the rest unread", () => {
     const snapshot = createSnapshot();
     snapshot.prefs.bookId = "isaiah";

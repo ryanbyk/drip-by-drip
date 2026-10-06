@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight, NotebookPen } from "../components/Icons";
 import { OpenPassageLink } from "../components/OpenPassageLink";
 import { Button, Sheet } from "../components/ui";
 
-const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 export function History({ onOpenToday }: { onOpenToday: () => void }) {
   const { snapshot, today, online } = useApp();
@@ -31,7 +31,12 @@ export function History({ onOpenToday }: { onOpenToday: () => void }) {
         </p>
       </header>
       {!hasAny ? (
-        <p className="empty">Your days will gather here. Nothing is counted against you.</p>
+        <div className="history-empty">
+          <p className="empty">Your days will gather here. Nothing is counted against you.</p>
+          <Button variant="quiet" onClick={onOpenToday}>
+            Go to Today
+          </Button>
+        </div>
       ) : null}
       <div className="cal-card">
       <div className="cal-head">
@@ -85,7 +90,15 @@ export function History({ onOpenToday }: { onOpenToday: () => void }) {
       {recent.length > 0 ? (
         <div className="recent">
           {recent.map((item) => (
-            <button key={item.iso} type="button" className="recent-row" onClick={() => setSelected(item.iso)}>
+            <button
+              key={item.iso}
+              type="button"
+              className="recent-row"
+              onClick={() => {
+                if (item.mark === "today") onOpenToday();
+                else setSelected(item.iso);
+              }}
+            >
               <span className="recent-main">
                 <span>
                   <strong>{formatShortDay(item.iso)}</strong>
@@ -111,6 +124,7 @@ export function History({ onOpenToday }: { onOpenToday: () => void }) {
           {selectedDay?.reflection ? <p>{selectedDay.reflection}</p> : null}
           {selectedDay?.huh ? <p className="huh">Huh?</p> : null}
           {selectedMark === "not_today" ? <p>Rest day. The Word was still there.</p> : null}
+          {selectedMark === "today" ? <p>Today is still open.</p> : null}
           {selectedMark === "unanswered" ? <p>No answer that day.</p> : null}
           {selectedDay?.passageRef && online ? (
             <OpenPassageLink reference={selectedDay.passageRef} className="btn btn-quiet" />
@@ -134,6 +148,8 @@ function labelFor(mark: DayMark): string {
       return "Not today";
     case "unanswered":
       return "Unanswered";
+    case "today":
+      return "Today";
     case "future":
       return "Ahead";
     case "before":
@@ -172,6 +188,7 @@ function recentDays(
 
 function detailFor(mark: DayMark, day: DailyCommitment | undefined): string {
   if (mark === "not_today") return "Rest day";
+  if (mark === "today") return "Still open";
   if (mark === "unanswered") return "No answer";
   return day?.passageRef ?? "Reading";
 }
