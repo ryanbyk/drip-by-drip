@@ -20,7 +20,7 @@ function BibleSourceScreen() {
   return (
     <StoryApp snapshot={snapshot}>
       <Phone tab="settings">
-        <BibleSource onBack={() => undefined} keyStatus="connected" />
+        <BibleSource onBack={() => undefined} reach="available" />
       </Phone>
     </StoryApp>
   );

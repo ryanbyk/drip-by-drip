@@ -821,62 +821,6 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
 }
 .esv-stub-row { display: flex; align-items: center; gap: var(--space-12); }
 .esv-stub strong { font-size: 15px; font-weight: 600; }
-.esv-key { display: flex; flex-direction: column; gap: var(--space-6); }
-.esv-key > span { color: var(--faint); font-size: 12px; font-weight: 600; }
-.esv-key-box {
-  display: flex;
-  align-items: center;
-  gap: var(--space-10);
-  height: 48px;
-  padding: 0 var(--space-14);
-  background: var(--bg);
-  border: 1.5px solid var(--line);
-  border-radius: 12px;
-}
-.esv-key-box > svg { color: var(--faint); flex: none; }
-.esv-key-box input,
-.esv-key-mask {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  border-radius: 0;
-  letter-spacing: 0.5px;
-  text-align: left;
-}
-.esv-key-mask { font-size: 15px; color: var(--ink); }
-.esv-connected,
-.esv-status {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-4);
-  flex: none;
-  font-size: 12px;
-  font-weight: 600;
-}
-.esv-connected { color: var(--accent); }
-.esv-status { color: var(--muted); font-weight: 500; }
-.esv-status.is-invalid { color: var(--caution); font-weight: 600; }
-.esv-signup {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-5);
-  align-self: flex-start;
-  color: var(--accent);
-  font-size: 13px;
-  font-weight: 500;
-  text-decoration: none;
-}
-.esv-remove {
-  align-self: flex-start;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 500;
-}
 .footnote { margin: 0; color: var(--faint); font-size: 12px; line-height: 1.5; }
 .eyebrow {
   margin: 0;

@@ -21,8 +21,8 @@ describe("snapshot document", () => {
     expect(clean?.prefs.appearance).toBe("system");
     expect(clean?.prefs.bibleSource).toBe("youversion");
     expect(clean?.prefs.bibleTranslation).toBe("ESV");
-    expect(clean?.prefs.showInAppEsv).toBe(false);
-    expect(clean?.prefs.esvApiKey).toBe("");
+    expect(clean?.prefs.showInAppEsv).toBe(true);
+    expect(clean?.prefs).not.toHaveProperty("esvApiKey");
     expect(clean?.updatedAt).toBe(4);
   });
 
@@ -62,19 +62,40 @@ describe("snapshot document", () => {
     expect(clean?.prefs.bibleSource).toBe("youversion");
     expect(clean?.prefs.bibleCustomPattern).toBe("https://example.com/{passage}");
     expect(clean?.prefs.appearance).toBe("dark");
-    expect(clean?.prefs.esvApiKey).toBe("");
+    expect(clean?.prefs).not.toHaveProperty("esvApiKey");
   });
 
-  it("keeps an on-device ESV key and drops a key that is not text", () => {
-    const kept = sanitizeSnapshot({
+  it("drops a leftover ESV API key and defaults in-app reading only when the flag is missing", () => {
+    const missing = sanitizeSnapshot({
+      version: 1,
+      updatedAt: 4,
+      prefs: { askTime: "07:15", esvApiKey: "device-key" },
+      places: {},
+      days: {},
+    });
+    expect(missing?.prefs.showInAppEsv).toBe(true);
+    expect(missing?.prefs).not.toHaveProperty("esvApiKey");
+    expect(JSON.stringify(missing)).not.toContain("device-key");
+
+    const off = sanitizeSnapshot({
+      version: 1,
+      updatedAt: 2,
+      prefs: { showInAppEsv: false, esvApiKey: "device-key" },
+      places: {},
+      days: {},
+    });
+    expect(off?.prefs.showInAppEsv).toBe(false);
+    expect(JSON.stringify(off)).not.toContain("device-key");
+
+    const on = sanitizeSnapshot({
       version: 1,
       updatedAt: 2,
       prefs: { showInAppEsv: true, esvApiKey: "  device-key  " },
       places: {},
       days: {},
     });
-    expect(kept?.prefs.showInAppEsv).toBe(true);
-    expect(kept?.prefs.esvApiKey).toBe("device-key");
+    expect(on?.prefs.showInAppEsv).toBe(true);
+    expect(JSON.stringify(on)).not.toContain("device-key");
 
     const dropped = sanitizeSnapshot({
       version: 1,
@@ -84,7 +105,7 @@ describe("snapshot document", () => {
       days: {},
     });
     expect(dropped?.prefs.showInAppEsv).toBe(false);
-    expect(dropped?.prefs.esvApiKey).toBe("");
+    expect(JSON.stringify(dropped)).not.toContain("12345");
   });
 
   it("updates prefs, a day, a place, and a note on the snapshot", () => {

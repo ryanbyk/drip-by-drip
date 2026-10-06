@@ -288,7 +288,6 @@ export function bibleSourceSnapshot(): Snapshot {
       bibleSource: "youversion",
       bibleTranslation: "ESV",
       showInAppEsv: true,
-      esvApiKey: "storybook-not-a-real-key-3f9a",
     },
     markPlace,
     {},

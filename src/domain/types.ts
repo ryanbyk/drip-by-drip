@@ -70,10 +70,8 @@ export type UserPrefs = {
   bibleSource: BibleSourceId;
   bibleTranslation: BibleTranslationId;
   bibleCustomPattern: string;
-  /** When true, and an ESV API key is stored, today’s passage can render in the app. */
+  /** When true, today’s passage renders in the app. Defaults on when this flag was never stored. */
   showInAppEsv: boolean;
-  /** Personal ESV API key. Device-local only; never a shared or committed key. */
-  esvApiKey: string;
 };
 
 export type Snapshot = {

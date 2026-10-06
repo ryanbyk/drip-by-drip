@@ -48,7 +48,7 @@ Assumes one device, personal use. No login in v1.
 
 | Phase | Scope | Backend |
 | --- | --- | --- |
-| **v1 (this PRD)** | Solo QBE loop, **reading track (book + bookmark) with detours**, streaks + soft Power of Four, reminders = ask, history, reflect notes, book recap, settings (Bible source, appearance), optional DOG prayer, optional OS share, optional in-app ESV text (user key) | None (local storage) |
+| **v1 (this PRD)** | Solo QBE loop, **reading track (book + bookmark) with detours**, streaks + soft Power of Four, reminders = ask, history, reflect notes, book recap, settings (Bible source, appearance), optional DOG prayer, optional OS share, in-app ESV text (server-held key, on by default) | None (local storage) |
 | **v1.5+** | **Church reading plan** as a track type; one partner via invite (mutual view of today’s QBE answer + read-done only); grace-toned optional nudges | Plan content feed; accounts or link-token + minimal API |
 | **v2 / later** | Small group, “reading now,” church admin, seasons | Explicit product ask |
 
@@ -67,7 +67,7 @@ Assumes one device, personal use. No login in v1.
 | Reading track | **One book + bookmark** at a time; “Something else” = one-day detour |
 | Daily drip size | **1 chapter** (options: a few verses · 1 chapter · 2 chapters) |
 | Bible text | **Link out** to the chosen source — **YouVersion** by default (app, fallback bible.com); Bible Gateway, ESV.org, or custom URL template |
-| In-app text | **Optional**: ESV text inside the app when the user supplies their own ESV API key |
+| In-app text | **On by default**: today’s passage renders as the ESV inside the app. The Crossway key is held server-side. Open passage still uses the chosen external source |
 | Translation | ESV (user-changeable for link-out sources) |
 | Appearance | **System** (Light / Dark selectable) |
 | Accounts | **None** in v1 |
@@ -120,7 +120,7 @@ Reminders **are** the QBE question (not “Don’t forget to read!” guilt).
 - History (calendar + recent list): read / yes / not today / unanswered, note + Huh? markers  
 - Onboarding: framing → ask time → what to read (→ pick book → starting chapter) → Day 1  
 - Optional DOG prayer prompts; optional share via OS sheet  
-- **Settings:** ask time, notifications, reading track, **Bible source** (+ translation, custom template, ESV key + in-app toggle), **appearance**, about / source link, reset  
+- **Settings:** ask time, notifications, reading track, **Bible source** (+ translation, custom template, in-app ESV toggle), **appearance**, about / source link, reset  
 - **Light / dark / system** appearance via themed design tokens  
 - Local-first persistence; offline for today’s commitment, suggestion, and notes  
 
@@ -129,7 +129,7 @@ Reminders **are** the QBE question (not “Don’t forget to read!” guilt).
 - Church reading plan (v1.5)  
 - Partner sync, group feeds, likes, leaderboards  
 - Required accounts  
-- Audio Bible; **bundled** Bible edition (in-app text only via user’s own ESV key)  
+- Audio Bible; **bundled** Bible edition (in-app ESV is fetched per passage, not stored as an edition)  
 - Forums, pastor CMS, season/special-date planner  
 - Analytics product, church admin  
 - Native App Store apps (unless later required for push)  
@@ -157,7 +157,7 @@ Reminders **are** the QBE question (not “Don’t forget to read!” guilt).
 | Q | **Passage — back after detour** | Variant of M after a detour day | same as M |
 | S | **Passage — something else** | Type ref(s); short drips; recent; bookmark reassurance | Open · I read it |
 | N | **Adjust passage** sheet | Book, from/to, quick ranges, type a ref | Use [ref] |
-| W | **Passage — in-app ESV** | ESV text when key present; tap verse to tag; Reflect + I read it bar | I read it |
+| W | **Passage — in-app ESV** | ESV text when in-app reading is on; tap verse to tag; Reflect + I read it bar | I read it |
 | U | **Reflect** | Prompts, note, verse tags, Huh?; open passage | I read it / Save & keep reading |
 | O | **Where did you stop?** sheet | Read all (default) / stopped partway (verse stepper); tomorrow preview | Save & finish |
 | G | **Today — Done** | Loop closed; streak / P4 secondary; your note; share | Done |
@@ -166,7 +166,7 @@ Reminders **are** the QBE question (not “Don’t forget to read!” guilt).
 | H | **Today — Not today** | Grace line only | Close / History |
 | I | **History** | Calendar + recent list; note / Huh? markers | Open day |
 | J | **Settings** | Ask time, notifications, reading, Bible source, appearance, about, reset | — |
-| V | **Settings — Bible source** | Provider, translation, ESV key + in-app toggle | — |
+| V | **Settings — Bible source** | Provider, translation, in-app ESV toggle | — |
 
 F (plan-based passage) is **superseded by M** and kept only for v1.5 plan reference.
 
@@ -276,8 +276,7 @@ UserPrefs
   bibleProvider      youversion | biblegateway | esvorg | custom
   translation        e.g. "ESV"
   customUrlTemplate?
-  esvApiKey?
-  showInAppText      boolean
+  showInAppText      boolean   default on; false only when the reader turned it off
   appearance         system | light | dark
   createdAt
 ```
@@ -294,7 +293,7 @@ UserPrefs
 3. “Not today” never shows shame/guilt stack; grace line only.  
 4. Commitment, readDone, **bookmark**, and **reflections** survive refresh / relaunch.  
 5. Bookmark is unchanged by detours and advances correctly from “Where did you stop?”.  
-6. Passage link opens the chosen source with the correct ref; in-app ESV renders when a valid key is set.  
+6. Passage link opens the chosen source with the correct ref; in-app ESV renders today’s passage when that setting is on.  
 7. Finishing a book’s last chapter shows Recap → Book finished.  
 8. History accurately reflects Yes / Not today / read / unanswered + note / Huh? markers.  
 9. Light and dark themes meet WCAG AA contrast for text; System follows the OS.  

@@ -4,7 +4,7 @@ import { esvReadMode } from "../../domain/esv";
 import type { ResolvedPassage } from "../../domain/resolve";
 import { backupLabel, resolvePassage } from "../../domain/resolve";
 import type { Snapshot } from "../../domain/types";
-import { cachedEsvPassage, esvKeyRejected } from "../../lib/esvApi";
+import { cachedEsvPassage, esvUnavailable } from "../../lib/esvApi";
 import { useApp } from "../../state/AppState";
 import { AskView } from "./AskView";
 import { DogView } from "./DogView";
@@ -59,15 +59,14 @@ export function Today({ onHistory }: { onHistory: () => void }) {
   useEffect(() => {
     setReaderFailed(false);
     setReaderClosed(false);
-  }, [today, passageRef, prefs.showInAppEsv, prefs.esvApiKey]);
+  }, [today, passageRef, prefs.showInAppEsv]);
 
   const readMode = esvReadMode({
     showInAppEsv: prefs.showInAppEsv,
-    esvApiKey: prefs.esvApiKey,
     online,
     cached: passageRef ? cachedEsvPassage(passageRef) !== null : false,
     fetchFailed: readerFailed,
-    keyRejected: esvKeyRejected(prefs.esvApiKey),
+    unavailable: esvUnavailable(),
   });
   const trackPassage = passage.kind === "book" || passage.kind === "plan";
   const showReader =

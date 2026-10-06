@@ -1,16 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   cachedEsvPassage,
-  esvKeyRejected,
+  checkEsvAvailability,
+  esvUnavailable,
   fetchEsvPassage,
   parseEsvHtml,
   resetEsvClientForTests,
-  validateEsvApiKey,
   type EsvFetcher,
 } from "./esvApi";
 import { ESV_COPYRIGHT } from "../domain/esv";
-
-const SECRET = "super-secret-esv-key";
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "./supabaseConfig";
 
 const SAMPLE_HTML = [
   '<h2 class="extra_text">Mark 4 <small class="audio">(<a href="https://audio.example/x.mp3">Listen</a>)</small></h2>',
@@ -48,6 +47,20 @@ describe("ESV HTML parser", () => {
     expect(JSON.stringify(passage.blocks)).not.toContain("Listen");
   });
 
+  it("keeps the Crossway permission line when a later copyright note does not name Crossway", () => {
+    const html = [
+      '<p><b class="verse-num" id="v43011035-1">35</b>Jesus wept.</p>',
+      '<p class="copyright">ESV Bible, copyright 2001 by Crossway. Used by permission.</p>',
+      "<p class=\"copyright\">The Holy Bible, English Standard Version (ESV) is adapted from the Revised Standard Version of the Bible.</p>",
+    ].join("");
+    const passage = parseEsvHtml(html, "John 11:35", "John 11:35");
+    expect(passage.copyright).toContain("Crossway");
+    expect(passage.copyright).not.toContain("Revised Standard");
+    expect(passage.blocks).toEqual([
+      { kind: "paragraph", runs: [{ kind: "verse", chapter: 11, verse: 35, text: "Jesus wept." }] },
+    ]);
+  });
+
   it("uses the standard notice when the response only marks the text as ESV", () => {
     const passage = parseEsvHtml("<p>(<a class=\"copyright\" href=\"https://www.esv.org\">ESV</a>)</p><p>Sample line.</p>", "John 1:1", "John 1:1");
     expect(passage.copyright).toBe(ESV_COPYRIGHT);
@@ -58,7 +71,7 @@ describe("ESV HTML parser", () => {
 });
 
 describe("ESV fetch client", () => {
-  it("sends the key as a token header, never in the URL, and never logs it", async () => {
+  it("loads HTML from the edge function with the anon key, never a Crossway token", async () => {
     const logs: unknown[][] = [];
     for (const method of ["log", "info", "debug", "warn", "error"] as const) {
       vi.spyOn(console, method).mockImplementation((...args: unknown[]) => {
@@ -67,27 +80,33 @@ describe("ESV fetch client", () => {
     }
     const seen: string[] = [];
     const fetchImpl: EsvFetcher = async (input, init) => {
-      const url = input instanceof URL ? input.toString() : String(input);
-      seen.push(url);
+      const url = input instanceof URL ? input : new URL(String(input));
+      seen.push(url.toString());
+      expect(url.origin + url.pathname).toBe(`${new URL(SUPABASE_URL).origin}/functions/v1/esv-passage`);
+      expect(url.searchParams.get("q")).toBe("Mark 4:1-2");
+      expect(url.searchParams.get("format")).toBeNull();
+      expect(url.toString()).not.toContain("api.esv.org");
+      expect(url.toString()).not.toContain(SUPABASE_ANON_KEY);
       const headers = new Headers(init?.headers);
-      expect(headers.get("Authorization")).toBe(`Token ${SECRET}`);
-      expect(url).not.toContain(SECRET);
+      expect(headers.get("Authorization")).toBe(`Bearer ${SUPABASE_ANON_KEY}`);
+      expect(headers.get("apikey")).toBe(SUPABASE_ANON_KEY);
+      expect(headers.get("Authorization")).not.toMatch(/^Token /);
       return jsonResponse({
         canonical: "Mark 4:1-2",
         passages: [SAMPLE_HTML],
       });
     };
 
-    const result = await fetchEsvPassage("Mark 4:1–2", SECRET, fetchImpl);
+    const result = await fetchEsvPassage("Mark 4:1–2", fetchImpl);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.passage.canonical).toBe("Mark 4:1-2");
       expect(result.passage.blocks[0]).toEqual({ kind: "heading", text: "Sample Heading" });
     }
     expect(seen).toHaveLength(1);
-    expect(seen[0]).toContain("q=Mark+4%3A1-2");
-    expect(JSON.stringify(logs)).not.toContain(SECRET);
+    expect(JSON.stringify(logs)).not.toContain(SUPABASE_ANON_KEY);
     expect(cachedEsvPassage("Mark 4:1-2")?.canonical).toBe("Mark 4:1-2");
+    expect(esvUnavailable()).toBe(false);
   });
 
   it("reuses a cached passage without calling the network again", async () => {
@@ -96,49 +115,54 @@ describe("ESV fetch client", () => {
       calls += 1;
       return jsonResponse({ canonical: "Mark 4", passages: ["<p><b class=\"verse-num\" id=\"v41004001-1\">1</b>Sample line.</p>"] });
     };
-    await fetchEsvPassage("Mark 4", "device-key", fetchImpl);
-    const second = await fetchEsvPassage("Mark 4", "device-key", fetchImpl);
+    await fetchEsvPassage("Mark 4", fetchImpl);
+    const second = await fetchEsvPassage("Mark 4", fetchImpl);
     expect(calls).toBe(1);
     expect(second.ok).toBe(true);
   });
 
-  it("reports an empty passage, a rejected key, and a network failure", async () => {
-    const empty = await fetchEsvPassage(
-      "Mark 4",
-      "device-key",
-      async () => jsonResponse({ passages: ["   "] }),
-    );
+  it("reports an empty passage, a rejected proxy, and a network failure", async () => {
+    const empty = await fetchEsvPassage("Mark 4", async () => jsonResponse({ passages: ["   "] }));
     expect(empty).toEqual({ ok: false, reason: "empty" });
+    expect(esvUnavailable()).toBe(false);
 
-    const denied = await fetchEsvPassage("Mark 4", SECRET, async () => jsonResponse({ detail: "no" }, 403));
+    const denied = await fetchEsvPassage("Mark 4", async () => jsonResponse({ error: "unauthorized" }, 502));
     expect(denied).toEqual({ ok: false, reason: "unauthorized" });
-    expect(esvKeyRejected(SECRET)).toBe(true);
+    expect(esvUnavailable()).toBe(true);
 
-    const offline = await fetchEsvPassage("Mark 5", "device-key", async () => {
+    resetEsvClientForTests();
+    const offline = await fetchEsvPassage("Mark 5", async () => {
       throw new Error("offline");
     });
     expect(offline).toEqual({ ok: false, reason: "network" });
-    expect(esvKeyRejected("device-key")).toBe(false);
+    expect(esvUnavailable()).toBe(false);
   });
 
-  it("validates a key with a short passage request", async () => {
-    const connected = await validateEsvApiKey(SECRET, async (input) => {
-      const url = input instanceof URL ? input.toString() : String(input);
-      expect(url).toContain("/passage/text/");
-      expect(url).not.toContain(SECRET);
-      return jsonResponse({ passages: ["Sample line. (ESV)"] });
+  it("probes the proxy with a short text passage", async () => {
+    const connected = await checkEsvAvailability(async (input, init) => {
+      const url = input instanceof URL ? input : new URL(String(input));
+      expect(url.pathname).toBe("/functions/v1/esv-passage");
+      expect(url.searchParams.get("q")).toBe("John 11:35");
+      expect(url.searchParams.get("format")).toBe("text");
+      expect(url.toString()).not.toContain("api.esv.org");
+      expect(url.toString()).not.toContain(SUPABASE_ANON_KEY);
+      const headers = new Headers(init?.headers);
+      expect(headers.get("Authorization")).toBe(`Bearer ${SUPABASE_ANON_KEY}`);
+      expect(headers.get("apikey")).toBe(SUPABASE_ANON_KEY);
+      return jsonResponse({ passages: ["Jesus wept. (ESV)"] });
     });
-    expect(connected).toBe("connected");
-    expect(esvKeyRejected(SECRET)).toBe(false);
+    expect(connected).toBe("available");
+    expect(esvUnavailable()).toBe(false);
 
-    const invalid = await validateEsvApiKey("device-key", async () => jsonResponse({ detail: "no" }, 401));
-    expect(invalid).toBe("invalid");
-    expect(esvKeyRejected("device-key")).toBe(true);
+    const invalid = await checkEsvAvailability(async () => jsonResponse({ error: "unauthorized" }, 401));
+    expect(invalid).toBe("unavailable");
+    expect(esvUnavailable()).toBe(true);
 
-    const unreachable = await validateEsvApiKey("other-key", async () => {
+    resetEsvClientForTests();
+    const unreachable = await checkEsvAvailability(async () => {
       throw new Error("offline");
     });
     expect(unreachable).toBe("unreachable");
-    expect(esvKeyRejected("other-key")).toBe(false);
+    expect(esvUnavailable()).toBe(false);
   });
 });
