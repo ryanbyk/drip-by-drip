@@ -125,7 +125,7 @@ export function AskTimePicker({ value, onChange }: { value: string; onChange: (t
       </div>
       <label className="field">
         <span>Custom</span>
-        <input type="time" value={value} onChange={(event) => onChange(event.target.value)} />
+        <input className="time-input" type="time" value={value} onChange={(event) => onChange(event.target.value)} />
       </label>
     </div>
   );
