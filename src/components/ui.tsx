@@ -19,25 +19,41 @@ export function Button({
   );
 }
 
+/** Newest sheet is last, so Escape closes the one on top. */
+const sheetClosers: Array<() => void> = [];
+
 export function Sheet({
   title,
   onClose,
   children,
   hideTitle = false,
+  description,
+  titleAside,
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
   hideTitle?: boolean;
+  description?: string;
+  titleAside?: ReactNode;
 }) {
   const titleId = useId();
   useEffect(() => {
+    sheetClosers.push(onClose);
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key !== "Escape" || sheetClosers.at(-1) !== onClose) return;
+      event.preventDefault();
+      onClose();
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      const index = sheetClosers.lastIndexOf(onClose);
+      if (index >= 0) sheetClosers.splice(index, 1);
+    };
   }, [onClose]);
+
+  const titled = Boolean(!hideTitle && (description || titleAside));
 
   return (
     <div className="scrim" role="presentation" onClick={onClose}>
@@ -49,9 +65,19 @@ export function Sheet({
         onClick={(event) => event.stopPropagation()}
       >
         <div className="handle" aria-hidden="true" />
-        <h2 id={titleId} className={hideTitle ? "sr-only" : undefined}>
-          {title}
-        </h2>
+        {titled ? (
+          <div className={titleAside ? "sheet-title-row" : "sheet-title-stack"}>
+            <div className="sheet-title-copy">
+              <h2 id={titleId}>{title}</h2>
+              {description ? <p className="start-sub">{description}</p> : null}
+            </div>
+            {titleAside}
+          </div>
+        ) : (
+          <h2 id={titleId} className={hideTitle ? "sr-only" : undefined}>
+            {title}
+          </h2>
+        )}
         {children}
       </div>
     </div>

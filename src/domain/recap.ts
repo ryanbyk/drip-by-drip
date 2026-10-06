@@ -3,7 +3,7 @@ import { addDays, formatAskTime, parseLocalDate, startOfWeek } from "./dates";
 import { isEngaged, longestStreak } from "./streaks";
 import type { DailyCommitment, Range, Snapshot } from "./types";
 
-export type ChapterSitting = "one" | "two";
+export type ChapterSitting = "unread" | "one" | "two";
 
 export type BookRecap = {
   bookName: string;
@@ -111,6 +111,11 @@ export function bookRecap(snapshot: Snapshot, today: string): BookRecap {
     }
   }
 
+  const countedThrough = snapshot.places[snapshot.prefs.bookId]?.countedThrough ?? 0;
+  for (let chapter = 1; chapter <= countedThrough && chapter <= chapters; chapter += 1) {
+    if (counts[chapter - 1] === 0) counts[chapter - 1] = 1;
+  }
+
   const dates = reads.map((day) => day.date).sort();
   const from = dates[0] ?? null;
   const to = dates.at(-1) ?? null;
@@ -129,7 +134,7 @@ export function bookRecap(snapshot: Snapshot, today: string): BookRecap {
     chapters,
     from: span?.from ?? null,
     to: span?.to ?? null,
-    sittings: counts.map((count) => (count >= 2 ? "two" : "one")),
+    sittings: counts.map((count) => (count >= 2 ? "two" : count > 0 ? "one" : "unread")),
     readingDays: reads.length,
     longest: longestStreak(snapshot.days, today, start),
     powerWeeks: from && to ? powerWeeks(snapshot.days, from, to) : { hit: 0, total: 0 },
