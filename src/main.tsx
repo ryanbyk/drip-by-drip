@@ -8,8 +8,10 @@ import "@fontsource/newsreader/latin-400.css";
 import "@fontsource/newsreader/latin-400-italic.css";
 import "@fontsource/newsreader/latin-500.css";
 import "@fontsource/newsreader/latin-600.css";
+import "@fontsource/roboto/latin-500.css";
 import { App } from "./App";
 import { AppProvider } from "./state/AppState";
+import { AuthProvider } from "./state/AuthState";
 import "./index.css";
 
 registerSW({ immediate: true });
@@ -20,7 +22,9 @@ if (!root) throw new Error("Missing root");
 createRoot(root).render(
   <StrictMode>
     <AppProvider>
-      <App />
+      <AuthProvider>
+        <App />
+      </AuthProvider>
     </AppProvider>
   </StrictMode>,
 );

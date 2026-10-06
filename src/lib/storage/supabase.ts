@@ -1,12 +1,12 @@
 import type { DailyCommitment, Place, Snapshot, UserPrefs } from "../../domain/types";
 import type { NoteRecord, StorageAdapter } from "./types";
 
-const NOT_IN_V1 = "SupabaseStorageAdapter is not configured. v1 keeps data on this device.";
+const NOT_IN_V1 = "SupabaseStorageAdapter is not configured. Reading stays on this device.";
 
 /**
- * Future hosted adapter. v1 does not ship a Supabase client or accounts.
+ * Future hosted adapter. Sign-in exists, but this adapter still does not sync reading data.
  *
- * When a backend is added, implement the same StorageAdapter against tables
+ * When sync is added, implement the same StorageAdapter against tables
  * shaped like the domain:
  * - prefs → one row per reader
  * - commitments → daily_commitments keyed by date

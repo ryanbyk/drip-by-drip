@@ -29,6 +29,8 @@ export function Sheet({
   hideTitle = false,
   description,
   titleAside,
+  className,
+  labelledBy,
 }: {
   title: string;
   onClose: () => void;
@@ -36,8 +38,12 @@ export function Sheet({
   hideTitle?: boolean;
   description?: string;
   titleAside?: ReactNode;
+  className?: string;
+  /** Id of a heading rendered in `children`. Skips the sheet’s own title. */
+  labelledBy?: string;
 }) {
-  const titleId = useId();
+  const generatedId = useId();
+  const titleId = labelledBy ?? generatedId;
   useEffect(() => {
     sheetClosers.push(onClose);
     const onKey = (event: KeyboardEvent) => {
@@ -58,14 +64,14 @@ export function Sheet({
   return (
     <div className="scrim" role="presentation" onClick={onClose}>
       <div
-        className="sheet"
+        className={className ? `sheet ${className}` : "sheet"}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="handle" aria-hidden="true" />
-        {titled ? (
+        {labelledBy ? null : titled ? (
           <div className={titleAside ? "sheet-title-row" : "sheet-title-stack"}>
             <div className="sheet-title-copy">
               <h2 id={titleId}>{title}</h2>

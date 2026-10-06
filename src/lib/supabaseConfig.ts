@@ -1,7 +1,8 @@
 /**
- * Public Supabase client config for the esv-passage Edge Function.
+ * Public Supabase client config for the browser (esv-passage proxy and optional sign-in).
  * The anon key is a publishable client credential. The Crossway ESV API key
  * stays in Edge Function secrets and is never read here.
+ * The service role stays on the delete-account Edge Function and must never be added here.
  *
  * Vite env overrides these defaults when set:
  * - VITE_SUPABASE_URL

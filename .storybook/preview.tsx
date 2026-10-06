@@ -7,6 +7,7 @@ import "@fontsource/newsreader/latin-400.css";
 import "@fontsource/newsreader/latin-400-italic.css";
 import "@fontsource/newsreader/latin-500.css";
 import "@fontsource/newsreader/latin-600.css";
+import "@fontsource/roboto/latin-500.css";
 import "../src/index.css";
 
 function ThemeFrame({ theme, children }: { theme: "light" | "dark"; children: ReactNode }) {
