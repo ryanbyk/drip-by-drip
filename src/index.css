@@ -60,6 +60,9 @@
   --on-accent: #fffdf8;
   --tab: calc(64px + env(safe-area-inset-bottom));
   --radius: 18px;
+  /* iOS can report a 0 top inset while the status glass still covers the page.
+     62px is the Status Bar frame in drip-by-drip.pen. */
+  --safe-top: env(safe-area-inset-top, 0px);
   /* Spacing steps are the distinct gap and padding values in drip-by-drip.pen.
      The token name is that pixel step (a 2px rhythm, plus the odd steps the
      file actually uses: 3, 5, 7, 9). Use these for padding, margin, gap, and
@@ -116,6 +119,14 @@
   --ripple-1: #5c939526;
   --ripple-2: #5c939540;
   --ripple-3: #5c939566;
+}
+
+@supports (-webkit-touch-callout: none) {
+  @media (display-mode: standalone), ((hover: none) and (pointer: coarse)) {
+    :root {
+      --safe-top: max(env(safe-area-inset-top, 0px), 62px);
+    }
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -189,6 +200,23 @@ a { color: var(--accent); }
   position: relative;
   background: var(--bg);
 }
+/* Blur only after content actually moves under the status band. At rest the
+   band is empty padding, so headings stay sharp. */
+.phone::before {
+  content: "";
+  position: absolute;
+  z-index: 5;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--safe-top);
+  pointer-events: none;
+}
+.phone.is-scrolled::before {
+  background: linear-gradient(to bottom, var(--glass), transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
 .screen {
   flex: 1;
   min-height: 0;
@@ -196,12 +224,12 @@ a { color: var(--accent); }
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
-  padding: calc(var(--space-8) + env(safe-area-inset-top)) var(--space-24) var(--space-28);
+  padding: calc(var(--space-8) + var(--safe-top)) var(--space-24) var(--space-28);
 }
 .screen-tabbed { padding-bottom: var(--space-24); }
 .screen-frame {
   gap: var(--space-24);
-  padding: calc(var(--space-8) + env(safe-area-inset-top)) var(--space-24) var(--space-28);
+  padding: calc(var(--space-8) + var(--safe-top)) var(--space-24) var(--space-28);
   justify-content: space-between;
 }
 .screen-gap-18 { gap: var(--space-18); }
@@ -210,7 +238,7 @@ a { color: var(--accent); }
 .screen-gap-24 { gap: var(--space-24); }
 .screen-reader {
   gap: 0;
-  padding: env(safe-area-inset-top) 0 0;
+  padding: var(--safe-top) 0 0;
 }
 .footer { margin-top: auto; display: flex; flex-direction: column; gap: var(--space-12); padding-top: var(--space-8); }
 .screen-frame .footer { gap: var(--space-20); }

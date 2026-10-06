@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { TabBar } from "./components/ui";
 import { useApp } from "./state/AppState";
 import { History } from "./screens/History";
@@ -23,21 +23,44 @@ export function App() {
 
   if (!snapshot.prefs.onboardingComplete) {
     return (
-      <div className="app-shell">
-        <div className="phone">
-          <Onboarding />
-        </div>
-      </div>
+      <PhoneShell>
+        <Onboarding />
+      </PhoneShell>
     );
   }
 
   return (
+    <PhoneShell>
+      {tab === "today" ? <Today onHistory={() => setTab("history")} /> : null}
+      {tab === "history" ? <History onOpenToday={() => setTab("today")} /> : null}
+      {tab === "settings" ? <Settings /> : null}
+      <TabBar tab={tab} onTab={setTab} />
+    </PhoneShell>
+  );
+}
+
+function PhoneShell({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+    const sync = () => {
+      const scroller = root.querySelector<HTMLElement>(".screen");
+      root.classList.toggle("is-scrolled", (scroller?.scrollTop ?? 0) > 0);
+    };
+    root.addEventListener("scroll", sync, true);
+    const observer = new MutationObserver(sync);
+    observer.observe(root, { childList: true });
+    sync();
+    return () => {
+      root.removeEventListener("scroll", sync, true);
+      observer.disconnect();
+    };
+  }, []);
+  return (
     <div className="app-shell">
-      <div className="phone">
-        {tab === "today" ? <Today onHistory={() => setTab("history")} /> : null}
-        {tab === "history" ? <History onOpenToday={() => setTab("today")} /> : null}
-        {tab === "settings" ? <Settings /> : null}
-        <TabBar tab={tab} onTab={setTab} />
+      <div className="phone" ref={ref}>
+        {children}
       </div>
     </div>
   );
