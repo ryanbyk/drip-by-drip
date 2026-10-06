@@ -92,8 +92,6 @@
   --space-28: 28px;
   --space-32: 32px;
   --space-40: 40px;
-  --space-48: 48px;
-  --space-64: 64px;
 }
 
 /* Dark values are the Design Tokens frame in drip-by-drip.pen.
@@ -208,7 +206,7 @@ a { color: var(--accent); }
   top: 0;
   left: 0;
   right: 0;
-  height: var(--space-64);
+  height: var(--space-40);
   pointer-events: none;
   overflow: hidden;
   clip-path: inset(0);
