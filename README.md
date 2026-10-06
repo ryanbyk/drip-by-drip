@@ -23,13 +23,13 @@ Opens Storybook at `http://localhost:6006`. Stories load the same fonts and desi
 
 The hosted app is [https://ryanbyk.github.io/drip-by-drip/](https://ryanbyk.github.io/drip-by-drip/). A push to `main` builds `dist` and deploys it with GitHub Pages, once Pages is enabled for this repo.
 
-Answers, bookmarks, and notes stay on this device. Passage text opens on Bible Gateway; the app does not bundle a Bible edition. Daily reminders use the browser Notification API when it is available, and otherwise the question is waiting in the app.
+Answers, bookmarks, and notes stay on this device. Passage text opens in the Bible source you choose (YouVersion by default, with Bible Gateway, ESV.org, or a custom link). The app does not bundle a Bible edition. Daily reminders use the browser Notification API when it is available, and otherwise the question is waiting in the app.
 
 ## Persistence
 
 Screens and the app store never call `localStorage` or IndexedDB themselves. They talk to a `StorageAdapter` (`src/lib/storage`):
 
-- `prefs` — ask time, notifications, appearance, reading mode
+- `prefs` — ask time, notifications, appearance, reading mode, Bible source and translation
 - `commitments` — each day’s yes / not today
 - `progress` — book place
 - `notes` — a day’s reflection and “Huh?”

@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { addDays, formatDayLabel, formatMonth, formatShortDay, monthGrid } from "../domain/dates";
-import { bibleUrl } from "../domain/refs";
 import { currentStreak, longestStreak, markForDate, type DayMark } from "../domain/streaks";
 import type { DailyCommitment } from "../domain/types";
 import { useApp } from "../state/AppState";
 import { ChevronLeft, ChevronRight, NotebookPen } from "../components/Icons";
+import { OpenPassageLink } from "../components/OpenPassageLink";
 import { Button, Sheet } from "../components/ui";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -113,9 +113,7 @@ export function History({ onOpenToday }: { onOpenToday: () => void }) {
           {selectedMark === "not_today" ? <p>Rest day. The Word was still there.</p> : null}
           {selectedMark === "unanswered" ? <p>No answer that day.</p> : null}
           {selectedDay?.passageRef && online ? (
-            <a className="btn btn-quiet" href={bibleUrl(selectedDay.passageRef)} target="_blank" rel="noopener noreferrer">
-              Open passage ↗
-            </a>
+            <OpenPassageLink reference={selectedDay.passageRef} className="btn btn-quiet" />
           ) : null}
           <Button variant="text" onClick={() => setSelected(null)}>
             Close

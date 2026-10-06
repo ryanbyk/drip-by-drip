@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { bibleUrl } from "../../domain/refs";
 import { detourIdeas } from "../../domain/suggestions";
 import { useApp } from "../../state/AppState";
 import { Bookmark, Check, ChevronRight, NotebookPen, PenLine, X } from "../../components/Icons";
+import { OpenPassageLink } from "../../components/OpenPassageLink";
 import { Button } from "../../components/ui";
 
 export function SomethingElse({
@@ -28,7 +28,6 @@ export function SomethingElse({
   const shorts = ideas.filter((item) => item.group === "short");
   const recent = ideas.filter((item) => item.group === "recent");
   const ref = value.trim();
-  const href = ref ? bibleUrl(ref) : undefined;
 
   function commit(next: string) {
     const trimmed = next.trim();
@@ -109,18 +108,7 @@ export function SomethingElse({
         <ChevronRight size={16} aria-hidden="true" />
       </button>
       <div className="footer">
-        <a
-          className={online && href ? "btn btn-quiet btn-open" : "btn btn-quiet btn-open is-disabled"}
-          href={online ? href : undefined}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-disabled={!online || !href}
-          onClick={(event) => {
-            if (!online || !href) event.preventDefault();
-          }}
-        >
-          {ref ? `Open ${ref} ↗` : "Open passage"}
-        </a>
+        <OpenPassageLink reference={ref} className="btn btn-quiet btn-open" online={online} />
         <Button
           className="btn-yes"
           data-testid="mark-read"

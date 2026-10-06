@@ -10,6 +10,10 @@ export type OnboardingStep = "framing" | "time" | "notify" | "reading" | "book" 
 
 export type NotificationState = "unknown" | "granted" | "denied" | "dismissed" | "unsupported";
 
+export type BibleSourceId = "youversion" | "biblegateway" | "esv" | "custom";
+
+export type BibleTranslationId = "ESV" | "NIV" | "NLT" | "KJV" | "NKJV" | "NASB" | "CSB";
+
 export type Range = {
   bookId: string;
   startChapter: number;
@@ -61,6 +65,9 @@ export type UserPrefs = {
   queuedBookId: string;
   queuedBookDate: string;
   draftStartChapter: number;
+  bibleSource: BibleSourceId;
+  bibleTranslation: BibleTranslationId;
+  bibleCustomPattern: string;
 };
 
 export type Snapshot = {

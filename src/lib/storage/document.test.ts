@@ -19,6 +19,8 @@ describe("snapshot document", () => {
     expect(clean?.prefs.askTime).toBe("07:15");
     expect(clean?.prefs.bookId).toBe("mark");
     expect(clean?.prefs.appearance).toBe("system");
+    expect(clean?.prefs.bibleSource).toBe("youversion");
+    expect(clean?.prefs.bibleTranslation).toBe("ESV");
     expect(clean?.updatedAt).toBe(4);
   });
 
@@ -39,6 +41,25 @@ describe("snapshot document", () => {
     });
     expect(dark?.prefs.appearance).toBe("dark");
     expect(unknown?.prefs.appearance).toBe("system");
+    expect(dark?.prefs.bibleSource).toBe("youversion");
+  });
+
+  it("drops a bible source this version does not understand", () => {
+    const clean = sanitizeSnapshot({
+      version: 1,
+      updatedAt: 1,
+      prefs: {
+        bibleSource: "paper",
+        bibleTranslation: "ESV",
+        bibleCustomPattern: "https://example.com/{passage}",
+        appearance: "dark",
+      },
+      places: {},
+      days: {},
+    });
+    expect(clean?.prefs.bibleSource).toBe("youversion");
+    expect(clean?.prefs.bibleCustomPattern).toBe("https://example.com/{passage}");
+    expect(clean?.prefs.appearance).toBe("dark");
   });
 
   it("updates prefs, a day, a place, and a note on the snapshot", () => {

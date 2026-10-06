@@ -63,8 +63,8 @@ export const LongLabel: Story = {
 
 export const OpenPassage: Story = {
   render: () => (
-    <a className="btn btn-quiet btn-open" href="https://www.biblegateway.com/passage/?search=Mark+1%3A1-8" target="_blank" rel="noopener noreferrer">
-      Open Mark 1:1–8
+    <a className="btn btn-quiet btn-open" href="https://www.bible.com/bible/59/MRK.1.1-8.ESV" target="_blank" rel="noopener noreferrer">
+      Open Mark 1:1–8 in YouVersion ↗
     </a>
   ),
 };

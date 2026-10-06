@@ -2,7 +2,8 @@ import { useState } from "react";
 import { chapterCount, getBook, verseCount } from "../../domain/books";
 import { addDays } from "../../domain/dates";
 import { dripFromPlace, isPlaceFinished, makeRange, placeAfter, verseInRange } from "../../domain/drip";
-import { bibleUrl, formatRef, parsePassage } from "../../domain/refs";
+import { bibleSourceLabel, normalizeBiblePrefs } from "../../domain/bibleSource";
+import { formatRef, parsePassage } from "../../domain/refs";
 import type { Range } from "../../domain/types";
 import { suggestedNext } from "../../domain/suggestions";
 import { useApp } from "../../state/AppState";
@@ -20,6 +21,7 @@ import {
   Plus,
   Share,
 } from "../../components/Icons";
+import { OpenPassageLink } from "../../components/OpenPassageLink";
 import { BookPicker, Button, PacePicker, Sheet } from "../../components/ui";
 import { SomethingElse } from "./SomethingElse";
 
@@ -35,7 +37,7 @@ export function ReflectView({ onKeep, onRead }: { onKeep: () => void; onRead: ()
   const [adding, setAdding] = useState(false);
   const [tagDraft, setTagDraft] = useState("");
   const ref = day?.passageRef ?? "Today’s drip";
-  const href = day?.passageRef ? bibleUrl(day.passageRef) : undefined;
+  const sourceLabel = bibleSourceLabel(normalizeBiblePrefs(snapshot.prefs).bibleSource);
 
   function save() {
     dispatch({ type: "reflection", today, reflection: text, huh, verseTags: tags });
@@ -63,19 +65,10 @@ export function ReflectView({ onKeep, onRead }: { onKeep: () => void; onRead: ()
         <p className="reflect-kicker">Reflect</p>
         <div className="reflect-title">
           <h1>{ref}</h1>
-          {href ? (
-            <a
-              className={online ? "open-chip" : "open-chip is-disabled"}
-              href={online ? href : undefined}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-disabled={!online}
-              onClick={(event) => {
-                if (!online) event.preventDefault();
-              }}
-            >
-              Open passage <ArrowUpRight size={13} aria-hidden="true" />
-            </a>
+          {day?.passageRef ? (
+            <OpenPassageLink reference={day.passageRef} className="open-chip" online={online}>
+              Open in {sourceLabel} <ArrowUpRight size={13} aria-hidden="true" />
+            </OpenPassageLink>
           ) : null}
         </div>
       </header>
