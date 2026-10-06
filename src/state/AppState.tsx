@@ -10,7 +10,7 @@ import {
 import { localDate, msUntilAsk } from "../domain/dates";
 import { isStandalone, scheduleTrigger, showAskNotification } from "../lib/reminders";
 import { shareCommitment } from "../lib/share";
-import { loadSnapshot, saveSnapshot } from "../lib/storage";
+import { createLocalStorageAdapter, type StorageAdapter } from "../lib/storage";
 import type { Range, Snapshot, UserPrefs } from "../domain/types";
 import { reducer, type Action } from "./reducer";
 
@@ -31,8 +31,15 @@ type AppValue = {
 };
 
 const AppContext = createContext<AppValue | null>(null);
+const localStorageAdapter = createLocalStorageAdapter();
 
-export function AppProvider({ children }: { children: ReactNode }) {
+export function AppProvider({
+  children,
+  storage = localStorageAdapter,
+}: {
+  children: ReactNode;
+  storage?: StorageAdapter;
+}) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [today, setToday] = useState(localDate);
   const [online, setOnline] = useState(() => navigator.onLine);
@@ -42,13 +49,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    void loadSnapshot().then((loaded) => {
+    void storage.load().then((loaded) => {
       if (!cancelled) setSnapshot(loaded);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [storage]);
 
   const dispatch = useCallback((action: Action) => {
     setSnapshot((current) => (current ? reducer(current, action) : current));
@@ -57,12 +64,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!snapshot) return;
     const handle = window.setTimeout(() => {
-      void saveSnapshot(snapshot).then((saved) => {
+      void storage.save(snapshot).then((saved) => {
         if (!saved) setToast("Couldn’t save on this device.");
       });
     }, 40);
     return () => window.clearTimeout(handle);
-  }, [snapshot]);
+  }, [snapshot, storage]);
 
   useEffect(() => {
     const tick = () => setToday(localDate());

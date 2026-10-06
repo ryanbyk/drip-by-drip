@@ -7,6 +7,16 @@ import { paceBlurb } from "../domain/suggestions";
 import { SOURCE_URL } from "../domain/types";
 import { isStandalone, notificationsSupported, requestNotificationPermission } from "../lib/reminders";
 import { useApp } from "../state/AppState";
+import {
+  AlarmClock,
+  ArrowUpRight,
+  Bell,
+  BookOpen,
+  ChevronRight,
+  Droplet,
+  ExternalLink,
+  RotateCcw,
+} from "../components/Icons";
 import { AskTimePicker, Button, Sheet } from "../components/ui";
 import { ChangeBookSheet } from "./today/MoreViews";
 
@@ -45,17 +55,17 @@ export function Settings() {
         <h1>Settings</h1>
       </header>
       <section className="settings-group">
-        <p className="kicker">Daily ask</p>
-        <button type="button" className="settings-row" onClick={() => setEditingTime((open) => !open)}>
-          <span>Ask time</span>
-          <strong>{formatAskTime(snapshot.prefs.askTime)}</strong>
-        </button>
-        {editingTime ? (
-          <AskTimePicker value={snapshot.prefs.askTime} onChange={(askTime) => setPrefs({ askTime })} />
-        ) : null}
-        <div className="settings-block">
+        <p className="eyebrow">Daily ask</p>
+        <div className="settings-card">
+          <button type="button" className="settings-row" onClick={() => setEditingTime((open) => !open)}>
+            <AlarmClock className="row-icon" size={18} aria-hidden="true" />
+            <span className="row-label">Ask time</span>
+            <strong className="row-value">{formatAskTime(snapshot.prefs.askTime)}</strong>
+            <ChevronRight className="chev" size={16} aria-hidden="true" />
+          </button>
           <div className="settings-row">
-            <span>Notifications</span>
+            <Bell className="row-icon" size={18} aria-hidden="true" />
+            <span className="row-label">Notifications</span>
             <button
               type="button"
               className={snapshot.prefs.notificationsEnabled ? "switch is-on" : "switch"}
@@ -69,15 +79,22 @@ export function Settings() {
               <span />
             </button>
           </div>
-          <p className="soft">{reminderCopy(snapshot.prefs.notificationState, snapshot.prefs.notificationsEnabled, ios && !standalone)}</p>
         </div>
+        {editingTime ? (
+          <AskTimePicker value={snapshot.prefs.askTime} onChange={(askTime) => setPrefs({ askTime })} />
+        ) : null}
+        <p className="soft">{reminderCopy(snapshot.prefs.notificationState, snapshot.prefs.notificationsEnabled, ios && !standalone)}</p>
       </section>
       <section className="settings-group">
-        <p className="kicker">What you’re reading</p>
-        <button type="button" className="settings-row" onClick={() => setEditingBook(true)}>
-          <span>{snapshot.prefs.readingMode === "plan" ? "Plan, with backup" : "Reading through"}</span>
-          <strong>{snapshot.prefs.readingMode === "plan" ? `Placeholder · ${placeLabel}` : placeLabel}</strong>
-        </button>
+        <p className="eyebrow">What you’re reading</p>
+        <div className="settings-card">
+          <button type="button" className="settings-row" onClick={() => setEditingBook(true)}>
+            <BookOpen className="row-icon" size={18} aria-hidden="true" />
+            <span className="row-label">{snapshot.prefs.readingMode === "plan" ? "Plan, with backup" : "Reading through"}</span>
+            <strong className="row-value">{snapshot.prefs.readingMode === "plan" ? `Placeholder · ${placeLabel}` : placeLabel}</strong>
+            <ChevronRight className="chev" size={16} aria-hidden="true" />
+          </button>
+        </div>
         <p className="soft">{paceBlurb(snapshot.prefs.bookId, snapshot.prefs.dripSize)}</p>
         {snapshot.prefs.readingMode === "book" ? (
           <Button variant="text" onClick={() => dispatch({ type: "reading", today, mode: "plan" })}>
@@ -90,16 +107,22 @@ export function Settings() {
         )}
       </section>
       <section className="settings-group">
-        <p className="kicker">About</p>
-        <button type="button" className="settings-row" onClick={() => setAbout(true)}>
-          <span>About Drip by drip</span>
-        </button>
-        <a className="settings-row" href={SOURCE_URL} target="_blank" rel="noopener noreferrer">
-          <span>Sermon notes — Drip by drip</span>
-        </a>
+        <p className="eyebrow">About</p>
+        <div className="settings-card">
+          <button type="button" className="settings-row" onClick={() => setAbout(true)}>
+            <Droplet className="row-icon" size={18} aria-hidden="true" />
+            <span className="row-label">About Drip by drip</span>
+            <ChevronRight className="chev" size={16} aria-hidden="true" />
+          </button>
+          <a className="settings-row" href={SOURCE_URL} target="_blank" rel="noopener noreferrer">
+            <ExternalLink className="row-icon" size={18} aria-hidden="true" />
+            <span className="row-label">Sermon notes — Drip by drip</span>
+            <ArrowUpRight className="chev" size={16} aria-hidden="true" />
+          </a>
+        </div>
       </section>
       <section className="settings-group">
-        <p className="kicker">Progress</p>
+        <p className="eyebrow">Progress</p>
         {!standalone && !isStandalone() ? (
           <div className="settings-block">
             <p>Add this app to your home screen to open it like any other.</p>
@@ -114,9 +137,12 @@ export function Settings() {
             )}
           </div>
         ) : null}
-        <button type="button" className="settings-row" onClick={() => setConfirmReset(true)}>
-          <span>Reset progress…</span>
-        </button>
+        <div className="settings-card">
+          <button type="button" className="settings-row is-danger" onClick={() => setConfirmReset(true)}>
+            <RotateCcw className="row-icon" size={18} aria-hidden="true" />
+            <span className="row-label">Reset progress…</span>
+          </button>
+        </div>
         <p className="soft">Stored only on this device · no account needed</p>
       </section>
       {editingBook ? <ChangeBookSheet when="track" onClose={() => setEditingBook(false)} /> : null}

@@ -2,7 +2,7 @@ import { useEffect, useId, useState, type ButtonHTMLAttributes, type ReactNode }
 import { BOOKS } from "../domain/books";
 import { formatAskTime } from "../domain/dates";
 import type { DripSize } from "../domain/types";
-import { Drop } from "./Icons";
+import { CalendarDays, Droplet, Settings2 } from "./Icons";
 
 export function Button({
   variant = "primary",
@@ -66,45 +66,31 @@ export function TabBar({
   ] as const;
 
   return (
-    <nav className="tabbar" aria-label="Primary">
-      {items.map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          className={tab === item.id ? "tab is-active" : "tab"}
-          aria-current={tab === item.id ? "page" : undefined}
-          onClick={() => onTab(item.id)}
-        >
-          <TabIcon id={item.id} />
-          {item.label}
-        </button>
-      ))}
-    </nav>
+    <div className="tabbar-wrap">
+      <nav className="tabbar" aria-label="Primary">
+        {items.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={tab === item.id ? "tab is-active" : "tab"}
+            aria-current={tab === item.id ? "page" : undefined}
+            onClick={() => onTab(item.id)}
+          >
+            <TabIcon id={item.id} />
+            {item.label}
+          </button>
+        ))}
+      </nav>
+    </div>
   );
 }
 
 function TabIcon({ id }: { id: "today" | "history" | "settings" }) {
-  if (id === "today") return <Drop size={22} />;
-  if (id === "history") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <rect x="4" y="5" width="16" height="15" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8" />
-        <path d="M8 3.5v3M16 3.5v3M4 9.5h16" fill="none" stroke="currentColor" strokeWidth="1.8" />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="3.1" fill="none" stroke="currentColor" strokeWidth="1.8" />
-      <path
-        d="M12 3.4v2.3M12 18.3v2.3M3.4 12h2.3M18.3 12h2.3M6.1 6.1l1.6 1.6M16.3 16.3l1.6 1.6M17.9 6.1l-1.6 1.6M7.7 16.3l-1.6 1.6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
+  if (id === "today") return <Droplet size={22} aria-hidden="true" />;
+  if (id === "history") return <CalendarDays size={22} aria-hidden="true" />;
+  if (id === "settings") return <Settings2 size={22} aria-hidden="true" />;
+  const exhaustive: never = id;
+  return exhaustive;
 }
 
 const PRESETS = [
@@ -114,9 +100,16 @@ const PRESETS = [
 ] as const;
 
 export function AskTimePicker({ value, onChange }: { value: string; onChange: (time: string) => void }) {
+  const label = formatAskTime(value);
+  const splitAt = label.lastIndexOf(" ");
+  const clock = splitAt > 0 ? label.slice(0, splitAt) : label;
+  const meridiem = splitAt > 0 ? label.slice(splitAt + 1) : "";
   return (
-    <div className="time-block">
-      <p className="time-display">{formatAskTime(value)}</p>
+    <div className="time-card">
+      <p className="time-row">
+        <span className="time-display">{clock}</span>
+        {meridiem ? <span className="meridiem">{meridiem}</span> : null}
+      </p>
       <div className="chips" role="group" aria-label="Ask time presets">
         {PRESETS.map((preset) => (
           <button

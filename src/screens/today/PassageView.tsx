@@ -4,6 +4,7 @@ import { bibleUrl } from "../../domain/refs";
 import type { ResolvedPassage } from "../../domain/resolve";
 import { yesterdayDetour, showWelcomeBack } from "../../domain/streaks";
 import { useApp } from "../../state/AppState";
+import { BookOpen, Bookmark, Check, ChevronRight, NotebookPen, Pencil, PenLine } from "../../components/Icons";
 import { Button } from "../../components/ui";
 
 export function PassageView({
@@ -36,15 +37,18 @@ export function PassageView({
   return (
     <div className="passage">
       <div className="nav-row">
-        <p>You said yes{day?.note ? ` · ${day.note}` : ""}</p>
+        <p className="yes-row">
+          <Check size={14} aria-hidden="true" />
+          You said yes{day?.note ? ` · ${day.note}` : ""}
+        </p>
       </div>
       {passage.kind !== "plan" ? (
         <div className="toggle" role="group" aria-label="Reading">
           <button type="button" className={passage.kind === "book" ? "is-active" : ""} onClick={onBackToBook}>
-            {bookName}
+            <Bookmark size={14} aria-hidden="true" /> {bookName}
           </button>
           <button type="button" className={passage.kind === "detour" ? "is-active" : ""} onClick={onDetour}>
-            Something else
+            <PenLine size={14} aria-hidden="true" /> Something else
           </button>
         </div>
       ) : null}
@@ -64,18 +68,24 @@ export function PassageView({
       {passage.kind === "book" ? (
         <div className="link-row">
           <button type="button" onClick={onAdjust}>
-            Adjust verses
+            <Pencil size={14} aria-hidden="true" /> Adjust verses
           </button>
           <button type="button" onClick={onChangeBook}>
-            Change book
+            <BookOpen size={14} aria-hidden="true" /> Change book
           </button>
         </div>
       ) : null}
       {passage.kind === "detour" ? <p className="soft">{passage.backupLabel}</p> : null}
       {passage.kind === "plan" ? <p className="soft">{passage.backupLabel}</p> : null}
       <button type="button" className="reflect-row" onClick={onReflect}>
-        <strong>Reflect as you read</strong>
-        <span>Jot notes, questions, a verse to keep</span>
+        <span className="note-icon" aria-hidden="true">
+          <NotebookPen size={16} />
+        </span>
+        <span>
+          <strong>Reflect as you read</strong>
+          <span>Jot notes, questions, a verse to keep</span>
+        </span>
+        <ChevronRight size={16} aria-hidden="true" />
       </button>
       <div className="footer">
         <a
@@ -116,8 +126,11 @@ function PassageBody({
       : passage.ref;
     return (
       <div className="passage-copy">
-        <p className="kicker">Pick up where you left off</p>
-        <h1>{headline}</h1>
+        <p className="kicker yes-row">
+          <Bookmark size={14} aria-hidden="true" />
+          Pick up where you left off
+        </p>
+        <h1 className="display-52">{headline}</h1>
         <p className="hint">
           {passage.verseLabel}
           {passage.hint ? ` · ${passage.hint}` : ""}

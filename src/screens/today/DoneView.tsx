@@ -6,6 +6,7 @@ import { isPlaceFinished } from "../../domain/drip";
 import { currentStreak, longestStreak, powerOfFour } from "../../domain/streaks";
 import { suggestedNext } from "../../domain/suggestions";
 import { useApp } from "../../state/AppState";
+import { Check, NotebookPen } from "../../components/Icons";
 import { BookPicker, Button, Sheet } from "../../components/ui";
 
 export function DoneView() {
@@ -26,8 +27,11 @@ export function DoneView() {
   return (
     <div className="done">
       <div className="hero">
-        <h1>Today’s drip, received.</h1>
-        <p>
+        <div className="done-badge" aria-hidden="true">
+          <Check size={30} />
+        </div>
+        <h1 className="display-40">Today’s drip, received.</h1>
+        <p className="meta">
           {day?.passageRef ?? "Today’s reading"}
           {day?.readDoneAt ? ` · read at ${formatClock(day.readDoneAt)}` : ""}
         </p>
@@ -43,7 +47,7 @@ export function DoneView() {
           <span>longest</span>
         </div>
         <div>
-          <strong>
+          <strong className="is-accent">
             {Math.min(week.engaged, week.goal)}/{week.goal}
           </strong>
           <span>this week</span>
@@ -122,10 +126,15 @@ function NoteSummary() {
 
   if (!editing) {
     return (
-      <button type="button" className="reflect-row" onClick={() => setEditing(true)}>
-        <strong>{day?.reflection ? "Your note" : "Add a note"}</strong>
-        <span>{day?.reflection ?? "Huh? is welcome. A short note is optional."}</span>
-        {day?.huh ? <span className="huh">Huh?</span> : null}
+      <button type="button" className="note-card" onClick={() => setEditing(true)}>
+        <span className="note-head">
+          <span className="note-icon" aria-hidden="true">
+            <NotebookPen size={14} />
+          </span>
+          <strong>{day?.reflection ? "Your note" : "Add a note"}</strong>
+          {day?.huh ? <span className="huh">Huh?</span> : null}
+        </span>
+        <p className="note-snippet">{day?.reflection ?? "Huh? is welcome. A short note is optional."}</p>
       </button>
     );
   }

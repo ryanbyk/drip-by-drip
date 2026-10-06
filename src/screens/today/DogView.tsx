@@ -17,7 +17,7 @@ export function DogView({ onContinue, onSkip }: { onContinue: () => void; onSkip
       </div>
       <p className="kicker">Optional prayer</p>
       <h1>Ask God for a heart ready to read.</h1>
-      <ul className="dog-list">
+      <ul className="dog-list dog-card">
         {DOG.map((item) => (
           <li key={item.letter}>
             <span>{item.letter}</span>

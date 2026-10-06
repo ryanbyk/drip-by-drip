@@ -6,6 +6,7 @@ import { formatRef, parsePassage } from "../../domain/refs";
 import type { Range } from "../../domain/types";
 import { detourIdeas, suggestedNext } from "../../domain/suggestions";
 import { useApp } from "../../state/AppState";
+import { MapPin, Share } from "../../components/Icons";
 import { BookPicker, Button, PacePicker, Sheet } from "../../components/ui";
 
 const PROMPTS = ["What stood out?", "About God?", "Carry today?"];
@@ -208,7 +209,10 @@ export function CommitSheet({ onContinue }: { onContinue: () => void }) {
     <Sheet title="Yes — I’ll read today" onClose={onContinue}>
       <p className="soft">Saved {day?.answeredAt ? new Date(day.answeredAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "just now"}</p>
       <label className="field">
-        <span>When / where will you read?</span>
+        <span className="label-row">
+          When / where will you read?
+          <MapPin size={18} aria-hidden="true" />
+        </span>
         <input
           value={day?.note ?? ""}
           maxLength={140}
@@ -232,7 +236,7 @@ export function CommitSheet({ onContinue }: { onContinue: () => void }) {
       <div className="footer">
         <Button onClick={onContinue}>Continue</Button>
         <Button variant="text" onClick={() => void share(day?.passageRef)}>
-          Share my commitment
+          <Share size={16} aria-hidden="true" /> Share my commitment
         </Button>
       </div>
     </Sheet>

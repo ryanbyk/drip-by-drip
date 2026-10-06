@@ -4,6 +4,7 @@ import { bibleUrl } from "../domain/refs";
 import { currentStreak, longestStreak, markForDate, type DayMark } from "../domain/streaks";
 import type { DailyCommitment } from "../domain/types";
 import { useApp } from "../state/AppState";
+import { ChevronLeft, ChevronRight, NotebookPen } from "../components/Icons";
 import { Button, Sheet } from "../components/ui";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -32,9 +33,10 @@ export function History({ onOpenToday }: { onOpenToday: () => void }) {
       {!hasAny ? (
         <p className="empty">Your days will gather here. Nothing is counted against you.</p>
       ) : null}
+      <div className="cal-card">
       <div className="cal-head">
         <button type="button" onClick={() => setCursor(addDays(`${cursor.slice(0, 7)}-01`, -1))} aria-label="Previous month">
-          ‹
+          <ChevronLeft size={18} aria-hidden="true" />
         </button>
         <p>{formatMonth(cursor)}</p>
         <button
@@ -43,7 +45,7 @@ export function History({ onOpenToday }: { onOpenToday: () => void }) {
           aria-label="Next month"
           disabled={cursor.slice(0, 7) >= today.slice(0, 7)}
         >
-          ›
+          <ChevronRight size={18} aria-hidden="true" />
         </button>
       </div>
       <div className="cal-dow" aria-hidden="true">
@@ -73,6 +75,7 @@ export function History({ onOpenToday }: { onOpenToday: () => void }) {
           );
         })}
       </div>
+      </div>
       <ul className="legend">
         <li><i className="swatch mark-read" /> Read</li>
         <li><i className="swatch mark-yes" /> Yes</li>
@@ -84,11 +87,17 @@ export function History({ onOpenToday }: { onOpenToday: () => void }) {
           <p className="kicker">Recent</p>
           {recent.map((item) => (
             <button key={item.iso} type="button" className="recent-row" onClick={() => setSelected(item.iso)}>
-              <span>
-                <strong>{formatShortDay(item.iso)}</strong>
-                <em>{item.detail}</em>
+              <span className="recent-main">
+                <span>
+                  <strong>{formatShortDay(item.iso)}</strong>
+                  <em>{item.detail}</em>
+                </span>
               </span>
+              {snapshot.days[item.iso]?.reflection || snapshot.days[item.iso]?.huh ? (
+                <NotebookPen size={16} color="#8A6A33" aria-hidden="true" />
+              ) : null}
               <span className={`pill mark-${item.mark}`}>{labelFor(item.mark)}</span>
+              <ChevronRight size={16} aria-hidden="true" />
             </button>
           ))}
         </div>

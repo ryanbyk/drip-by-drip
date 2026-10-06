@@ -5,7 +5,18 @@ import { paceBlurb, weeksHint } from "../domain/suggestions";
 import { DEFAULT_ASK_TIME, QBE_QUESTION, type DripSize } from "../domain/types";
 import { notificationsSupported, requestNotificationPermission } from "../lib/reminders";
 import { useApp } from "../state/AppState";
-import { Drop } from "../components/Icons";
+import {
+  AppIcon,
+  BookOpen,
+  Calendar,
+  ChevronRight,
+  Droplet,
+  HeartHandshake,
+  Layers,
+  ListChecks,
+  ProgressDots,
+  WaterDrop,
+} from "../components/Icons";
 import { AskTimePicker, BookPicker, Button, PacePicker } from "../components/ui";
 
 export function Onboarding() {
@@ -24,27 +35,31 @@ export function Onboarding() {
 function FramingStep() {
   const { setPrefs } = useApp();
   return (
-    <section className="screen">
+    <section className="screen screen-frame">
       <div className="brand">
-        <Drop size={18} />
+        <Droplet size={18} aria-hidden="true" />
         <span>Drip by drip</span>
       </div>
       <div className="ripples" aria-hidden="true">
-        <span />
-        <span />
-        <span />
-        <Drop size={56} />
+        <span className="ripple ripple-1" />
+        <span className="ripple ripple-2" />
+        <span className="ripple ripple-3" />
+        <span className="drop-mark">
+          <WaterDrop size={56} />
+        </span>
       </div>
       <div className="copy">
-        <h1>One small drip, every day.</h1>
+        <h1 className="display-40">One small drip, every day.</h1>
         <p className="lede">
           Reading Scripture is a keystone habit — a small, steady practice that quietly shapes the rest of life.
         </p>
-        <p className="gospel">
-          This isn’t a performance meter. Your standing with God rests on Christ alone — not on how many days you read.
-        </p>
+        <div className="gospel-note">
+          <HeartHandshake size={18} aria-hidden="true" />
+          <p>This isn’t a performance meter. Your standing with God rests on Christ alone — not on how many days you read.</p>
+        </div>
       </div>
       <div className="footer">
+        <ProgressDots active={0} />
         <Button onClick={() => setPrefs({ onboardingStep: "time" })}>Start</Button>
       </div>
     </section>
@@ -60,12 +75,18 @@ function AskTimeStep() {
       <h1>When are you available and alert?</h1>
       <p className="lede">Once a day, at this time, we’ll ask you a single question. That’s the whole reminder.</p>
       <AskTimePicker value={value} onChange={(askTime) => setPrefs({ askTime })} />
-      <div className="preview-card">
-        <p className="kicker">Preview</p>
-        <p className="preview-title">Drip by drip · {formatAskTime(value)}</p>
-        <p className="preview-body">{QBE_QUESTION}</p>
+      <div>
+        <p className="eyebrow">Preview</p>
+        <div className="notify-card">
+          <AppIcon />
+          <div>
+            <p className="notify-app">Drip by drip · {formatAskTime(value)}</p>
+            <p className="notify-q">{QBE_QUESTION}</p>
+          </div>
+        </div>
       </div>
       <div className="footer">
+        <ProgressDots active={1} />
         <Button onClick={() => setPrefs({ onboardingStep: "notify", askTime: value })}>Save ask time</Button>
         <Button
           variant="text"
@@ -179,9 +200,11 @@ function ReadingStep() {
       <p className="lede">A good first book: short, vivid, and all about Jesus. Reading something else some days? That’s easy too.</p>
       <article className="suggest-card">
         <p className="kicker">Suggested</p>
-        <h2>Mark</h2>
-        <p>
-          {book?.verses.length ?? 16} chapters · {weeksHint("mark", size)}
+        <h2 className="suggest-title">Mark</h2>
+        <p className="meta-row">
+          <Layers size={13} aria-hidden="true" /> {book?.verses.length ?? 16} chapters
+          <Calendar size={13} aria-hidden="true" /> {weeksHint("mark", size)}
+          <Droplet size={13} aria-hidden="true" /> {size === "verses" ? "A few verses" : size === "two" ? "2 chapters / day" : "1 chapter / day"}
         </p>
         <PacePicker value={size} onChange={(dripSize) => setPrefs({ dripSize })} />
         <label className="check">
@@ -209,16 +232,25 @@ function ReadingStep() {
         ) : null}
       </article>
       <div className="choice-list">
-        <button type="button" className="choice" onClick={() => setPrefs({ onboardingStep: "book", bookId: "mark" })}>
-          <strong>Pick a different book</strong>
-          <span>Any of the 66, at your pace</span>
+        <button type="button" className="choice choice-row" onClick={() => setPrefs({ onboardingStep: "book", bookId: "mark" })}>
+          <BookOpen size={18} aria-hidden="true" />
+          <span>
+            <strong>Pick a different book</strong>
+            <span>Any of the 66, at your pace</span>
+          </span>
+          <ChevronRight size={16} aria-hidden="true" />
         </button>
-        <button type="button" className="choice" onClick={() => setPrefs({ onboardingStep: "plan" })}>
-          <strong>I already follow a plan</strong>
-          <span>Enter each day’s reading — Mark stays as your backup</span>
+        <button type="button" className="choice choice-row" onClick={() => setPrefs({ onboardingStep: "plan" })}>
+          <ListChecks size={18} aria-hidden="true" />
+          <span>
+            <strong>I already follow a plan</strong>
+            <span>Enter each day’s reading — Mark stays as your backup</span>
+          </span>
+          <ChevronRight size={16} aria-hidden="true" />
         </button>
       </div>
       <div className="footer">
+        <ProgressDots active={2} />
         <Button onClick={startMark}>Start with Mark</Button>
       </div>
     </section>

@@ -16,7 +16,7 @@ export default defineConfig({
         name: "Drip by drip",
         short_name: "Drip",
         description: "A daily question, then a small drip of Scripture.",
-        theme_color: "#2A6F6A",
+        theme_color: "#2E5C61",
         background_color: "#F5F1E8",
         display: "standalone",
         start_url: "/",
@@ -29,7 +29,7 @@ export default defineConfig({
         ],
       },
       injectManifest: {
-        globPatterns: ["**/*.{js,css,html,svg,png,woff,woff2}"],
+        globPatterns: ["**/*.{js,css,html,svg,png,woff,woff2,ttf}"],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
       devOptions: {

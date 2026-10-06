@@ -2,6 +2,7 @@ import { useState } from "react";
 import { formatAskTime } from "../../domain/dates";
 import { GRACE_BODY, GRACE_TITLE } from "../../domain/types";
 import { useApp } from "../../state/AppState";
+import { MoonStar } from "../../components/Icons";
 import { Button } from "../../components/ui";
 
 export function GraceView({ onHistory, onReadAfterAll }: { onHistory: () => void; onReadAfterAll: () => void }) {
@@ -11,9 +12,12 @@ export function GraceView({ onHistory, onReadAfterAll }: { onHistory: () => void
   return (
     <div className="grace">
       <div className="grace-copy">
-        <h1>{GRACE_TITLE}</h1>
-        <p>{GRACE_BODY}</p>
-        <p className="soft">We’ll ask again tomorrow at {formatAskTime(snapshot.prefs.askTime)}.</p>
+        <div className="grace-mark" aria-hidden="true">
+          <MoonStar size={24} />
+        </div>
+        <h1 className="display-48">{GRACE_TITLE}</h1>
+        <p className="grace-body">{GRACE_BODY}</p>
+        <p className="grace-next">We’ll ask again tomorrow at {formatAskTime(snapshot.prefs.askTime)}.</p>
       </div>
       <div className="footer">
         {settled ? null : (
@@ -24,9 +28,9 @@ export function GraceView({ onHistory, onReadAfterAll }: { onHistory: () => void
         <Button variant="text" onClick={onHistory}>
           View history
         </Button>
-        <Button variant="text" onClick={onReadAfterAll}>
+        <button type="button" className="text-link" onClick={onReadAfterAll}>
           I want to read after all
-        </Button>
+        </button>
       </div>
     </div>
   );
