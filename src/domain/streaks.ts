@@ -1,7 +1,7 @@
 import { addDays, diffDays, startOfWeek } from "./dates";
 import type { DailyCommitment } from "./types";
 
-export type DayMark = "read" | "yes" | "not_today" | "unanswered" | "future" | "before";
+export type DayMark = "read" | "yes" | "not_today" | "unanswered" | "today" | "future" | "before";
 
 export function isEngaged(day: DailyCommitment | undefined): boolean {
   return Boolean(day && day.answer === "yes" && day.readDone);
@@ -15,10 +15,12 @@ export function markForDate(
 ): DayMark {
   if (!startIso || iso < startIso) return "before";
   if (iso > today) return "future";
+  if (iso === today && (!day || day.answer === "unanswered")) return "today";
   if (!day || day.answer === "unanswered") return "unanswered";
   if (day.answer === "not_today") return "not_today";
   if (day.readDone) return "read";
   if (day.answer === "yes") return "yes";
+  if (iso === today) return "today";
   return "unanswered";
 }
 

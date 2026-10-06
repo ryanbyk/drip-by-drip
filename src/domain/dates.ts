@@ -61,9 +61,14 @@ export function formatAskTime(askTime: string): string {
   return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
+/** Days after Monday. Sunday (`getDay() === 0`) is 6, so it stays in the week that began Monday. */
+function daysAfterMonday(date: Date): number {
+  return (date.getDay() + 6) % 7;
+}
+
 export function startOfWeek(iso: string): string {
   const date = parseLocalDate(iso);
-  date.setDate(date.getDate() - date.getDay());
+  date.setDate(date.getDate() - daysAfterMonday(date));
   return localDate(date);
 }
 
@@ -72,7 +77,7 @@ export function monthGrid(iso: string): { iso: string; inMonth: boolean }[] {
   const year = date.getFullYear();
   const month = date.getMonth();
   const first = new Date(year, month, 1);
-  const start = new Date(year, month, 1 - first.getDay());
+  const start = new Date(year, month, 1 - daysAfterMonday(first));
   const cells: { iso: string; inMonth: boolean }[] = [];
   for (let index = 0; index < 42; index += 1) {
     const cursor = new Date(start);

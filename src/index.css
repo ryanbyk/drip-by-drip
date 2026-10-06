@@ -714,7 +714,7 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
 .mark-unanswered { background: transparent; color: var(--faint); box-shadow: inset 0 0 0 1px var(--line); }
 .pill.mark-read { background: var(--accent-soft); color: var(--accent); box-shadow: none; }
 .pill.mark-not_today { background: var(--subtle); color: var(--muted); }
-.pill.mark-yes { background: var(--accent-soft); color: var(--accent); box-shadow: none; }
+.pill.mark-yes, .pill.mark-today { background: var(--accent-soft); color: var(--accent); box-shadow: none; }
 .legend { display: flex; flex-wrap: wrap; gap: var(--space-12) var(--space-16); list-style: none; padding: 0; margin: 0; color: var(--muted); font-size: 0.85rem; }
 .legend li { display: flex; align-items: center; gap: var(--space-6); }
 .swatch { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
@@ -745,6 +745,7 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
 }
 .legend.is-spread { justify-content: space-between; width: 100%; }
 .empty { color: var(--muted); }
+.history-empty { display: flex; flex-direction: column; gap: var(--space-12); }
 
 .settings-group { display: flex; flex-direction: column; gap: var(--space-8); }
 .settings-card {
