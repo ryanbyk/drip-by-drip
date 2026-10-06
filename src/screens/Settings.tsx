@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getBook } from "../domain/books";
 import { formatAskTime } from "../domain/dates";
 import { activePlace } from "../domain/resolve";
@@ -7,10 +7,14 @@ import { paceBlurb } from "../domain/suggestions";
 import { bibleSourceLabel, normalizeBiblePrefs } from "../domain/bibleSource";
 import { SOURCE_URL } from "../domain/types";
 import {
+  cancelDelayedTestReminder,
+  DELAYED_TEST_DELAY_MS,
   isStandalone,
   notificationsSupported,
   requestNotificationPermission,
+  scheduleDelayedTestReminder,
   sendTestAskNotification,
+  type DelayedTestReminderResult,
   type TestReminderResult,
 } from "../lib/reminders";
 import { useApp } from "../state/AppState";
@@ -40,9 +44,11 @@ export function Settings() {
   const [editingBook, setEditingBook] = useState(false);
   const [editingSource, setEditingSource] = useState(false);
   const [about, setAbout] = useState(false);
-  const [sendingTest, setSendingTest] = useState(false);
+  const [developerAction, setDeveloperAction] = useState<"now" | "later" | null>(null);
   const [testNote, setTestNote] = useState<string | null>(null);
-  const sendingTestRef = useRef(false);
+  const [delayPending, setDelayPending] = useState(false);
+  const developerActionRef = useRef<"now" | "later" | null>(null);
+  const pendingHideRef = useRef<number | null>(null);
   const bible = normalizeBiblePrefs(snapshot.prefs);
   const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
@@ -59,22 +65,77 @@ export function Settings() {
     setPrefs({ notificationsEnabled: false, notificationState: "denied" });
   }
 
-  async function sendTestReminder() {
-    if (sendingTestRef.current) return;
-    sendingTestRef.current = true;
-    setSendingTest(true);
+  useEffect(
+    () => () => {
+      if (pendingHideRef.current !== null) window.clearTimeout(pendingHideRef.current);
+    },
+    [],
+  );
+
+  function markDelayPending() {
+    setDelayPending(true);
+    if (pendingHideRef.current !== null) window.clearTimeout(pendingHideRef.current);
+    pendingHideRef.current = window.setTimeout(() => {
+      pendingHideRef.current = null;
+      setDelayPending(false);
+    }, DELAYED_TEST_DELAY_MS);
+  }
+
+  function clearDelayPending() {
+    if (pendingHideRef.current !== null) {
+      window.clearTimeout(pendingHideRef.current);
+      pendingHideRef.current = null;
+    }
+    setDelayPending(false);
+  }
+
+  async function runDeveloperAction(action: "now" | "later", work: () => Promise<void>) {
+    if (developerActionRef.current) return;
+    developerActionRef.current = action;
+    setDeveloperAction(action);
     setTestNote(null);
     try {
+      await work();
+    } finally {
+      developerActionRef.current = null;
+      setDeveloperAction(null);
+    }
+  }
+
+  async function sendTestReminder() {
+    await runDeveloperAction("now", async () => {
       const result = await sendTestAskNotification();
       if (result === "sent") {
         showToast("Test reminder sent.");
         return;
       }
       setTestNote(testReminderNote(result));
-    } finally {
-      sendingTestRef.current = false;
-      setSendingTest(false);
-    }
+    });
+  }
+
+  async function scheduleTestReminder() {
+    await runDeveloperAction("later", async () => {
+      const result = await scheduleDelayedTestReminder();
+      if (result === "scheduled") {
+        clearDelayPending();
+        showToast("Scheduled — you’ll get it in about a minute.");
+        return;
+      }
+      if (result === "fallback") {
+        showToast("Scheduled — you’ll get it in about a minute.");
+        markDelayPending();
+        setTestNote(DELAYED_TIMER_NOTE);
+        return;
+      }
+      setTestNote(delayedReminderNote(result));
+    });
+  }
+
+  function cancelScheduledTest() {
+    if (developerActionRef.current) return;
+    cancelDelayedTestReminder();
+    clearDelayPending();
+    setTestNote("Canceled. That one-minute test won’t arrive.");
   }
 
   const placeLabel = finished
@@ -126,10 +187,19 @@ export function Settings() {
             type="button"
             className="settings-row"
             onClick={() => void sendTestReminder()}
-            disabled={sendingTest}
+            disabled={developerAction !== null}
           >
             <Bell className="row-icon" size={18} aria-hidden="true" />
-            <span className="row-label">{sendingTest ? "Sending test reminder…" : "Send test reminder"}</span>
+            <span className="row-label">{developerAction === "now" ? "Sending test reminder…" : "Send test reminder"}</span>
+          </button>
+          <button
+            type="button"
+            className="settings-row"
+            onClick={() => void (delayPending ? cancelScheduledTest() : scheduleTestReminder())}
+            disabled={developerAction !== null}
+          >
+            <AlarmClock className="row-icon" size={18} aria-hidden="true" />
+            <span className="row-label">{delayedTestLabel(developerAction, delayPending)}</span>
           </button>
         </div>
         <p className="soft">{testNote ?? DEVELOPER_REMINDER_NOTE}</p>
@@ -261,7 +331,33 @@ function reminderCopy(
 }
 
 const DEVELOPER_REMINDER_NOTE =
-  "Sends the same daily question. It doesn’t turn on your daily reminder, and it doesn’t mark today as reminded.";
+  "Each sends the same daily question. Neither turns on your daily reminder, or marks today as reminded.";
+
+const DELAYED_TIMER_NOTE =
+  "This one uses a timer in the page. If you leave or the phone sleeps, it may not arrive — especially on iPhone. It’s most reliable in Chrome, or with the app left open.";
+
+function delayedTestLabel(action: "now" | "later" | null, pending: boolean): string {
+  if (action === "later") return "Scheduling the one-minute test…";
+  if (pending) return "Cancel the one-minute test";
+  return "Send test reminder in 1 minute";
+}
+
+function delayedReminderNote(result: Exclude<DelayedTestReminderResult, "scheduled" | "fallback">): string {
+  switch (result) {
+    case "unsupported":
+      return "This browser can’t send reminders. The question will be here whenever you open the app.";
+    case "denied":
+      return "Reminders are blocked in this browser, so the one-minute test couldn’t be scheduled. Allow notifications for this site in your browser settings whenever you want to try again.";
+    case "dismissed":
+      return "The one-minute test waits until notifications are allowed. You can try again whenever you’re ready.";
+    case "failed":
+      return "The one-minute reminder couldn’t be scheduled just now. You can try again in a moment.";
+    default: {
+      const exhaustive: never = result;
+      return exhaustive;
+    }
+  }
+}
 
 function testReminderNote(result: Exclude<TestReminderResult, "sent">): string {
   switch (result) {

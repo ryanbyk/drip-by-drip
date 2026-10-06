@@ -3,6 +3,18 @@ import { QBE_QUESTION } from "../domain/types";
 import { withBase } from "./base";
 
 type NotificationWithTrigger = NotificationOptions & { showTrigger?: unknown };
+type TimestampTriggerCtor = new (when: number) => unknown;
+
+const ASK_NOTIFICATION_TITLE = "Drip by drip";
+const DAILY_SCHEDULE_TAG = "qbe-scheduled";
+
+/**
+ * Separate from today's delivered ask (`qbe-YYYY-MM-DD`) and the daily
+ * TimestampTrigger (`qbe-scheduled`). The same tag would replace whichever
+ * notification is already pending.
+ */
+export const DELAYED_TEST_TAG = "qbe-test-delayed";
+export const DELAYED_TEST_DELAY_MS = 60_000;
 
 export function notificationsSupported(): boolean {
   return typeof window !== "undefined" && "Notification" in window;
@@ -17,15 +29,19 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
   }
 }
 
-export async function showAskNotification(): Promise<boolean> {
-  if (!notificationsSupported() || Notification.permission !== "granted") return false;
-  const title = "Drip by drip";
-  const options: NotificationOptions = {
+function askNotificationOptions(tag: string): NotificationOptions {
+  return {
     body: QBE_QUESTION,
-    tag: `qbe-${localDate()}`,
+    tag,
     icon: withBase("icons/icon-192.png"),
     data: { href: withBase("") },
   };
+}
+
+export async function showAskNotification(tag = `qbe-${localDate()}`): Promise<boolean> {
+  if (!notificationsSupported() || Notification.permission !== "granted") return false;
+  const title = ASK_NOTIFICATION_TITLE;
+  const options = askNotificationOptions(tag);
   const registration = await serviceWorkerRegistration();
   if (registration) {
     await registration.showNotification(title, options);
@@ -37,15 +53,22 @@ export async function showAskNotification(): Promise<boolean> {
 
 export type TestReminderResult = "sent" | "denied" | "dismissed" | "unsupported" | "failed";
 
+type ReminderPermission = "granted" | "denied" | "dismissed" | "unsupported";
+
+async function ensureReminderPermission(): Promise<ReminderPermission> {
+  if (!notificationsSupported()) return "unsupported";
+  if (Notification.permission === "granted") return "granted";
+  const permission = await requestNotificationPermission();
+  if (permission === "granted") return "granted";
+  if (permission === "unsupported") return "unsupported";
+  if (permission === "denied") return "denied";
+  return "dismissed";
+}
+
 /** Shows the daily ask notification. Does not record `lastNotifiedDate` or enable the schedule. */
 export async function sendTestAskNotification(): Promise<TestReminderResult> {
-  if (!notificationsSupported()) return "unsupported";
-  if (Notification.permission !== "granted") {
-    const permission = await requestNotificationPermission();
-    if (permission === "unsupported") return "unsupported";
-    if (permission === "denied") return "denied";
-    if (permission !== "granted") return "dismissed";
-  }
+  const permission = await ensureReminderPermission();
+  if (permission !== "granted") return permission;
   try {
     const shown = await showAskNotification();
     if (shown) return "sent";
@@ -54,6 +77,87 @@ export async function sendTestAskNotification(): Promise<TestReminderResult> {
   } catch {
     return "failed";
   }
+}
+
+export type DelayedTestReminderResult = "scheduled" | "fallback" | "denied" | "dismissed" | "unsupported" | "failed";
+
+let delayedTimer: ReturnType<typeof setTimeout> | undefined;
+
+function clearDelayedTimer(): void {
+  if (delayedTimer === undefined) return;
+  clearTimeout(delayedTimer);
+  delayedTimer = undefined;
+}
+
+function timestampTriggerCtor(): TimestampTriggerCtor | undefined {
+  if (typeof window === "undefined") return undefined;
+  return (window as unknown as { TimestampTrigger?: TimestampTriggerCtor }).TimestampTrigger;
+}
+
+async function showTriggeredNotification(
+  registration: ServiceWorkerRegistration,
+  when: number,
+  tag: string,
+  triggerCtor: TimestampTriggerCtor,
+): Promise<void> {
+  const options: NotificationWithTrigger = {
+    ...askNotificationOptions(tag),
+    showTrigger: new triggerCtor(when),
+  };
+  await registration.showNotification(ASK_NOTIFICATION_TITLE, options);
+}
+
+async function dismissDelayedTestNotification(): Promise<void> {
+  const registration = await serviceWorkerRegistration();
+  if (!registration || typeof registration.getNotifications !== "function") return;
+  try {
+    const pending = await registration.getNotifications({ tag: DELAYED_TEST_TAG });
+    for (const notification of pending) notification.close();
+  } catch {
+    // Closing a scheduled test is best-effort.
+  }
+}
+
+/** Stops a pending one-minute page timer and closes a triggered test notification with the delayed tag. */
+export function cancelDelayedTestReminder(): void {
+  clearDelayedTimer();
+  void dismissDelayedTestNotification();
+}
+
+/**
+ * Schedules the same daily-ask notification about a minute out.
+ * Uses `TimestampTrigger` when this browser can show a triggered notification
+ * through an installed service worker — the same show path as the daily ask.
+ * Otherwise arms a page timer that calls `showAskNotification`. That timer
+ * does not survive iOS or a suspended page.
+ * Does not enable the daily reminder or write `lastNotifiedDate`.
+ */
+export async function scheduleDelayedTestReminder(): Promise<DelayedTestReminderResult> {
+  const permission = await ensureReminderPermission();
+  if (permission !== "granted") return permission;
+
+  const triggerCtor = timestampTriggerCtor();
+  if (triggerCtor && typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+    const registration = await serviceWorkerRegistration();
+    if (registration) {
+      try {
+        await showTriggeredNotification(registration, Date.now() + DELAYED_TEST_DELAY_MS, DELAYED_TEST_TAG, triggerCtor);
+        clearDelayedTimer();
+        return "scheduled";
+      } catch {
+        return "failed";
+      }
+    }
+  }
+
+  clearDelayedTimer();
+  delayedTimer = setTimeout(() => {
+    delayedTimer = undefined;
+    void showAskNotification(DELAYED_TEST_TAG).catch(() => {
+      // The page may already be in the background; there is nowhere to surface this.
+    });
+  }, DELAYED_TEST_DELAY_MS);
+  return "fallback";
 }
 
 /**
@@ -73,20 +177,13 @@ async function serviceWorkerRegistration(): Promise<ServiceWorkerRegistration | 
 }
 
 export async function scheduleTrigger(askTime: string): Promise<boolean> {
-  const triggerCtor = (window as unknown as { TimestampTrigger?: new (when: number) => unknown }).TimestampTrigger;
+  const triggerCtor = timestampTriggerCtor();
   if (!triggerCtor || !("serviceWorker" in navigator) || Notification.permission !== "granted") return false;
   const wait = msUntilAsk(askTime);
   const when = Date.now() + (wait > 0 ? wait : wait + 86_400_000);
   try {
     const registration = await navigator.serviceWorker.ready;
-    const options: NotificationWithTrigger = {
-      body: QBE_QUESTION,
-      tag: "qbe-scheduled",
-      icon: withBase("icons/icon-192.png"),
-      showTrigger: new triggerCtor(when),
-      data: { href: withBase("") },
-    };
-    await registration.showNotification("Drip by drip", options);
+    await showTriggeredNotification(registration, when, DAILY_SCHEDULE_TAG, triggerCtor);
     return true;
   } catch {
     return false;
