@@ -23,7 +23,7 @@ export function History({ onOpenToday }: { onOpenToday: () => void }) {
   const selectedMark = selected ? markForDate(selected, today, start, selectedDay) : null;
 
   return (
-    <section className="screen screen-tabbed">
+    <section className="screen screen-tabbed screen-gap-20">
       <header className="page-head">
         <h1>History</h1>
         <p>
@@ -76,7 +76,7 @@ export function History({ onOpenToday }: { onOpenToday: () => void }) {
         })}
       </div>
       </div>
-      <ul className="legend">
+      <ul className="legend is-spread">
         <li><i className="swatch mark-read" /> Read</li>
         <li><i className="swatch mark-yes" /> Yes</li>
         <li><i className="swatch mark-not_today" /> Not today</li>
@@ -84,7 +84,6 @@ export function History({ onOpenToday }: { onOpenToday: () => void }) {
       </ul>
       {recent.length > 0 ? (
         <div className="recent">
-          <p className="kicker">Recent</p>
           {recent.map((item) => (
             <button key={item.iso} type="button" className="recent-row" onClick={() => setSelected(item.iso)}>
               <span className="recent-main">
@@ -93,6 +92,7 @@ export function History({ onOpenToday }: { onOpenToday: () => void }) {
                   <em>{item.detail}</em>
                 </span>
               </span>
+              {item.huh ? <span className="huh-tag">Huh?</span> : null}
               {snapshot.days[item.iso]?.reflection || snapshot.days[item.iso]?.huh ? (
                 <NotebookPen className="note-mark" size={16} aria-hidden="true" />
               ) : null}
@@ -155,15 +155,15 @@ function recentDays(
   start: string,
   today: string,
   days: Record<string, DailyCommitment>,
-): { iso: string; mark: DayMark; detail: string }[] {
+): { iso: string; mark: DayMark; detail: string; huh: boolean }[] {
   if (!start) return [];
-  const rows: { iso: string; mark: DayMark; detail: string }[] = [];
+  const rows: { iso: string; mark: DayMark; detail: string; huh: boolean }[] = [];
   let cursor = today;
   while (cursor >= start && rows.length < 8) {
     const mark = markForDate(cursor, today, start, days[cursor]);
     if (mark !== "before" && mark !== "future") {
       const day = days[cursor];
-      rows.push({ iso: cursor, mark, detail: detailFor(mark, day) });
+      rows.push({ iso: cursor, mark, detail: detailFor(mark, day), huh: Boolean(day?.huh) });
     }
     cursor = addDays(cursor, -1);
   }
@@ -173,6 +173,5 @@ function recentDays(
 function detailFor(mark: DayMark, day: DailyCommitment | undefined): string {
   if (mark === "not_today") return "Rest day";
   if (mark === "unanswered") return "No answer";
-  const ref = day?.passageRef ?? "Reading";
-  return day?.huh ? `${ref} · Huh?` : ref;
+  return day?.passageRef ?? "Reading";
 }

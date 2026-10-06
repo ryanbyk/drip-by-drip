@@ -11,6 +11,7 @@ import {
   ArrowUpRight,
   BookCheck,
   Bookmark,
+  Check,
   ChevronDown,
   ChevronLeft,
   CircleQuestionMark,
@@ -300,37 +301,51 @@ export function CommitSheet({ onContinue }: { onContinue: () => void }) {
   const { snapshot, today, dispatch, share } = useApp();
   const day = snapshot.days[today];
   const chips = ["With coffee", "Lunch break", "Before bed"];
+  const saved = day?.answeredAt
+    ? new Date(day.answeredAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+    : "just now";
   return (
-    <Sheet title="Yes — I’ll read today" onClose={onContinue}>
-      <p className="soft">Saved {day?.answeredAt ? new Date(day.answeredAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "just now"}</p>
-      <label className="field">
-        <span className="label-row">
-          When / where will you read?
-          <MapPin size={18} aria-hidden="true" />
+    <Sheet title="Yes — I’ll read today" hideTitle onClose={onContinue}>
+      <div className="commit-row">
+        <span className="commit-check" aria-hidden="true">
+          <Check size={16} />
         </span>
-        <input
-          value={day?.note ?? ""}
-          maxLength={140}
-          placeholder="e.g. 6:45 at the kitchen table"
-          onChange={(event) => dispatch({ type: "note", today, note: event.target.value })}
-        />
-      </label>
-      <div className="chips">
-        {chips.map((chip) => (
-          <button
-            key={chip}
-            type="button"
-            className={day?.note === chip ? "chip is-active" : "chip"}
-            onClick={() => dispatch({ type: "note", today, note: chip })}
-          >
-            {chip}
-          </button>
-        ))}
+        <span className="commit-copy">
+          <strong>Yes — I’ll read today</strong>
+          <span>Saved {saved}</span>
+        </span>
       </div>
-      <p className="meta">Optional</p>
+      <div className="when-where">
+        <div className="label-row commit-label">
+          <span>When / where will you read?</span>
+          <span className="optional">Optional</span>
+        </div>
+        <label className="commit-field">
+          <MapPin size={18} aria-hidden="true" />
+          <span className="sr-only">When / where will you read?</span>
+          <input
+            value={day?.note ?? ""}
+            maxLength={140}
+            placeholder="e.g. 6:45 at the kitchen table"
+            onChange={(event) => dispatch({ type: "note", today, note: event.target.value })}
+          />
+        </label>
+        <div className="chips">
+          {chips.map((chip) => (
+            <button
+              key={chip}
+              type="button"
+              className={day?.note === chip ? "chip is-active" : "chip"}
+              onClick={() => dispatch({ type: "note", today, note: chip })}
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="footer">
         <Button onClick={onContinue}>Continue</Button>
-        <Button variant="text" onClick={() => void share(day?.passageRef)}>
+        <Button variant="text" className="share-link" onClick={() => void share(day?.passageRef)}>
           <Share size={16} aria-hidden="true" /> Share my commitment
         </Button>
       </div>

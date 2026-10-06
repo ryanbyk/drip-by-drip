@@ -1,6 +1,8 @@
 import {
+  ALargeSmall,
   AlarmClock,
   ArrowUpRight,
+  BookmarkPlus,
   Bell,
   BookCheck,
   BookOpen,
@@ -68,8 +70,10 @@ export function ProgressDots({ active }: { active: 0 | 1 | 2 | 3 }) {
 }
 
 export {
+  ALargeSmall,
   AlarmClock,
   ArrowUpRight,
+  BookmarkPlus,
   Bell,
   BookCheck,
   BookOpen,

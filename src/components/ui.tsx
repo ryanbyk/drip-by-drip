@@ -23,10 +23,12 @@ export function Sheet({
   title,
   onClose,
   children,
+  hideTitle = false,
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  hideTitle?: boolean;
 }) {
   const titleId = useId();
   useEffect(() => {
@@ -47,7 +49,9 @@ export function Sheet({
         onClick={(event) => event.stopPropagation()}
       >
         <div className="handle" aria-hidden="true" />
-        <h2 id={titleId}>{title}</h2>
+        <h2 id={titleId} className={hideTitle ? "sr-only" : undefined}>
+          {title}
+        </h2>
         {children}
       </div>
     </div>

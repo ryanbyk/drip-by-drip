@@ -37,17 +37,17 @@ export function AskView({ onYes, onNotToday }: { onYes: () => void; onNotToday: 
         <Button data-testid="qbe-not-today" variant="quiet" onClick={onNotToday}>
           Not today
         </Button>
-        <p className="week-cue">
-          <span className="week-dots" aria-hidden="true">
-            {Array.from({ length: 7 }, (_, index) => {
-              const iso = addDays(weekStart, index);
-              const kind = isEngaged(snapshot.days[iso]) ? "engaged" : iso === today ? "today" : iso > today ? "future" : "open";
-              return <i key={iso} className={`week-dot is-${kind}`} />;
-            })}
-          </span>
-          {week.engaged} of {week.goal} this week
-        </p>
       </div>
+      <p className="week-cue">
+        <span className="week-dots" aria-hidden="true">
+          {Array.from({ length: 7 }, (_, index) => {
+            const iso = addDays(weekStart, index);
+            const kind = isEngaged(snapshot.days[iso]) ? "engaged" : iso === today ? "today" : iso > today ? "future" : "open";
+            return <i key={iso} className={`week-dot is-${kind}`} />;
+          })}
+        </span>
+        {week.engaged} of {week.goal} this week
+      </p>
     </div>
   );
 }

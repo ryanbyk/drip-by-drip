@@ -70,7 +70,7 @@ function AskTimeStep() {
   const { snapshot, setPrefs } = useApp();
   const value = snapshot.prefs.askTime || DEFAULT_ASK_TIME;
   return (
-    <section className="screen">
+    <section className="screen screen-gap-24">
       <p className="step">Step 2 of 4</p>
       <h1>When are you available and alert?</h1>
       <p className="lede">Once a day, at this time, we’ll ask you a single question. That’s the whole reminder.</p>
@@ -194,11 +194,11 @@ function ReadingStep() {
   }
 
   return (
-    <section className="screen">
+    <section className="screen screen-gap-22">
       <p className="step">Step 3 of 4</p>
       <h1>Start with a book. We suggest Mark.</h1>
       <p className="lede">A good first book: short, vivid, and all about Jesus. Reading something else some days? That’s easy too.</p>
-      <article className="suggest-card">
+      <article className="suggest-card is-featured">
         <p className="kicker">Suggested</p>
         <h2 className="suggest-title">Mark</h2>
         <p className="meta-row">
@@ -231,7 +231,7 @@ function ReadingStep() {
           </label>
         ) : null}
       </article>
-      <div className="choice-list">
+      <div className="path-list">
         <button type="button" className="choice choice-row" onClick={() => setPrefs({ onboardingStep: "book", bookId: "mark" })}>
           <BookOpen size={18} aria-hidden="true" />
           <span>
@@ -251,7 +251,7 @@ function ReadingStep() {
       </div>
       <div className="footer">
         <ProgressDots active={2} />
-        <Button onClick={startMark}>Start with Mark</Button>
+        <Button onClick={startMark}>Continue</Button>
       </div>
     </section>
   );
@@ -278,7 +278,7 @@ function PickBookStep() {
   }
 
   return (
-    <section className="screen">
+    <section className="screen screen-gap-18">
       <button type="button" className="back" onClick={() => setPrefs({ onboardingStep: "reading" })}>
         Back
       </button>
