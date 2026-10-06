@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
+import { normalizeBiblePrefs } from "../../domain/bibleSource";
+import { esvReadMode } from "../../domain/esv";
 import type { ResolvedPassage } from "../../domain/resolve";
 import { backupLabel, resolvePassage } from "../../domain/resolve";
 import type { Snapshot } from "../../domain/types";
+import { cachedEsvPassage, esvKeyRejected } from "../../lib/esvApi";
 import { useApp } from "../../state/AppState";
 import { AskView } from "./AskView";
 import { DogView } from "./DogView";
@@ -16,6 +19,7 @@ import {
   ReflectView,
   StopSheet,
 } from "./MoreViews";
+import { EsvReader } from "./EsvReader";
 import { PassageView } from "./PassageView";
 import { RecapView } from "./RecapView";
 
@@ -34,20 +38,40 @@ function phaseOf(snapshot: Snapshot, today: string, passage: ResolvedPassage): P
 }
 
 export function Today({ onHistory }: { onHistory: () => void }) {
-  const app = useApp();
-  const { snapshot, today, dispatch } = app;
+  const { snapshot, today, dispatch, online } = useApp();
   const passage = resolvePassage(snapshot, today);
   const phase = phaseOf(snapshot, today, passage);
   const [intro, setIntro] = useState<Intro>(null);
   const [mode, setMode] = useState<Mode>("read");
   const [sheet, setSheet] = useState<SheetName>(null);
   const [bookWhen, setBookWhen] = useState<"today" | "track">("track");
+  const [readerFailed, setReaderFailed] = useState(false);
+  const [readerClosed, setReaderClosed] = useState(false);
+  const prefs = normalizeBiblePrefs(snapshot.prefs);
+  const passageRef = "ref" in passage ? passage.ref : "";
 
   useEffect(() => {
     setIntro(null);
     setMode("read");
     setSheet(null);
   }, [today]);
+
+  useEffect(() => {
+    setReaderFailed(false);
+    setReaderClosed(false);
+  }, [today, passageRef, prefs.showInAppEsv, prefs.esvApiKey]);
+
+  const readMode = esvReadMode({
+    showInAppEsv: prefs.showInAppEsv,
+    esvApiKey: prefs.esvApiKey,
+    online,
+    cached: passageRef ? cachedEsvPassage(passageRef) !== null : false,
+    fetchFailed: readerFailed,
+    keyRejected: esvKeyRejected(prefs.esvApiKey),
+  });
+  const trackPassage = passage.kind === "book" || passage.kind === "plan";
+  const showReader =
+    intro !== "commit" && phase === "passage" && trackPassage && readMode.show === "in-app" && !readerClosed;
 
   function answerYes() {
     dispatch({ type: "answer", today, at: new Date().toISOString(), answer: "yes" });
@@ -112,6 +136,21 @@ export function Today({ onHistory }: { onHistory: () => void }) {
     );
   }
 
+  if (showReader && (passage.kind === "book" || passage.kind === "plan")) {
+    return (
+      <section className="screen screen-reader">
+        <EsvReader
+          reference={passage.ref}
+          onBack={() => setReaderClosed(true)}
+          onReflect={() => setMode("reflect")}
+          onRead={readIt}
+          onUnavailable={() => setReaderFailed(true)}
+        />
+        {sheet === "stop" && passage.kind === "book" ? <StopSheet onClose={() => setSheet(null)} /> : null}
+      </section>
+    );
+  }
+
   return (
     <section className="screen screen-tabbed">
       {phase === "ask" || intro === "commit" ? (
@@ -145,6 +184,9 @@ export function Today({ onHistory }: { onHistory: () => void }) {
           onReflect={() => setMode("reflect")}
           onRead={readIt}
           onPlanRef={(ref) => dispatch({ type: "planRef", today, ref })}
+          onReadInApp={
+            readerClosed && readMode.show === "in-app" && trackPassage ? () => setReaderClosed(false) : undefined
+          }
         />
       ) : null}
       {intro === "commit" ? <CommitSheet onContinue={() => setIntro("dog")} /> : null}

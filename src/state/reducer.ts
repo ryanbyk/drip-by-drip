@@ -1,3 +1,4 @@
+import { normalizeBiblePrefs } from "../domain/bibleSource";
 import { getBook } from "../domain/books";
 import { startPlace } from "../domain/chapters";
 import { placeAfter, verseInRange } from "../domain/drip";
@@ -93,6 +94,8 @@ export function createSnapshot(): Snapshot {
       bibleSource: "youversion",
       bibleTranslation: "ESV",
       bibleCustomPattern: "",
+      showInAppEsv: false,
+      esvApiKey: "",
     },
     places: { mark: { bookId: "mark", chapter: 1, verse: 1 } },
     days: {},
@@ -133,7 +136,7 @@ export function reducer(state: Snapshot, action: Action): Snapshot {
     case "replace":
       return action.snapshot;
     case "prefs":
-      return touch({ ...state, prefs: { ...state.prefs, ...action.prefs } });
+      return touch({ ...state, prefs: normalizeBiblePrefs({ ...state.prefs, ...action.prefs }) });
     case "completeOnboarding": {
       const bookId = getBook(action.bookId)?.id ?? "mark";
       const place = startPlace(bookId, action.startChapter, action.startVerse ?? 1, action.countEarlier);

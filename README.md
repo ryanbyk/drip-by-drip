@@ -23,7 +23,7 @@ Opens Storybook at `http://localhost:6006`. Stories load the same fonts and desi
 
 The hosted app is [https://ryanbyk.github.io/drip-by-drip/](https://ryanbyk.github.io/drip-by-drip/). A push to `main` builds `dist` and deploys it with GitHub Pages, once Pages is enabled for this repo.
 
-Answers, bookmarks, and notes stay on this device. Passage text opens in the Bible source you choose (YouVersion by default, with Bible Gateway, ESV.org, or a custom link). The app does not bundle a Bible edition. Daily reminders use the browser Notification API when it is available, and otherwise the question is waiting in the app.
+Answers, bookmarks, and notes stay on this device. Passage text opens in the Bible source you choose (YouVersion by default, with Bible Gateway, ESV.org, or a custom link). You can also read the ESV inside the app: open Settings → Bible source, turn on “Show ESV text in the app,” and paste a personal key from [api.esv.org](https://api.esv.org). The key stays in this device’s storage with your other preferences and is never bundled with the app. If the toggle is off, the key is missing, you are offline, or the ESV request fails, Open passage still uses your external source. The app does not bundle a Bible edition. Daily reminders use the browser Notification API when it is available, and otherwise the question is waiting in the app.
 
 To try that notification without waiting for ask time, open Settings and tap **Send test reminder**. The control stays on that screen during `npm run dev`, on the hosted app, and in the installed home-screen app. The test asks for notification permission if needed, then uses the same title, question, icon, and service-worker path as the daily reminder. It does not turn the daily reminder on, and it does not mark today as already notified.
 
@@ -31,7 +31,7 @@ To try that notification without waiting for ask time, open Settings and tap **S
 
 Screens and the app store never call `localStorage` or IndexedDB themselves. They talk to a `StorageAdapter` (`src/lib/storage`):
 
-- `prefs` — ask time, notifications, appearance, reading mode, Bible source and translation
+- `prefs` — ask time, notifications, appearance, reading mode, Bible source, translation, and an optional on-device ESV API key
 - `commitments` — each day’s yes / not today
 - `progress` — book place
 - `notes` — a day’s reflection and “Huh?”

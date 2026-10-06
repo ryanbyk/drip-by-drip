@@ -283,5 +283,28 @@ export function settingsSnapshot(): Snapshot {
 }
 
 export function bibleSourceSnapshot(): Snapshot {
-  return build({ bibleSource: "youversion", bibleTranslation: "ESV" }, markPlace, {});
+  return build(
+    {
+      bibleSource: "youversion",
+      bibleTranslation: "ESV",
+      showInAppEsv: true,
+      esvApiKey: "storybook-not-a-real-key-3f9a",
+    },
+    markPlace,
+    {},
+  );
+}
+
+export function esvReaderSnapshot(): Snapshot {
+  const base = commitSnapshot();
+  const today = localDate();
+  const day = base.days[today];
+  if (!day) return base;
+  return {
+    ...base,
+    days: {
+      ...base.days,
+      [today]: { ...day, passageRef: "Mark 4:1–20", verseTags: ["4:9"] },
+    },
+  };
 }

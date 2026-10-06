@@ -1,56 +1,54 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ALargeSmall, BookmarkPlus, ChevronLeft, NotebookPen } from "../components/Icons";
-import { settingsSnapshot } from "../storybook/fixtures";
+import type { EsvPassage } from "../lib/esvApi";
+import { ESV_COPYRIGHT } from "../domain/esv";
+import { esvReaderSnapshot } from "../storybook/fixtures";
 import { Phone, StoryApp, useFixture } from "../storybook/harness";
+import { EsvReader } from "./today/EsvReader";
 
-function EsvReaderPlaceholder() {
-  return (
-    <section className="screen screen-reader">
-      <header className="reader-nav">
-        <button type="button" className="icon-btn" aria-label="Back">
-          <ChevronLeft size={18} />
-        </button>
-        <div className="reader-title">
-          <strong>Mark 4:1–20</strong>
-          <span>ESV · in app</span>
-        </div>
-        <button type="button" className="icon-btn" aria-label="Text size" disabled>
-          <ALargeSmall size={18} />
-        </button>
-      </header>
-      <div className="reader-body">
-        <h2>The Parable of the Sower</h2>
-        <p className="reader-empty">
-          In-app ESV text isn’t available yet. Passages still open in the Bible source you chose in Settings.
-        </p>
-        <p className="reader-hint">
-          <BookmarkPlus size={14} aria-hidden="true" />
-          Verse tags will land in your note once a licensed text source is connected.
-        </p>
-        <p className="reader-continues">The reading would continue through the passage you asked for.</p>
-        <p className="reader-copy">
-          Scripture quotations would appear here under license, stored only on this device.
-        </p>
-      </div>
-      <div className="reader-actions">
-        <button type="button" className="reader-reflect">
-          <NotebookPen size={18} aria-hidden="true" />
-          Reflect
-        </button>
-        <button type="button" className="btn btn-primary" disabled>
-          I read it
-        </button>
-      </div>
-    </section>
-  );
-}
+const samplePassage: EsvPassage = {
+  query: "Mark 4:1-20",
+  canonical: "Mark 4:1–20",
+  copyright: ESV_COPYRIGHT,
+  blocks: [
+    { kind: "heading", text: "The Parable of the Sower" },
+    {
+      kind: "paragraph",
+      runs: [
+        { kind: "verse", chapter: 4, verse: 1, text: "A crowd gathers, and the teaching begins beside the water." },
+        { kind: "verse", chapter: 4, verse: 2, text: "Stories follow, one after another, while the people listen." },
+        { kind: "verse", chapter: 4, verse: 3, text: "A sower goes out, and the seed falls in different places." },
+        { kind: "verse", chapter: 4, verse: 4, text: "Some of it never takes root." },
+      ],
+    },
+    {
+      kind: "paragraph",
+      runs: [
+        { kind: "verse", chapter: 4, verse: 5, text: "Other seed springs up quickly, then fades in the heat." },
+        { kind: "verse", chapter: 4, verse: 8, text: "Other seed lands where it can grow and bear fruit." },
+      ],
+    },
+    {
+      kind: "paragraph",
+      runs: [{ kind: "verse", chapter: 4, verse: 9, text: "A tagged verse sits on the warm background." }],
+    },
+  ],
+};
 
 function EsvScreen() {
-  const snapshot = useFixture(settingsSnapshot);
+  const snapshot = useFixture(esvReaderSnapshot);
   return (
     <StoryApp snapshot={snapshot}>
       <Phone tab="today">
-        <EsvReaderPlaceholder />
+        <section className="screen screen-reader">
+          <EsvReader
+            reference="Mark 4:1–20"
+            passage={samplePassage}
+            continues="…continues through verse 20"
+            onBack={() => undefined}
+            onReflect={() => undefined}
+            onRead={() => undefined}
+          />
+        </section>
       </Phone>
     </StoryApp>
   );
