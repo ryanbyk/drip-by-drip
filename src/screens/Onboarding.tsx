@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { chapterCount, getBook } from "../domain/books";
+import { getBook } from "../domain/books";
+import { startAtLabel } from "../domain/chapters";
 import { formatAskTime } from "../domain/dates";
 import { paceBlurb, weeksHint } from "../domain/suggestions";
 import { DEFAULT_ASK_TIME, QBE_QUESTION, type DripSize } from "../domain/types";
@@ -17,6 +18,7 @@ import {
   ProgressDots,
   WaterDrop,
 } from "../components/Icons";
+import { StartingChapterSheet, type StartSelection } from "../components/StartingChapter";
 import { AskTimePicker, BookPicker, Button, PacePicker } from "../components/ui";
 
 export function Onboarding() {
@@ -177,10 +179,9 @@ function ReadingStep() {
   const { snapshot, setPrefs, dispatch, today } = useApp();
   const book = getBook("mark");
   const size = snapshot.prefs.dripSize;
-  const [partway, setPartway] = useState(snapshot.prefs.draftStartChapter > 1);
-  const chapter = snapshot.prefs.draftStartChapter || 1;
+  const [picking, setPicking] = useState(false);
 
-  function startMark() {
+  function startMark(selection?: StartSelection) {
     dispatch({
       type: "completeOnboarding",
       today,
@@ -188,7 +189,9 @@ function ReadingStep() {
       mode: "book",
       bookId: "mark",
       dripSize: size,
-      startChapter: partway ? chapter : 1,
+      startChapter: selection?.chapter ?? 1,
+      startVerse: selection?.verse ?? 1,
+      ...(selection ? { countEarlier: selection.countEarlier } : {}),
       askTime: snapshot.prefs.askTime,
     });
   }
@@ -207,29 +210,6 @@ function ReadingStep() {
           <Droplet size={13} aria-hidden="true" /> {size === "verses" ? "A few verses" : size === "two" ? "2 chapters / day" : "1 chapter / day"}
         </p>
         <PacePicker value={size} onChange={(dripSize) => setPrefs({ dripSize })} />
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={partway}
-            onChange={(event) => {
-              setPartway(event.target.checked);
-              if (!event.target.checked) setPrefs({ draftStartChapter: 1 });
-            }}
-          />
-          Already partway in? Set a starting chapter
-        </label>
-        {partway ? (
-          <label className="field">
-            <span>Start at chapter</span>
-            <input
-              type="number"
-              min={1}
-              max={chapterCount("mark")}
-              value={chapter}
-              onChange={(event) => setPrefs({ draftStartChapter: Number(event.target.value) || 1 })}
-            />
-          </label>
-        ) : null}
       </article>
       <div className="path-list">
         <button type="button" className="choice choice-row" onClick={() => setPrefs({ onboardingStep: "book", bookId: "mark" })}>
@@ -251,8 +231,14 @@ function ReadingStep() {
       </div>
       <div className="footer">
         <ProgressDots active={2} />
-        <Button onClick={startMark}>Continue</Button>
+        <Button onClick={() => startMark()}>Continue</Button>
+        <button type="button" className="partway-link" onClick={() => setPicking(true)}>
+          Already partway in? Set a starting chapter
+        </button>
       </div>
+      {picking ? (
+        <StartingChapterSheet bookId="mark" onClose={() => setPicking(false)} onConfirm={startMark} />
+      ) : null}
     </section>
   );
 }
@@ -261,10 +247,9 @@ function PickBookStep() {
   const { snapshot, setPrefs, dispatch, today } = useApp();
   const bookId = snapshot.prefs.bookId || "mark";
   const book = getBook(bookId);
-  const [partway, setPartway] = useState(snapshot.prefs.draftStartChapter > 1);
-  const chapter = snapshot.prefs.draftStartChapter || 1;
+  const [picking, setPicking] = useState(false);
 
-  function start() {
+  function start(selection?: StartSelection) {
     dispatch({
       type: "completeOnboarding",
       today,
@@ -272,7 +257,9 @@ function PickBookStep() {
       mode: "book",
       bookId,
       dripSize: snapshot.prefs.dripSize,
-      startChapter: partway ? chapter : 1,
+      startChapter: selection?.chapter ?? 1,
+      startVerse: selection?.verse ?? 1,
+      ...(selection ? { countEarlier: selection.countEarlier } : {}),
       askTime: snapshot.prefs.askTime,
     });
   }
@@ -288,33 +275,21 @@ function PickBookStep() {
         selectedId={bookId}
         onSelect={(id) => {
           setPrefs({ bookId: id, draftStartChapter: 1 });
-          setPartway(false);
+          setPicking(false);
         }}
       />
       <p className="kicker">Daily drip size</p>
       <PacePicker value={snapshot.prefs.dripSize} onChange={(dripSize) => setPrefs({ dripSize })} />
       <p className="meta">{book ? paceBlurb(book.id, snapshot.prefs.dripSize) : ""}</p>
-      <label className="check">
-        <input type="checkbox" checked={partway} onChange={(event) => setPartway(event.target.checked)} />
-        Already partway in? Set a starting chapter
-      </label>
-      {partway ? (
-        <label className="field">
-          <span>Start at chapter</span>
-          <input
-            type="number"
-            min={1}
-            max={chapterCount(bookId)}
-            value={chapter}
-            onChange={(event) => setPrefs({ draftStartChapter: Number(event.target.value) || 1 })}
-          />
-        </label>
-      ) : null}
       <div className="footer">
-        <Button onClick={start}>
-          Start at {book?.name ?? "Mark"} {partway ? chapter : 1}
-        </Button>
+        <Button onClick={() => start()}>{startAtLabel(bookId, 1)}</Button>
+        <button type="button" className="partway-link" onClick={() => setPicking(true)}>
+          Already partway in? Set a starting chapter
+        </button>
       </div>
+      {picking ? (
+        <StartingChapterSheet key={bookId} bookId={bookId} onClose={() => setPicking(false)} onConfirm={start} />
+      ) : null}
     </section>
   );
 }

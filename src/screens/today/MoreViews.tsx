@@ -23,6 +23,7 @@ import {
   Share,
 } from "../../components/Icons";
 import { OpenPassageLink } from "../../components/OpenPassageLink";
+import { StartingChapterSheet, type StartSelection } from "../../components/StartingChapter";
 import { BookPicker, Button, PacePicker, Sheet } from "../../components/ui";
 import { SomethingElse } from "./SomethingElse";
 
@@ -630,38 +631,56 @@ export function ChangeBookSheet({ onClose, when }: { onClose: () => void; when: 
   const { snapshot, today, dispatch } = useApp();
   const [bookId, setBookId] = useState(snapshot.prefs.bookId);
   const [dripSize, setDripSize] = useState(snapshot.prefs.dripSize);
-  const [chapter, setChapter] = useState(1);
+  const [picking, setPicking] = useState(false);
   const book = getBook(bookId);
+
+  function begin(selection?: StartSelection) {
+    if (when === "today") {
+      dispatch({
+        type: "queueBook",
+        bookId,
+        when: "today",
+        today,
+        tomorrow: today,
+        ...(selection
+          ? { startChapter: selection.chapter, startVerse: selection.verse, countEarlier: selection.countEarlier }
+          : {}),
+      });
+    } else {
+      dispatch({
+        type: "reading",
+        today,
+        bookId,
+        dripSize,
+        mode: "book",
+        startChapter: selection?.chapter ?? 1,
+        startVerse: selection?.verse ?? 1,
+        ...(selection ? { countEarlier: selection.countEarlier } : {}),
+      });
+    }
+    onClose();
+  }
 
   return (
     <Sheet title="What you’re reading" onClose={onClose}>
-      <BookPicker selectedId={bookId} onSelect={setBookId} />
+      <BookPicker
+        selectedId={bookId}
+        onSelect={(id) => {
+          setBookId(id);
+          setPicking(false);
+        }}
+      />
       <p className="kicker">Daily drip size</p>
       <PacePicker value={dripSize} onChange={setDripSize} />
-      <label className="field">
-        <span>Start chapter</span>
-        <input
-          type="number"
-          min={1}
-          max={book?.verses.length ?? 1}
-          value={chapter}
-          onChange={(event) => setChapter(Number(event.target.value) || 1)}
-        />
-      </label>
+      <button type="button" className="partway-link" onClick={() => setPicking(true)}>
+        Already partway in? Set a starting chapter
+      </button>
       <div className="footer">
-        <Button
-          onClick={() => {
-            if (when === "today") {
-              dispatch({ type: "queueBook", bookId, when: "today", today, tomorrow: today });
-            } else {
-              dispatch({ type: "reading", today, bookId, dripSize, mode: "book", startChapter: chapter });
-            }
-            onClose();
-          }}
-        >
-          Read {book?.name ?? "this book"}
-        </Button>
+        <Button onClick={() => begin()}>Read {book?.name ?? "this book"}</Button>
       </div>
+      {picking ? (
+        <StartingChapterSheet key={bookId} bookId={bookId} onClose={() => setPicking(false)} onConfirm={begin} />
+      ) : null}
     </Sheet>
   );
 }

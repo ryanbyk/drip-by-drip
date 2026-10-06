@@ -60,4 +60,29 @@ describe("book recap", () => {
     expect(recap.chapters).toBe(1);
     expect(recap.powerWeeks).toEqual({ hit: 0, total: 1 });
   });
+
+  it("counts earlier chapters as one sitting and leaves the rest unread", () => {
+    const snapshot = createSnapshot();
+    snapshot.prefs.bookId = "isaiah";
+    snapshot.places = {
+      isaiah: { bookId: "isaiah", chapter: 40, verse: 1, countedThrough: 39 },
+    };
+
+    const recap = bookRecap(snapshot, "2026-10-06");
+    expect(recap.sittings[0]).toBe("one");
+    expect(recap.sittings[38]).toBe("one");
+    expect(recap.sittings[39]).toBe("unread");
+    expect(recap.sittings[65]).toBe("unread");
+  });
+
+  it("does not count earlier psalms when that choice is off", () => {
+    const snapshot = createSnapshot();
+    snapshot.prefs.bookId = "psalms";
+    snapshot.places = {
+      psalms: { bookId: "psalms", chapter: 42, verse: 1, countedThrough: 0 },
+    };
+
+    const recap = bookRecap(snapshot, "2026-10-06");
+    expect(recap.sittings.every((sitting) => sitting === "unread")).toBe(true);
+  });
 });

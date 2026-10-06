@@ -38,7 +38,7 @@ export function RecapView({ onNext }: { onNext: () => void }) {
               {row.map((sitting, index) => {
                 const number = rowIndex * 8 + index + 1;
                 return (
-                  <span key={number} className={sitting === "two" ? "chapter-cell is-two" : "chapter-cell"}>
+                  <span key={number} className={sittingClass(sitting)}>
                     {number}
                   </span>
                 );
@@ -53,6 +53,11 @@ export function RecapView({ onNext }: { onNext: () => void }) {
           <li>
             <i className="swatch chapter-cell is-two" /> Two sittings
           </li>
+          {recap.sittings.some((sitting) => sitting === "unread") ? (
+            <li>
+              <i className="swatch chapter-cell is-unread" /> Not read
+            </li>
+          ) : null}
         </ul>
       </section>
       <div className="recap-stats" aria-label="A quiet look back">
@@ -140,6 +145,21 @@ export function RecapView({ onNext }: { onNext: () => void }) {
       </div>
     </div>
   );
+}
+
+function sittingClass(sitting: ChapterSitting): string {
+  switch (sitting) {
+    case "one":
+      return "chapter-cell";
+    case "two":
+      return "chapter-cell is-two";
+    case "unread":
+      return "chapter-cell is-unread";
+    default: {
+      const exhaustive: never = sitting;
+      return exhaustive;
+    }
+  }
 }
 
 function chunk(items: ChapterSitting[], size: number): ChapterSitting[][] {

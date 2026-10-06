@@ -1,11 +1,13 @@
 import { getBook } from "../domain/books";
-import { clampStartChapter, placeAfter, verseInRange } from "../domain/drip";
+import { startPlace } from "../domain/chapters";
+import { placeAfter, verseInRange } from "../domain/drip";
 import { formatRef } from "../domain/refs";
 import { lockPassage } from "../domain/resolve";
 import {
   DEFAULT_ASK_TIME,
   type DailyCommitment,
   type DripSize,
+  type Place,
   type Range,
   type ReadingMode,
   type Snapshot,
@@ -23,6 +25,8 @@ export type Action =
       bookId: string;
       dripSize: DripSize;
       startChapter: number;
+      startVerse?: number;
+      countEarlier?: boolean;
       askTime: string;
     }
   | { type: "answer"; today: string; at: string; answer: "yes" | "not_today" }
@@ -47,8 +51,19 @@ export type Action =
       dripSize?: DripSize;
       mode?: ReadingMode;
       startChapter?: number;
+      startVerse?: number;
+      countEarlier?: boolean;
     }
-  | { type: "queueBook"; bookId: string; when: "today" | "tomorrow"; today: string; tomorrow: string }
+  | {
+      type: "queueBook";
+      bookId: string;
+      when: "today" | "tomorrow";
+      today: string;
+      tomorrow: string;
+      startChapter?: number;
+      startVerse?: number;
+      countEarlier?: boolean;
+    }
   | { type: "applyQueue"; today: string }
   | { type: "reset"; today: string }
   | { type: "notified"; today: string };
@@ -99,6 +114,11 @@ function blankDay(date: string, at: string, answer: "yes" | "not_today"): DailyC
   };
 }
 
+function keepCounted(next: Place, previous: Place | undefined): Place {
+  if (previous?.countedThrough === undefined) return next;
+  return { ...next, countedThrough: previous.countedThrough };
+}
+
 function relockToday(state: Snapshot, today: string): Snapshot {
   const day = state.days[today];
   if (!day || day.answer !== "yes" || day.readDone || day.detour) return state;
@@ -116,7 +136,7 @@ export function reducer(state: Snapshot, action: Action): Snapshot {
       return touch({ ...state, prefs: { ...state.prefs, ...action.prefs } });
     case "completeOnboarding": {
       const bookId = getBook(action.bookId)?.id ?? "mark";
-      const chapter = clampStartChapter(bookId, action.startChapter);
+      const place = startPlace(bookId, action.startChapter, action.startVerse ?? 1, action.countEarlier);
       return touch({
         ...state,
         prefs: {
@@ -129,13 +149,13 @@ export function reducer(state: Snapshot, action: Action): Snapshot {
           bookId,
           dripSize: action.dripSize,
           askTime: action.askTime || DEFAULT_ASK_TIME,
-          draftStartChapter: chapter,
+          draftStartChapter: place.chapter,
           queuedBookId: "",
           queuedBookDate: "",
         },
         places: {
           ...state.places,
-          [bookId]: { bookId, chapter, verse: 1 },
+          [bookId]: place,
         },
       });
     }
@@ -262,7 +282,7 @@ export function reducer(state: Snapshot, action: Action): Snapshot {
       if (!day.detour && day.range && state.prefs.readingMode === "book") {
         const stop = action.stop ?? { chapter: day.range.endChapter, verse: day.range.endVerse };
         if (!verseInRange(day.range, stop.chapter, stop.verse)) return state;
-        const next = placeAfter(day.range.bookId, stop.chapter, stop.verse);
+        const next = keepCounted(placeAfter(day.range.bookId, stop.chapter, stop.verse), places[day.range.bookId]);
         places = { ...places, [day.range.bookId]: next };
       }
       return touch({
@@ -288,7 +308,7 @@ export function reducer(state: Snapshot, action: Action): Snapshot {
       const dripSize = action.dripSize ?? state.prefs.dripSize;
       let place = state.places[bookId] ?? { bookId, chapter: 1, verse: 1 };
       if (action.startChapter) {
-        place = { bookId, chapter: clampStartChapter(bookId, action.startChapter), verse: 1 };
+        place = startPlace(bookId, action.startChapter, action.startVerse ?? 1, action.countEarlier);
       }
       const next: Snapshot = {
         ...state,
@@ -306,6 +326,9 @@ export function reducer(state: Snapshot, action: Action): Snapshot {
           prefs: { ...state.prefs, queuedBookId: book.id, queuedBookDate: action.tomorrow },
         });
       }
+      const place = action.startChapter
+        ? startPlace(book.id, action.startChapter, action.startVerse ?? 1, action.countEarlier)
+        : { bookId: book.id, chapter: 1, verse: 1 };
       const next: Snapshot = {
         ...state,
         prefs: {
@@ -315,7 +338,7 @@ export function reducer(state: Snapshot, action: Action): Snapshot {
           queuedBookId: "",
           queuedBookDate: "",
         },
-        places: { ...state.places, [book.id]: { bookId: book.id, chapter: 1, verse: 1 } },
+        places: { ...state.places, [book.id]: place },
       };
       return touch(relockToday(next, action.today));
     }

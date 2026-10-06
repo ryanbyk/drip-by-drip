@@ -26,6 +26,8 @@ export type Place = {
   bookId: string;
   chapter: number;
   verse: number;
+  /** Chapters 1 through this number count as already read, without a daily record. */
+  countedThrough?: number;
 };
 
 export type DailyCommitment = {
