@@ -1,64 +1,166 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { chapterCount, getBook, verseCount } from "../../domain/books";
 import { addDays } from "../../domain/dates";
 import { dripFromPlace, isPlaceFinished, makeRange, placeAfter, verseInRange } from "../../domain/drip";
-import { formatRef, parsePassage } from "../../domain/refs";
+import { bibleUrl, formatRef, parsePassage } from "../../domain/refs";
 import type { Range } from "../../domain/types";
-import { detourIdeas, suggestedNext } from "../../domain/suggestions";
+import { suggestedNext } from "../../domain/suggestions";
 import { useApp } from "../../state/AppState";
-import { MapPin, Share } from "../../components/Icons";
+import {
+  ArrowUpRight,
+  BookCheck,
+  Bookmark,
+  ChevronDown,
+  ChevronLeft,
+  CircleQuestionMark,
+  CloudOff,
+  Keyboard,
+  MapPin,
+  Minus,
+  Plus,
+  Share,
+} from "../../components/Icons";
 import { BookPicker, Button, PacePicker, Sheet } from "../../components/ui";
+import { SomethingElse } from "./SomethingElse";
 
 const PROMPTS = ["What stood out?", "About God?", "Carry today?"];
 
 export function ReflectView({ onKeep, onRead }: { onKeep: () => void; onRead: () => void }) {
-  const { snapshot, today, dispatch } = useApp();
+  const { snapshot, today, dispatch, online } = useApp();
   const day = snapshot.days[today];
   const [text, setText] = useState(day?.reflection ?? "");
   const [huh, setHuh] = useState(Boolean(day?.huh));
+  const [prompt, setPrompt] = useState<(typeof PROMPTS)[number]>(PROMPTS[0]);
+  const [tags, setTags] = useState<string[]>(day?.verseTags ?? []);
+  const [adding, setAdding] = useState(false);
+  const [tagDraft, setTagDraft] = useState("");
+  const ref = day?.passageRef ?? "Today’s drip";
+  const href = day?.passageRef ? bibleUrl(day.passageRef) : undefined;
 
   function save() {
-    dispatch({ type: "reflection", today, reflection: text, huh });
+    dispatch({ type: "reflection", today, reflection: text, huh, verseTags: tags });
+  }
+
+  function addTag() {
+    const next = tagDraft.trim();
+    if (next && !tags.includes(next)) setTags((current) => [...current, next]);
+    setTagDraft("");
+    setAdding(false);
   }
 
   return (
     <div className="reflect">
       <div className="nav-row">
-        <button type="button" className="text-link" onClick={onKeep}>
-          Back
+        <button type="button" className="icon-btn" aria-label="Back" onClick={onKeep}>
+          <ChevronLeft size={18} />
         </button>
-        <p>Saved on this device</p>
+        <p className="saved-flag">
+          <CloudOff size={13} aria-hidden="true" />
+          Saved on this device
+        </p>
       </div>
-      <p className="kicker">Reflect</p>
-      <h1>{day?.passageRef ?? "Today’s drip"}</h1>
-      <p className="kicker">Need a nudge?</p>
-      <div className="chips">
-        {PROMPTS.map((prompt) => (
-          <button
-            key={prompt}
-            type="button"
-            className="chip"
-            onClick={() => setText((current) => (current.includes(prompt) ? current : `${current}${current ? "\n" : ""}${prompt}\n`))}
-          >
-            {prompt}
-          </button>
-        ))}
+      <header className="reflect-head">
+        <p className="reflect-kicker">Reflect</p>
+        <div className="reflect-title">
+          <h1>{ref}</h1>
+          {href ? (
+            <a
+              className={online ? "open-chip" : "open-chip is-disabled"}
+              href={online ? href : undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-disabled={!online}
+              onClick={(event) => {
+                if (!online) event.preventDefault();
+              }}
+            >
+              Open passage <ArrowUpRight size={13} aria-hidden="true" />
+            </a>
+          ) : null}
+        </div>
+      </header>
+      <div className="chip-block">
+        <p>Need a nudge?</p>
+        <div className="chips" role="group" aria-label="Prompts">
+          {PROMPTS.map((item) => (
+            <button
+              key={item}
+              type="button"
+              className={prompt === item ? "chip is-active" : "chip"}
+              aria-pressed={prompt === item}
+              onClick={() => setPrompt(item)}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
       </div>
-      <label className="field">
-        <span className="sr-only">Note</span>
+      <div className="editor-card">
+        <p className="editor-prompt">{prompt}</p>
         <textarea
           value={text}
           rows={6}
           maxLength={500}
+          aria-label="Note"
           onChange={(event) => setText(event.target.value)}
           placeholder="Confusion is welcome. Keep going."
         />
-      </label>
-      <label className="check">
-        <input type="checkbox" checked={huh} onChange={(event) => setHuh(event.target.checked)} />
-        Mark it “Huh?” — something confusing is easy to revisit later
-      </label>
+        <div className="verse-tags">
+          {tags.map((tag) => (
+            <button key={tag} type="button" className="verse-tag" onClick={() => setTags((current) => current.filter((item) => item !== tag))}>
+              <Bookmark size={11} aria-hidden="true" />
+              {tag}
+              <span className="sr-only">Remove</span>
+            </button>
+          ))}
+          {adding ? (
+            <input
+              className="tag-input"
+              value={tagDraft}
+              aria-label="Verse"
+              placeholder="4:9"
+              onChange={(event) => setTagDraft(event.target.value)}
+              onBlur={addTag}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") addTag();
+              }}
+            />
+          ) : (
+            <button type="button" className="verse-tag is-add" onClick={() => setAdding(true)}>
+              <Plus size={11} aria-hidden="true" /> Verse
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="huh-row">
+        <span className="note-icon" aria-hidden="true">
+          <CircleQuestionMark size={16} />
+        </span>
+        <span>
+          <strong>Mark it “Huh?”</strong>
+          <span>Something confusing? Easy to revisit later</span>
+        </span>
+        <button
+          type="button"
+          className={huh ? "switch is-on" : "switch"}
+          role="switch"
+          aria-checked={huh}
+          aria-label="Mark it Huh?"
+          onClick={() => setHuh((current) => !current)}
+        >
+          <span />
+        </button>
+      </div>
       <div className="footer">
+        <Button
+          className="btn-yes"
+          onClick={() => {
+            save();
+            onRead();
+          }}
+        >
+          I read it
+        </Button>
         <Button
           variant="quiet"
           onClick={() => {
@@ -68,72 +170,55 @@ export function ReflectView({ onKeep, onRead }: { onKeep: () => void; onRead: ()
         >
           Save & keep reading
         </Button>
-        <Button
-          onClick={() => {
-            save();
-            onRead();
-          }}
-        >
-          I read it
-        </Button>
       </div>
     </div>
   );
 }
 
-export function DetourView({ onUse, onBack }: { onUse: (ref: string) => void; onBack: () => void }) {
+export function DetourView({
+  onUse,
+  onBack,
+  onReflect,
+  onRead,
+  backup,
+}: {
+  onUse: (ref: string) => void;
+  onBack: () => void;
+  onReflect: () => void;
+  onRead: () => void;
+  backup: string;
+}) {
   const { snapshot, today } = useApp();
-  const ideas = useMemo(() => detourIdeas(today, snapshot.days), [today, snapshot.days]);
-  const [custom, setCustom] = useState("");
-  const shorts = ideas.filter((item) => item.group === "short");
-  const recent = ideas.filter((item) => item.group === "recent");
-
+  const day = snapshot.days[today];
   return (
-    <div className="detour">
-      <div className="nav-row">
-        <button type="button" className="text-link" onClick={onBack}>
-          Back to {getBook(snapshot.prefs.bookId)?.name ?? "your book"}
-        </button>
-      </div>
-      <p className="kicker">What are you reading today?</p>
-      <h1>Something else</h1>
-      <p className="soft">{snapshot.prefs.readingMode === "book" ? "Your place stays saved." : "This won’t move your backup bookmark."}</p>
-      <div className="choice-list">
-        {shorts.map((item) => (
-          <button key={item.ref} type="button" className="choice" onClick={() => onUse(item.ref)}>
-            <strong>{item.ref}</strong>
-            <span>A short drip</span>
-          </button>
-        ))}
-        {recent.map((item) => (
-          <button key={item.ref} type="button" className="choice" onClick={() => onUse(item.ref)}>
-            <strong>{item.ref}</strong>
-            <span>Recent</span>
-          </button>
-        ))}
-      </div>
-      <label className="field">
-        <span>Or type it</span>
-        <input
-          value={custom}
-          placeholder="e.g. Luke 10:38–42; Psalm 46"
-          onChange={(event) => setCustom(event.target.value)}
-        />
-      </label>
-      <div className="footer">
-        <Button onClick={() => custom.trim() && onUse(custom.trim())} disabled={!custom.trim()}>
-          Read this today
-        </Button>
-      </div>
-    </div>
+    <SomethingElse
+      bookName={getBook(snapshot.prefs.bookId)?.name ?? "Mark"}
+      backupLabel={backup}
+      initialRef={day?.detour ? day.passageRef ?? "" : ""}
+      onUse={onUse}
+      onBackToBook={onBack}
+      onReflect={onReflect}
+      onRead={onRead}
+    />
   );
 }
 
-export function FinishedView({ onDetour, onChoose }: { onDetour: () => void; onChoose: () => void }) {
+export function FinishedView({
+  onDetour,
+  onChoose,
+  onRecap,
+}: {
+  onDetour: () => void;
+  onChoose: () => void;
+  onRecap: () => void;
+}) {
   const { snapshot, today, dispatch } = useApp();
   const passageBook = snapshot.prefs.bookId;
   const book = getBook(passageBook);
   const nextDate = addDays(today, 1);
+  const ideas = suggestedNext(passageBook);
+  const [selected, setSelected] = useState(ideas[0]?.id ?? "");
+  const selectedBook = getBook(selected);
 
   if (snapshot.prefs.readingMode === "plan") {
     return (
@@ -166,32 +251,49 @@ export function FinishedView({ onDetour, onChoose }: { onDetour: () => void; onC
   return (
     <div className="finished">
       <div className="hero">
-        <h1>You finished {book?.name ?? "this book"}.</h1>
+        <div className="finish-badge" aria-hidden="true">
+          <BookCheck size={26} />
+        </div>
+        <h1 className="display-40">You finished {book?.name ?? "this book"}.</h1>
         <p>
           {book ? `${book.verses.length} chapters` : "Every chapter"}, one drip at a time. Where would you like to go next?
         </p>
       </div>
-      <p className="kicker">What’s next?</p>
-      <div className="choice-list">
-        {suggestedNext(passageBook).map((item) => {
-          const next = getBook(item.id);
-          if (!next) return null;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              className="choice"
-              onClick={() => dispatch({ type: "queueBook", bookId: item.id, when: "today", today, tomorrow: nextDate })}
-            >
-              <strong>{next.name}</strong>
-              <span>{item.blurb}</span>
-            </button>
-          );
-        })}
+      <div className="chip-block">
+        <p className="eyebrow">What’s next?</p>
+        <div className="next-list">
+          {ideas.map((item) => {
+            const next = getBook(item.id);
+            if (!next) return null;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={selected === item.id ? "next-choice is-selected" : "next-choice"}
+                onClick={() => setSelected(item.id)}
+              >
+                <strong>{next.name}</strong>
+                <span>{item.blurb}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
       <div className="footer">
-        <Button variant="quiet" onClick={onChoose}>
+        <Button
+          disabled={!selectedBook}
+          onClick={() => {
+            if (!selectedBook) return;
+            dispatch({ type: "queueBook", bookId: selectedBook.id, when: "tomorrow", today, tomorrow: nextDate });
+          }}
+        >
+          Start {selectedBook?.name ?? "next"} 1 tomorrow
+        </Button>
+        <Button variant="text" onClick={onChoose}>
           Choose another book
+        </Button>
+        <Button variant="text" onClick={onRecap}>
+          Look back at the drips
         </Button>
         <Button variant="text" onClick={onDetour}>
           Read something else today
@@ -277,63 +379,61 @@ export function AdjustSheet({ onClose, onDetour }: { onClose: () => void; onDeto
     setError("");
   }
 
+  const activeLabel = presets.find((preset) => sameRange(preset.range, draft))?.label;
+
   return (
     <Sheet title="Today’s passage" onClose={onClose}>
-      <p className="meta">{book?.name}</p>
+      <label className="field">
+        <span>Book</span>
+        <span className="range-box">
+          <span>{book?.name}</span>
+          <ChevronDown size={16} aria-hidden="true" />
+        </span>
+      </label>
       <div className="range-grid">
         <label className="field">
-          <span>From chapter</span>
+          <span>From</span>
           <input
-            type="number"
-            min={1}
-            max={chapterCount(draft.bookId)}
-            value={draft.startChapter}
-            onChange={(event) =>
-              setDraft({ ...draft, startChapter: Number(event.target.value) || 1 })
-            }
+            className="range-box"
+            aria-label="From"
+            value={`${draft.startChapter}:${draft.startVerse}`}
+            onChange={(event) => {
+              const point = parsePoint(draft.bookId, event.target.value);
+              if (point) setDraft({ ...draft, startChapter: point.chapter, startVerse: point.verse });
+            }}
           />
         </label>
         <label className="field">
-          <span>From verse</span>
+          <span>To</span>
           <input
-            type="number"
-            min={1}
-            max={verseCount(draft.bookId, draft.startChapter)}
-            value={draft.startVerse}
-            onChange={(event) => setDraft({ ...draft, startVerse: Number(event.target.value) || 1 })}
-          />
-        </label>
-        <label className="field">
-          <span>To chapter</span>
-          <input
-            type="number"
-            min={1}
-            max={chapterCount(draft.bookId)}
-            value={draft.endChapter}
-            onChange={(event) => setDraft({ ...draft, endChapter: Number(event.target.value) || draft.startChapter })}
-          />
-        </label>
-        <label className="field">
-          <span>To verse</span>
-          <input
-            type="number"
-            min={1}
-            max={verseCount(draft.bookId, draft.endChapter)}
-            value={draft.endVerse}
-            onChange={(event) => setDraft({ ...draft, endVerse: Number(event.target.value) || 1 })}
+            className="range-box is-focus"
+            aria-label="To"
+            value={`${draft.endChapter}:${draft.endVerse}`}
+            onChange={(event) => {
+              const point = parsePoint(draft.bookId, event.target.value);
+              if (point) setDraft({ ...draft, endChapter: point.chapter, endVerse: point.verse });
+            }}
           />
         </label>
       </div>
       <div className="chips">
         {presets.map((preset) => (
-          <button key={preset.label} type="button" className="chip" onClick={() => setDraft(preset.range)}>
+          <button
+            key={preset.label}
+            type="button"
+            className={activeLabel === preset.label ? "chip is-active" : "chip"}
+            onClick={() => setDraft(preset.range)}
+          >
             {preset.label}
           </button>
         ))}
       </div>
       <label className="field">
         <span>Or type it</span>
-        <input value={typed} placeholder="e.g. Mark 4:1–20" onChange={(event) => setTyped(event.target.value)} />
+        <span className="ref-input">
+          <input value={typed} placeholder="e.g. Mark 4:1–20, Psalm 1" onChange={(event) => setTyped(event.target.value)} />
+          <Keyboard size={16} aria-hidden="true" />
+        </span>
       </label>
       {error ? <p className="soft">{error}</p> : null}
       <div className="footer">
@@ -352,11 +452,31 @@ export function AdjustSheet({ onClose, onDetour }: { onClose: () => void; onDeto
             useDraft(next);
           }}
         >
-          Use {formatRef(draft)}
+          Use passage
         </Button>
       </div>
     </Sheet>
   );
+}
+
+function sameRange(left: Range, right: Range): boolean {
+  return (
+    left.bookId === right.bookId &&
+    left.startChapter === right.startChapter &&
+    left.startVerse === right.startVerse &&
+    left.endChapter === right.endChapter &&
+    left.endVerse === right.endVerse
+  );
+}
+
+function parsePoint(bookId: string, value: string): { chapter: number; verse: number } | null {
+  const match = value.trim().match(/^(\d+)(?::(\d+))?$/);
+  if (!match) return null;
+  const chapter = Number(match[1]);
+  const verse = match[2] ? Number(match[2]) : 1;
+  if (chapter < 1 || chapter > chapterCount(bookId)) return null;
+  if (verse < 1 || verse > verseCount(bookId, chapter)) return null;
+  return { chapter, verse };
 }
 
 function buildPresets(range: Range): { label: string; range: Range }[] {
@@ -389,12 +509,38 @@ export function StopSheet({ onClose }: { onClose: () => void }) {
   const [chapter, setChapter] = useState(range?.endChapter ?? 1);
   const [verse, setVerse] = useState(range?.endVerse ?? 1);
   if (!range) return null;
-  const stop = mode === "all" ? { chapter: range.endChapter, verse: range.endVerse } : { chapter, verse };
-  const valid = verseInRange(range, stop.chapter, stop.verse);
-  const next = placeAfter(range.bookId, stop.chapter, stop.verse);
+  const passageRange = range;
+  const stop = mode === "all" ? { chapter: passageRange.endChapter, verse: passageRange.endVerse } : { chapter, verse };
+  const valid = verseInRange(passageRange, stop.chapter, stop.verse);
+  const next = placeAfter(passageRange.bookId, stop.chapter, stop.verse);
   const finished = isPlaceFinished(next);
   const upcoming = finished ? null : dripFromPlace(next, snapshot.prefs.dripSize);
-  const book = getBook(range.bookId);
+  const book = getBook(passageRange.bookId);
+
+  function step(delta: number) {
+    let nextChapter = chapter;
+    let nextVerse = verse + delta;
+    if (nextVerse > verseCount(passageRange.bookId, nextChapter)) {
+      if (nextChapter < passageRange.endChapter) {
+        nextChapter += 1;
+        nextVerse = 1;
+      } else {
+        nextVerse = verseCount(passageRange.bookId, nextChapter);
+      }
+    }
+    if (nextVerse < 1) {
+      if (nextChapter > passageRange.startChapter) {
+        nextChapter -= 1;
+        nextVerse = verseCount(passageRange.bookId, nextChapter);
+      } else {
+        nextVerse = 1;
+      }
+    }
+    if (nextChapter === passageRange.startChapter && nextVerse < passageRange.startVerse) nextVerse = passageRange.startVerse;
+    if (nextChapter === passageRange.endChapter && nextVerse > passageRange.endVerse) nextVerse = passageRange.endVerse;
+    setChapter(nextChapter);
+    setVerse(nextVerse);
+  }
 
   return (
     <Sheet title="Where did you stop?" onClose={onClose}>
@@ -402,38 +548,55 @@ export function StopSheet({ onClose }: { onClose: () => void }) {
       <div className="choice-list">
         <button type="button" className={mode === "all" ? "choice is-active" : "choice"} onClick={() => setMode("all")}>
           <strong>Read all of it</strong>
-          <span>Through {formatRef({ ...range, startChapter: range.endChapter, startVerse: range.endVerse, endChapter: range.endChapter, endVerse: range.endVerse })}</span>
+          <span>
+            Through {book?.name ?? "the passage"} {passageRange.endChapter}:{passageRange.endVerse}
+          </span>
         </button>
-        <button type="button" className={mode === "part" ? "choice is-active" : "choice"} onClick={() => setMode("part")}>
+        <div
+          className={mode === "part" ? "choice is-active" : "choice"}
+          role="button"
+          tabIndex={0}
+          onClick={() => setMode("part")}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") setMode("part");
+          }}
+        >
           <strong>Stopped partway</strong>
           <span>Pick the last verse you read</span>
-        </button>
-      </div>
-      {mode === "part" ? (
-        <div className="range-grid">
-          <label className="field">
-            <span>Chapter</span>
-            <input
-              type="number"
-              min={range.startChapter}
-              max={range.endChapter}
-              value={chapter}
-              onChange={(event) => setChapter(Number(event.target.value) || range.startChapter)}
-            />
-          </label>
-          <label className="field">
-            <span>Verse</span>
-            <input
-              type="number"
-              min={1}
-              max={verseCount(range.bookId, chapter)}
-              value={verse}
-              onChange={(event) => setVerse(Number(event.target.value) || 1)}
-            />
-          </label>
+          {mode === "part" ? (
+            <span className="stepper">
+              <span>
+                {book?.name ?? "Passage"} {chapter}:
+              </span>
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label="Previous verse"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  step(-1);
+                }}
+              >
+                <Minus size={14} />
+              </button>
+              <strong>{verse}</strong>
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label="Next verse"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  step(1);
+                }}
+              >
+                <Plus size={14} />
+              </button>
+            </span>
+          ) : null}
         </div>
-      ) : null}
-      <p className="meta">
+      </div>
+      <p className="tomorrow-line">
+        <Bookmark size={16} aria-hidden="true" />
         {finished
           ? `That finishes ${book?.name ?? "the book"}.`
           : upcoming

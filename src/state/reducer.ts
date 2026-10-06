@@ -27,7 +27,7 @@ export type Action =
     }
   | { type: "answer"; today: string; at: string; answer: "yes" | "not_today" }
   | { type: "note"; today: string; note: string }
-  | { type: "reflection"; today: string; reflection: string; huh: boolean }
+  | { type: "reflection"; today: string; reflection: string; huh: boolean; verseTags?: string[] }
   | { type: "range"; today: string; range: Range }
   | { type: "detour"; today: string; ref: string }
   | { type: "clearDetour"; today: string }
@@ -157,6 +157,10 @@ export function reducer(state: Snapshot, action: Action): Snapshot {
     case "reflection": {
       const day = state.days[action.today];
       if (!day) return state;
+      const tags =
+        action.verseTags === undefined
+          ? day.verseTags
+          : action.verseTags.map((tag) => tag.trim()).filter(Boolean);
       return touch({
         ...state,
         days: {
@@ -165,6 +169,7 @@ export function reducer(state: Snapshot, action: Action): Snapshot {
             ...day,
             reflection: action.reflection.trim() || undefined,
             huh: action.huh,
+            verseTags: tags && tags.length > 0 ? tags : undefined,
           },
         },
       });

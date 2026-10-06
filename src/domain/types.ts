@@ -31,6 +31,7 @@ export type DailyCommitment = {
   readDoneAt?: string;
   huh: boolean;
   reflection?: string;
+  verseTags?: string[];
   dayIndex?: number;
   passageRef?: string;
   passageTitle?: string;

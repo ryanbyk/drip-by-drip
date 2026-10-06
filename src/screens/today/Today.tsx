@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ResolvedPassage } from "../../domain/resolve";
-import { resolvePassage } from "../../domain/resolve";
+import { backupLabel, resolvePassage } from "../../domain/resolve";
 import type { Snapshot } from "../../domain/types";
 import { useApp } from "../../state/AppState";
 import { AskView } from "./AskView";
@@ -17,10 +17,11 @@ import {
   StopSheet,
 } from "./MoreViews";
 import { PassageView } from "./PassageView";
+import { RecapView } from "./RecapView";
 
 type Phase = "ask" | "grace" | "passage" | "done" | "finished";
 type Intro = "commit" | "dog" | null;
-type Mode = "read" | "reflect" | "detour";
+type Mode = "read" | "reflect" | "detour" | "recap";
 type SheetName = "adjust" | "stop" | "books" | null;
 
 function phaseOf(snapshot: Snapshot, today: string, passage: ResolvedPassage): Phase {
@@ -59,7 +60,8 @@ export function Today({ onHistory }: { onHistory: () => void }) {
   }
 
   function readIt() {
-    if (passage.kind === "book") {
+    const detour = mode === "detour" || passage.kind === "detour" || snapshot.days[today]?.detour;
+    if (passage.kind === "book" && !detour) {
       setMode("read");
       setSheet("stop");
       return;
@@ -85,6 +87,14 @@ export function Today({ onHistory }: { onHistory: () => void }) {
     );
   }
 
+  if (mode === "recap") {
+    return (
+      <section className="screen screen-tabbed">
+        <RecapView onNext={() => setMode("read")} />
+      </section>
+    );
+  }
+
   if (mode === "detour" && snapshot.days[today]?.answer === "yes" && !snapshot.days[today]?.readDone) {
     return (
       <section className="screen screen-tabbed">
@@ -93,10 +103,10 @@ export function Today({ onHistory }: { onHistory: () => void }) {
             dispatch({ type: "clearDetour", today });
             setMode("read");
           }}
-          onUse={(ref) => {
-            dispatch({ type: "detour", today, ref });
-            setMode("read");
-          }}
+          onUse={(ref) => dispatch({ type: "detour", today, ref })}
+          onReflect={() => setMode("reflect")}
+          onRead={readIt}
+          backup={backupLabel(snapshot)}
         />
       </section>
     );
@@ -114,6 +124,7 @@ export function Today({ onHistory }: { onHistory: () => void }) {
       {phase === "finished" && intro !== "commit" ? (
         <FinishedView
           onDetour={() => setMode("detour")}
+          onRecap={() => setMode("recap")}
           onChoose={() => {
             setBookWhen("today");
             setSheet("books");
@@ -129,6 +140,7 @@ export function Today({ onHistory }: { onHistory: () => void }) {
             setSheet("books");
           }}
           onDetour={() => setMode("detour")}
+          onUseDetour={(ref) => dispatch({ type: "detour", today, ref })}
           onBackToBook={() => dispatch({ type: "clearDetour", today })}
           onReflect={() => setMode("reflect")}
           onRead={readIt}

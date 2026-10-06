@@ -1,17 +1,33 @@
 import { useEffect, useState } from "react";
 import { getBook } from "../../domain/books";
+import { parseLocalDate } from "../../domain/dates";
 import { bibleUrl } from "../../domain/refs";
 import type { ResolvedPassage } from "../../domain/resolve";
-import { yesterdayDetour, showWelcomeBack } from "../../domain/streaks";
+import { activePlace } from "../../domain/resolve";
+import { detourIdeas } from "../../domain/suggestions";
+import { lastReadDate, showWelcomeBack, yesterdayDetour } from "../../domain/streaks";
 import { useApp } from "../../state/AppState";
-import { BookOpen, Bookmark, Check, ChevronRight, NotebookPen, Pencil, PenLine } from "../../components/Icons";
+import {
+  BookOpen,
+  Bookmark,
+  Check,
+  ChevronRight,
+  CornerDownRight,
+  NotebookPen,
+  Pencil,
+  PenLine,
+  Plus,
+  Sun,
+} from "../../components/Icons";
 import { Button } from "../../components/ui";
+import { SomethingElse } from "./SomethingElse";
 
 export function PassageView({
   passage,
   onAdjust,
   onChangeBook,
   onDetour,
+  onUseDetour,
   onBackToBook,
   onReflect,
   onRead,
@@ -21,62 +37,169 @@ export function PassageView({
   onAdjust: () => void;
   onChangeBook: () => void;
   onDetour: () => void;
+  onUseDetour: (ref: string) => void;
   onBackToBook: () => void;
   onReflect: () => void;
   onRead: () => void;
   onPlanRef: (ref: string) => void;
 }) {
   const { snapshot, today, online } = useApp();
-  const day = snapshot.days[today];
   const bookName = getBook(snapshot.prefs.bookId)?.name ?? "Mark";
-  const welcome = showWelcomeBack(snapshot.days, today, snapshot.prefs.planStartDate);
-  const returned = yesterdayDetour(snapshot.days, today);
-  const ref = passage.ref;
-  const href = bibleUrl(ref);
+  const place = activePlace(snapshot);
+
+  if (passage.kind === "detour") {
+    return (
+      <SomethingElse
+        bookName={bookName}
+        backupLabel={passage.backupLabel}
+        initialRef={passage.ref}
+        onUse={onUseDetour}
+        onBackToBook={onBackToBook}
+        onReflect={onReflect}
+        onRead={onRead}
+      />
+    );
+  }
 
   return (
     <div className="passage">
       <div className="nav-row">
-        <p className="yes-row">
+        <p className="commit-tag">
           <Check size={14} aria-hidden="true" />
-          You said yes{day?.note ? ` · ${day.note}` : ""}
+          You said yes
         </p>
       </div>
-      {passage.kind !== "plan" ? (
-        <div className="toggle" role="group" aria-label="Reading">
-          <button type="button" className={passage.kind === "book" ? "is-active" : ""} onClick={onBackToBook}>
-            <Bookmark size={14} aria-hidden="true" /> {bookName}
-          </button>
-          <button type="button" className={passage.kind === "detour" ? "is-active" : ""} onClick={onDetour}>
-            <PenLine size={14} aria-hidden="true" /> Something else
-          </button>
+      {passage.kind === "book" ? (
+        <BookPassage
+          passage={passage}
+          bookName={bookName}
+          placeVerse={place.verse}
+          online={online}
+          welcome={showWelcomeBack(snapshot.days, today, snapshot.prefs.planStartDate)}
+          returnedRef={yesterdayDetour(snapshot.days, today)?.passageRef}
+          lastRead={lastReadDate(snapshot.days, today)}
+          onAdjust={onAdjust}
+          onChangeBook={onChangeBook}
+          onDetour={onDetour}
+          onUseDetour={onUseDetour}
+          onReflect={onReflect}
+          onRead={onRead}
+          today={today}
+          days={snapshot.days}
+        />
+      ) : (
+        <PlanBody passage={passage} onPlanRef={onPlanRef} online={online} onRead={onRead} onReflect={onReflect} />
+      )}
+    </div>
+  );
+}
+
+function BookPassage({
+  passage,
+  bookName,
+  placeVerse,
+  online,
+  welcome,
+  returnedRef,
+  lastRead,
+  onAdjust,
+  onChangeBook,
+  onDetour,
+  onUseDetour,
+  onReflect,
+  onRead,
+  today,
+  days,
+}: {
+  passage: Extract<ResolvedPassage, { kind: "book" }>;
+  bookName: string;
+  placeVerse: number;
+  online: boolean;
+  welcome: boolean;
+  returnedRef?: string;
+  lastRead: string | null;
+  onAdjust: () => void;
+  onChangeBook: () => void;
+  onDetour: () => void;
+  onUseDetour: (ref: string) => void;
+  onReflect: () => void;
+  onRead: () => void;
+  today: string;
+  days: Parameters<typeof detourIdeas>[1];
+}) {
+  const href = bibleUrl(passage.ref);
+  const total = getBook(passage.range.bookId)?.verses.length ?? 1;
+  const progress = Math.min(100, Math.round((passage.range.startChapter / total) * 100));
+  const shorts = detourIdeas(today, days).filter((item) => item.group === "short");
+  const returned = Boolean(returnedRef);
+  const greeting = welcome && !returned;
+  const eyebrow = returned ? `Back to ${bookName}` : greeting ? "Welcome back" : "Pick up where you left off";
+  const detail = returned
+    ? placeVerse > 1
+      ? `Picking up after verse ${placeVerse - 1}`
+      : passage.verseLabel
+    : greeting && lastRead
+      ? `Where you left off last ${parseLocalDate(lastRead).toLocaleDateString("en-US", { weekday: "long" })} · ${passage.verseLabel}`
+      : `${passage.verseLabel}${passage.hint ? ` · ${passage.hint}` : ""}`;
+
+  return (
+    <>
+      {greeting ? (
+        <div className="greeting">
+          <h1>Good to see you.</h1>
+          <p>No catching up required — {bookName} will wait.</p>
         </div>
       ) : null}
-      {passage.kind === "book" && returned ? (
-        <p className="banner">
-          <span className="kicker">Back to {bookName}</span>
-          Yesterday you read {returned.passageRef} — your place was saved.
+      <div className="toggle" role="group" aria-label="Reading">
+        <button type="button" className="is-active">
+          <Bookmark size={14} aria-hidden="true" /> {bookName}
+        </button>
+        <button type="button" onClick={onDetour}>
+          <PenLine size={14} aria-hidden="true" /> Something else
+        </button>
+      </div>
+      <article className="suggest-card passage-card">
+        <p className="card-eyebrow">
+          {greeting ? <Sun size={14} aria-hidden="true" /> : <Bookmark size={14} aria-hidden="true" />}
+          {eyebrow}
         </p>
-      ) : null}
-      {passage.kind === "book" && welcome && !returned ? (
-        <p className="banner">
-          <span className="kicker">Welcome back</span>
-          Good to see you. No catching up required — {bookName} will wait.
-        </p>
-      ) : null}
-      <PassageBody passage={passage} onPlanRef={onPlanRef} />
-      {passage.kind === "book" ? (
-        <div className="link-row">
+        {returned && returnedRef ? (
+          <p className="detour-note">
+            <CornerDownRight size={14} aria-hidden="true" />
+            Yesterday you read {returnedRef} — your place was saved.
+          </p>
+        ) : null}
+        <h1 className="display-52">{passage.ref}</h1>
+        <p className="hint">{detail}</p>
+        <div className="track" aria-hidden="true">
+          <span style={{ width: `${progress}%` }} />
+        </div>
+        <p className="meta">{passage.chapterLabel}</p>
+        <div className="pill-actions">
           <button type="button" onClick={onAdjust}>
             <Pencil size={14} aria-hidden="true" /> Adjust verses
           </button>
-          <button type="button" onClick={onChangeBook}>
+          <button type="button" className="is-muted" onClick={onChangeBook}>
             <BookOpen size={14} aria-hidden="true" /> Change book
           </button>
         </div>
+      </article>
+      {!greeting ? (
+        <div className="chip-block">
+          <p>Or a short drip today</p>
+          <div className="chips">
+            {shorts.map((item) => (
+              <button key={item.ref} type="button" className="chip" onClick={() => onUseDetour(item.ref)}>
+                {item.ref}
+              </button>
+            ))}
+            <button type="button" className="chip" onClick={onDetour}>
+              <Plus size={14} aria-hidden="true" /> Other…
+            </button>
+          </div>
+          <p className="caption">Your place in {bookName} stays saved.</p>
+        </div>
       ) : null}
-      {passage.kind === "detour" ? <p className="soft">{passage.backupLabel}</p> : null}
-      {passage.kind === "plan" ? <p className="soft">{passage.backupLabel}</p> : null}
       <button type="button" className="reflect-row" onClick={onReflect}>
         <span className="note-icon" aria-hidden="true">
           <NotebookPen size={16} />
@@ -89,7 +212,7 @@ export function PassageView({
       </button>
       <div className="footer">
         <a
-          className={online ? "btn btn-quiet" : "btn btn-quiet is-disabled"}
+          className={online ? "btn btn-quiet btn-open" : "btn btn-quiet btn-open is-disabled"}
           href={online ? href : undefined}
           target="_blank"
           rel="noopener noreferrer"
@@ -98,91 +221,89 @@ export function PassageView({
             if (!online) event.preventDefault();
           }}
         >
-          Open {ref} ↗
+          Open {passage.ref} ↗
         </a>
-        <Button data-testid="mark-read" onClick={onRead}>
+        <Button className="btn-yes" data-testid="mark-read" onClick={onRead}>
           I read it
         </Button>
         <p className="caption">
-          {online
-            ? "Opens in Bible Gateway · needs a connection"
-            : "You’re offline. The passage link waits until you’re back — your place is saved here."}
+          {online ? "Opens in your Bible site · needs a connection" : "You’re offline. The passage link waits until you’re back — your place is saved here."}
         </p>
       </div>
-    </div>
+    </>
   );
-}
-
-function PassageBody({
-  passage,
-  onPlanRef,
-}: {
-  passage: Extract<ResolvedPassage, { kind: "book" | "plan" | "detour" }>;
-  onPlanRef: (ref: string) => void;
-}) {
-  if (passage.kind === "book") {
-    const headline = passage.range.startChapter === passage.range.endChapter
-      ? `${passage.ref.split(":")[0]}`
-      : passage.ref;
-    return (
-      <div className="passage-copy">
-        <p className="kicker yes-row">
-          <Bookmark size={14} aria-hidden="true" />
-          Pick up where you left off
-        </p>
-        <h1 className="display-52">{headline}</h1>
-        <p className="hint">
-          {passage.verseLabel}
-          {passage.hint ? ` · ${passage.hint}` : ""}
-        </p>
-        <p className="meta">{passage.chapterLabel}</p>
-      </div>
-    );
-  }
-  if (passage.kind === "detour") {
-    return (
-      <div className="passage-copy">
-        <p className="kicker">What you’re reading today</p>
-        <h1>{passage.ref}</h1>
-      </div>
-    );
-  }
-  return <PlanBody passage={passage} onPlanRef={onPlanRef} />;
 }
 
 function PlanBody({
   passage,
   onPlanRef,
+  online,
+  onRead,
+  onReflect,
 }: {
   passage: Extract<ResolvedPassage, { kind: "plan" }>;
   onPlanRef: (ref: string) => void;
+  online: boolean;
+  onRead: () => void;
+  onReflect: () => void;
 }) {
   const [draft, setDraft] = useState(passage.ref);
   useEffect(() => setDraft(passage.ref), [passage.ref]);
+  const href = bibleUrl(passage.ref);
   return (
-    <div className="passage-copy">
-      <p className="kicker">
-        Day {passage.dayIndex} of {passage.planLength}
-      </p>
-      {passage.title ? <p className="meta">{passage.title}</p> : null}
-      <h1>{passage.ref}</h1>
-      {passage.prompt ? (
-        <p className="prompt">
-          <span className="kicker">As you read</span>
-          {passage.prompt}
+    <>
+      <div className="passage-copy">
+        <p className="kicker">
+          Day {passage.dayIndex} of {passage.planLength}
         </p>
-      ) : null}
-      <label className="field">
-        <span>Or enter the reading you already follow</span>
-        <input
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onBlur={() => {
-            const next = draft.trim();
-            if (next && next !== passage.ref) onPlanRef(next);
+        {passage.title ? <p className="meta">{passage.title}</p> : null}
+        <h1 className="display-52">{passage.ref}</h1>
+        {passage.prompt ? (
+          <p className="prompt">
+            <span className="kicker">As you read</span>
+            {passage.prompt}
+          </p>
+        ) : null}
+        <label className="field">
+          <span>Or enter the reading you already follow</span>
+          <input
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={() => {
+              const next = draft.trim();
+              if (next && next !== passage.ref) onPlanRef(next);
+            }}
+          />
+        </label>
+        <p className="soft">{passage.backupLabel}</p>
+      </div>
+      <button type="button" className="reflect-row" onClick={onReflect}>
+        <span className="note-icon" aria-hidden="true">
+          <NotebookPen size={16} />
+        </span>
+        <span>
+          <strong>Reflect as you read</strong>
+          <span>Jot notes, questions, a verse to keep</span>
+        </span>
+        <ChevronRight size={16} aria-hidden="true" />
+      </button>
+      <div className="footer">
+        <a
+          className={online ? "btn btn-quiet btn-open" : "btn btn-quiet btn-open is-disabled"}
+          href={online ? href : undefined}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-disabled={!online}
+          onClick={(event) => {
+            if (!online) event.preventDefault();
           }}
-        />
-      </label>
-    </div>
+        >
+          Open {passage.ref} ↗
+        </a>
+        <Button className="btn-yes" data-testid="mark-read" onClick={onRead}>
+          I read it
+        </Button>
+      </div>
+    </>
   );
 }
