@@ -39,9 +39,37 @@ Screens and the app store never call `localStorage` or IndexedDB themselves. The
 - `notes` — a day’s reflection and “Huh?”
 - `load` / `save` — the whole snapshot the store keeps in memory
 
-v1 uses `createLocalStorageAdapter()`. It writes one snapshot to IndexedDB and keeps a localStorage copy; if the two disagree, the newer `updatedAt` wins. There is no account and no network sync.
+v1 uses `createLocalStorageAdapter()`. It writes one snapshot to IndexedDB and keeps a localStorage copy; if the two disagree, the newer `updatedAt` wins. An account is optional. Skipping sign-in leaves reading, notes, and reminders on this device, same as before.
 
-To use a hosted backend later, implement the same `StorageAdapter` and pass it to `AppProvider`. `SupabaseStorageAdapter` (`src/lib/storage/supabase.ts`) is only a stub: it documents the table shape and throws if called. v1 does not depend on Supabase.
+To sync later, implement the same `StorageAdapter` and pass it to `AppProvider`. `SupabaseStorageAdapter` (`src/lib/storage/supabase.ts`) is still a stub: it documents the table shape and throws if called. Sign-in uses Supabase Auth, but it does not upload the snapshot.
+
+## Optional sign-in
+
+Open Settings and tap **Sign in**. You can continue with Apple, Google, or an email magic link, or tap **Keep using without an account**. After a magic link or OAuth return, the app reads the session from the URL and opens Account. Sign out is a real Supabase session. Sync is not on yet: the Sync switch only remembers On or Off on this device, and export downloads the local snapshot as JSON.
+
+Delete account calls the `delete-account` Edge Function, which deletes that auth user with the service role on the server. The service role is not in the app.
+
+### Supabase dashboard
+
+Project `gfacmaaehvlhbskrajyj` (`https://gfacmaaehvlhbskrajyj.supabase.co`).
+
+**Authentication → URL configuration**
+
+- Site URL: `https://ryanbyk.github.io/drip-by-drip/`
+- Redirect URLs:
+  - `https://ryanbyk.github.io/drip-by-drip/`
+  - `http://localhost:5173/drip-by-drip/`
+  - `http://localhost:5173/`
+
+The app sends people back to the current origin plus the Vite base (`/drip-by-drip/`). Magic link uses Supabase’s built-in email. No template change is required once those URLs are allowed.
+
+**Authentication → Providers**
+
+- Email: leave magic link enabled.
+- Google: enable the provider and paste the Google OAuth client ID and secret. In Google Cloud, the authorized redirect URI is `https://gfacmaaehvlhbskrajyj.supabase.co/auth/v1/callback`.
+- Apple: enable the provider and paste the Services ID, Team ID, Key ID, and private key. Apple’s return URL is that same Supabase callback.
+
+Display names live in `public.profiles` (one row per auth user, RLS so a person can read and update only their own row). A private trigger creates the row when someone signs up.
 
 ## Docs
 

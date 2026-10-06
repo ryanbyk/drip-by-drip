@@ -25,15 +25,29 @@ import {
   BookOpen,
   BookText,
   ChevronRight,
+  Cloud,
   Droplet,
   ExternalLink,
   RotateCcw,
+  WaterDrop,
 } from "../components/Icons";
 import { AppearanceField, AskTimePicker, Button, Sheet } from "../components/ui";
+import { initialsFor, profileHeading } from "../lib/auth";
+import { useAuth } from "../state/auth-context";
 import { BibleSource } from "./BibleSource";
+import { Account } from "./Account";
 import { ChangeBookSheet } from "./today/MoreViews";
 
-export function Settings() {
+export function Settings({
+  accountOpen = false,
+  onAccountOpen = () => undefined,
+  onSignIn = () => undefined,
+}: {
+  accountOpen?: boolean;
+  onAccountOpen?: (open: boolean) => void;
+  onSignIn?: () => void;
+}) {
+  const auth = useAuth();
   const app = useApp();
   const { snapshot, today, dispatch, setPrefs, showToast, canInstall, standalone, promptInstall } = app;
   const place = activePlace(snapshot);
@@ -143,12 +157,40 @@ export function Settings() {
     : `${book?.name ?? "Book"} · ch. ${place.chapter}`;
 
   if (editingSource) return <BibleSource onBack={() => setEditingSource(false)} />;
+  if (accountOpen && auth.status === "signed-in") return <Account onBack={() => onAccountOpen(false)} />;
+
+  const signedIn = auth.status === "signed-in" && auth.user ? auth.user : null;
 
   return (
     <section className="screen screen-tabbed">
       <header className="page-head">
         <h1>Settings</h1>
       </header>
+      {auth.status === "loading" ? null : (
+        <button
+          type="button"
+          className="account-card"
+          onClick={() => (signedIn ? onAccountOpen(true) : onSignIn())}
+        >
+          <span className="account-card-avatar" aria-hidden="true">
+            {signedIn ? initialsFor(signedIn.displayName, signedIn.email) : <WaterDrop size={20} />}
+          </span>
+          <span className="account-card-copy">
+            <span className="account-card-name">{signedIn ? profileHeading(signedIn.displayName, signedIn.email) : "Sign in"}</span>
+            {signedIn && auth.syncEnabled ? (
+              <span className="account-card-status">
+                <Cloud size={14} aria-hidden="true" />
+                Sync coming
+              </span>
+            ) : (
+              <span className="account-card-quiet">
+                {signedIn ? "On this device" : "Optional · notes stay on this device"}
+              </span>
+            )}
+          </span>
+          <ChevronRight className="chev" size={16} aria-hidden="true" />
+        </button>
+      )}
       <section className="settings-group">
         <p className="eyebrow">Daily ask</p>
         <div className="settings-card">
@@ -269,7 +311,9 @@ export function Settings() {
             <span className="row-label">Reset progress…</span>
           </button>
         </div>
-        <p className="soft">Stored only on this device · no account needed</p>
+        <p className="soft">
+          {signedIn ? "Stored on this device · sync is coming" : "Stored only on this device · no account needed"}
+        </p>
       </section>
       {editingBook ? <ChangeBookSheet when="track" onClose={() => setEditingBook(false)} /> : null}
       {about ? (

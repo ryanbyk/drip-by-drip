@@ -2,14 +2,24 @@ import { useMemo, useState, type ReactNode } from "react";
 import { PhoneShell } from "../components/PhoneShell";
 import { TabBar } from "../components/ui";
 import type { Snapshot } from "../domain/types";
+import { AuthFixtureProvider } from "../state/AuthFixture";
+import type { AuthUser } from "../state/auth-context";
 import { AppProvider } from "../state/AppState";
 import { createMemoryStorage } from "./memory";
 
-export function StoryApp({ snapshot, children }: { snapshot: Snapshot; children: ReactNode }) {
+export function StoryApp({
+  snapshot,
+  children,
+  authUser = null,
+}: {
+  snapshot: Snapshot;
+  children: ReactNode;
+  authUser?: AuthUser | null;
+}) {
   const storage = useMemo(() => createMemoryStorage(snapshot), [snapshot]);
   return (
     <AppProvider storage={storage} initialSnapshot={snapshot}>
-      {children}
+      <AuthFixtureProvider user={authUser}>{children}</AuthFixtureProvider>
     </AppProvider>
   );
 }
