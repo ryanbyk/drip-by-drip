@@ -192,24 +192,32 @@ a { color: var(--accent); }
   display: flex;
   flex-direction: column;
   position: relative;
+  isolation: isolate;
   background: var(--bg);
 }
-/* Blur only after content actually moves under the status band. At rest the
-   band is empty padding, so headings stay sharp. */
-.phone::before {
-  content: "";
+/* Short strip at the top of the viewport. It stays behind the screen until
+   content scrolls into it, then it covers only this band — not the safe-area
+   inset, and not the pen's 62px status frame. A taller band (and a layer that
+   sat above the screen the whole time) frosted History and Settings titles
+   while the scroller was still at rest. */
+.status-glass {
   position: absolute;
-  z-index: 5;
+  z-index: -1;
   top: 0;
   left: 0;
   right: 0;
-  height: var(--safe-top);
+  height: var(--space-16);
   pointer-events: none;
+  overflow: hidden;
+  clip-path: inset(0);
 }
-.phone.is-scrolled::before {
+.phone.is-scrolled .status-glass {
+  z-index: 5;
   background: linear-gradient(to bottom, var(--glass), transparent);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  mask-image: linear-gradient(to bottom, #000 70%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent 100%);
 }
 .screen {
   flex: 1;
