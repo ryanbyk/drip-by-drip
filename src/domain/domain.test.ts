@@ -94,15 +94,15 @@ describe("streaks", () => {
     expect(markForDate(today, today, start, day({ date: today, readDone: true }))).toBe("read");
   });
 
-  it("counts Power of Four on a Monday–Sunday week", () => {
+  it("counts Power of Four on a Sunday–Saturday week", () => {
     const days = {
+      "2026-10-03": day({ date: "2026-10-03", readDone: true }),
       "2026-10-04": day({ date: "2026-10-04", readDone: true }),
-      "2026-10-05": day({ date: "2026-10-05", readDone: true }),
-      "2026-10-11": day({ date: "2026-10-11", readDone: true }),
+      "2026-10-10": day({ date: "2026-10-10", readDone: true }),
     };
-    expect(powerOfFour(days, "2026-10-04").engaged).toBe(1);
-    expect(powerOfFour(days, "2026-10-11").engaged).toBe(2);
-    expect(powerOfFour(days, "2026-10-12").engaged).toBe(0);
+    expect(powerOfFour(days, "2026-10-03").engaged).toBe(1);
+    expect(powerOfFour(days, "2026-10-10").engaged).toBe(2);
+    expect(powerOfFour(days, "2026-10-11").engaged).toBe(0);
   });
 
   it("breaks a past day that was Yes without a finished read", () => {
@@ -183,12 +183,12 @@ describe("dates", () => {
     expect(addDays("2026-10-06", 1)).toBe("2026-10-07");
   });
 
-  it("starts weeks and month grids on Monday", () => {
-    expect(startOfWeek("2026-10-05")).toBe("2026-10-05");
-    expect(startOfWeek("2026-10-11")).toBe("2026-10-05");
-    expect(startOfWeek("2026-10-04")).toBe("2026-09-28");
+  it("starts weeks and month grids on Sunday", () => {
+    expect(startOfWeek("2026-10-04")).toBe("2026-10-04");
+    expect(startOfWeek("2026-10-10")).toBe("2026-10-04");
+    expect(startOfWeek("2026-10-11")).toBe("2026-10-11");
     const october = monthGrid("2026-10-08");
-    expect(october[0]).toEqual({ iso: "2026-09-28", inMonth: false });
-    expect(october[3]).toEqual({ iso: "2026-10-01", inMonth: true });
+    expect(october[0]).toEqual({ iso: "2026-09-27", inMonth: false });
+    expect(october[4]).toEqual({ iso: "2026-10-01", inMonth: true });
   });
 });
