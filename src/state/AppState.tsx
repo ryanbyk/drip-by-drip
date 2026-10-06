@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -11,8 +12,11 @@ import { localDate, msUntilAsk } from "../domain/dates";
 import { isStandalone, scheduleTrigger, showAskNotification } from "../lib/reminders";
 import { shareCommitment } from "../lib/share";
 import { createLocalStorageAdapter, type StorageAdapter } from "../lib/storage";
+import { liveCloudSnapshotIO } from "../lib/storage/supabase";
+import { browserOwnerStore, syncAccountSnapshot, type AccountSyncResult } from "../lib/storage/sync";
 import { syncDocumentTheme } from "../lib/theme";
 import type { Range, Snapshot, UserPrefs } from "../domain/types";
+import { AuthContext } from "./auth-context";
 import { reducer, type Action } from "./reducer";
 
 type AppValue = {
@@ -33,6 +37,8 @@ type AppValue = {
 
 const AppContext = createContext<AppValue | null>(null);
 const localStorageAdapter = createLocalStorageAdapter();
+const ownerStore = browserOwnerStore();
+const SYNC_FAILED = "Couldn’t sync to your account. This device still has your reading.";
 
 export function AppProvider({
   children,
@@ -43,23 +49,57 @@ export function AppProvider({
   storage?: StorageAdapter;
   initialSnapshot?: Snapshot;
 }) {
+  const auth = useContext(AuthContext);
+  const authStatus = auth?.status ?? "guest";
+  const syncUserId = authStatus === "signed-in" ? (auth?.user?.id ?? null) : null;
+  const syncEnabled = authStatus === "signed-in" && Boolean(auth?.syncEnabled);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(initialSnapshot ?? null);
   const [today, setToday] = useState(localDate);
   const [online, setOnline] = useState(() => navigator.onLine);
   const [toast, setToast] = useState<string | null>(null);
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [standalone, setStandalone] = useState(false);
+  const snapshotRef = useRef(snapshot);
+  const bootedRef = useRef(Boolean(initialSnapshot));
+  const syncFailedRef = useRef(false);
+  snapshotRef.current = snapshot;
+
+  const reportSync = useCallback((result: AccountSyncResult) => {
+    if (!result.failed) {
+      syncFailedRef.current = false;
+      return;
+    }
+    if (syncFailedRef.current) return;
+    syncFailedRef.current = true;
+    setToast(SYNC_FAILED);
+  }, []);
 
   useEffect(() => {
     if (initialSnapshot) return;
+    if (authStatus === "loading") return;
     let cancelled = false;
-    void storage.load().then((loaded) => {
-      if (!cancelled) setSnapshot(loaded);
-    });
+    const session = { userId: syncUserId, enabled: syncEnabled && online };
+    void (async () => {
+      const base = bootedRef.current ? (snapshotRef.current ?? (await storage.load())) : await storage.load();
+      if (cancelled) return;
+      let result = await syncAccountSnapshot(base, session, liveCloudSnapshotIO, ownerStore, (next) => storage.save(next));
+      if (cancelled) return;
+      const latest = snapshotRef.current;
+      if (latest && latest !== base && latest.updatedAt > base.updatedAt) {
+        result = await syncAccountSnapshot(latest, session, liveCloudSnapshotIO, ownerStore, (next) => storage.save(next));
+      }
+      if (cancelled) return;
+      bootedRef.current = true;
+      if (session.enabled) reportSync(result);
+      setSnapshot((current) => {
+        if (current && current !== result.snapshot && result.snapshot.updatedAt < current.updatedAt) return current;
+        return current === result.snapshot ? current : result.snapshot;
+      });
+    })();
     return () => {
       cancelled = true;
     };
-  }, [storage, initialSnapshot]);
+  }, [initialSnapshot, authStatus, syncUserId, syncEnabled, online, storage, reportSync]);
 
   const appearance = snapshot?.prefs.appearance;
   useEffect(() => {
@@ -74,12 +114,28 @@ export function AppProvider({
   useEffect(() => {
     if (!snapshot) return;
     const handle = window.setTimeout(() => {
-      void storage.save(snapshot).then((saved) => {
-        if (!saved) setToast("Couldn’t save on this device.");
-      });
+      void (async () => {
+        const saved = await storage.save(snapshot);
+        if (!saved) {
+          setToast("Couldn’t save on this device.");
+          return;
+        }
+        if (!syncEnabled || !syncUserId || !online) return;
+        const result = await syncAccountSnapshot(
+          snapshot,
+          { userId: syncUserId, enabled: true },
+          liveCloudSnapshotIO,
+          ownerStore,
+          (next) => storage.save(next),
+        );
+        reportSync(result);
+        if (result.snapshot !== snapshot && result.snapshot.updatedAt >= snapshot.updatedAt) {
+          setSnapshot(result.snapshot);
+        }
+      })();
     }, 40);
     return () => window.clearTimeout(handle);
-  }, [snapshot, storage]);
+  }, [snapshot, storage, syncEnabled, syncUserId, online, reportSync]);
 
   useEffect(() => {
     const tick = () => setToday(localDate());

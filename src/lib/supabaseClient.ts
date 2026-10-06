@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "./database";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "./supabaseConfig";
 
 export { authCallback } from "./authCallback";
@@ -8,7 +9,7 @@ export { authCallback } from "./authCallback";
  * tokens in the URL hash, and no custom template is required.
  * PKCE would need a token_hash template plus the browser storage that started the request.
  */
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     flowType: "implicit",
     detectSessionInUrl: true,

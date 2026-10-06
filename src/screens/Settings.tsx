@@ -180,7 +180,7 @@ export function Settings({
             {signedIn && auth.syncEnabled ? (
               <span className="account-card-status">
                 <Cloud size={14} aria-hidden="true" />
-                Sync coming
+                Sync on
               </span>
             ) : (
               <span className="account-card-quiet">
@@ -312,7 +312,11 @@ export function Settings({
           </button>
         </div>
         <p className="soft">
-          {signedIn ? "Stored on this device · sync is coming" : "Stored only on this device · no account needed"}
+          {signedIn
+            ? auth.syncEnabled
+              ? "Synced with your account"
+              : "Stored on this device"
+            : "Stored only on this device · no account needed"}
         </p>
       </section>
       {editingBook ? <ChangeBookSheet when="track" onClose={() => setEditingBook(false)} /> : null}
