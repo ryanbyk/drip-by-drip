@@ -1,3 +1,5 @@
+import type { Appearance } from "./appearance";
+
 export type DripSize = "verses" | "chapter" | "two";
 
 export type ReadingMode = "book" | "plan";
@@ -45,6 +47,7 @@ export type UserPrefs = {
   askTime: string;
   notificationsEnabled: boolean;
   notificationState: NotificationState;
+  appearance: Appearance;
   onboardingComplete: boolean;
   onboardingStep: OnboardingStep;
   createdAt: string;

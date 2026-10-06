@@ -61,6 +61,7 @@ export function createSnapshot(): Snapshot {
       askTime: DEFAULT_ASK_TIME,
       notificationsEnabled: false,
       notificationState: "unknown",
+      appearance: "system",
       onboardingComplete: false,
       onboardingStep: "framing",
       createdAt: "",

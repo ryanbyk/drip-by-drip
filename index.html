@@ -7,6 +7,27 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
     <meta name="theme-color" content="#2E5C61" />
+    <script>
+      (function () {
+        var appearance = "system";
+        try {
+          var raw = localStorage.getItem("drip-by-drip-snapshot");
+          if (raw) {
+            var prefs = JSON.parse(raw).prefs;
+            var stored = prefs && prefs.appearance;
+            if (stored === "system" || stored === "light" || stored === "dark") appearance = stored;
+          }
+        } catch (error) {
+          appearance = "system";
+        }
+        document.documentElement.setAttribute("data-theme", appearance);
+        var dark =
+          appearance === "dark" ||
+          (appearance === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", dark ? "#121A1C" : "#2E5C61");
+      })();
+    </script>
     <meta
       name="description"
       content="A daily question, then a small drip of Scripture. Grace, not a streak meter."
@@ -22,6 +43,16 @@
       body {
         margin: 0;
         background: #f5f1e8;
+      }
+      html[data-theme="dark"],
+      html[data-theme="dark"] body {
+        background: #121a1c;
+      }
+      @media (prefers-color-scheme: dark) {
+        html[data-theme="system"],
+        html[data-theme="system"] body {
+          background: #121a1c;
+        }
       }
     </style>
   </head>

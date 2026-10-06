@@ -34,6 +34,7 @@ import {
   Settings2,
   Share,
   Sun,
+  SunMoon,
   WaterDrop,
   X,
 } from "./Icons";
@@ -71,6 +72,7 @@ const GLYPHS = [
   ["Settings", Settings2],
   ["Share", Share],
   ["Sun", Sun],
+  ["Sun and moon", SunMoon],
   ["Close", X],
 ] as const;
 

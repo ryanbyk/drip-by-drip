@@ -6,6 +6,7 @@ import type { StorageAdapter } from "./types";
 const DB_NAME = "drip-by-drip";
 const STORE = "kv";
 const KEY = "snapshot";
+/** Also read by the theme boot script in index.html, before the app bundle loads. */
 const LS_KEY = "drip-by-drip-snapshot";
 
 function openDb(): Promise<IDBDatabase> {

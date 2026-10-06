@@ -11,6 +11,7 @@ import { localDate, msUntilAsk } from "../domain/dates";
 import { isStandalone, scheduleTrigger, showAskNotification } from "../lib/reminders";
 import { shareCommitment } from "../lib/share";
 import { createLocalStorageAdapter, type StorageAdapter } from "../lib/storage";
+import { syncDocumentTheme } from "../lib/theme";
 import type { Range, Snapshot, UserPrefs } from "../domain/types";
 import { reducer, type Action } from "./reducer";
 
@@ -56,6 +57,12 @@ export function AppProvider({
       cancelled = true;
     };
   }, [storage]);
+
+  const appearance = snapshot?.prefs.appearance;
+  useEffect(() => {
+    if (!appearance) return;
+    return syncDocumentTheme(appearance);
+  }, [appearance]);
 
   const dispatch = useCallback((action: Action) => {
     setSnapshot((current) => (current ? reducer(current, action) : current));

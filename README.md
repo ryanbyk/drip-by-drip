@@ -19,7 +19,7 @@ Then open the URL Vite prints (`http://localhost:5173/drip-by-drip/`) on a phone
 npm run storybook
 ```
 
-Opens Storybook at `http://localhost:6006`. Stories load the same fonts and design tokens as the app (`src/index.css`), so buttons, sheets, the tab bar, pickers, icons, and shared cards match the product. `npm run build-storybook` writes a static build to `storybook-static/`.
+Opens Storybook at `http://localhost:6006`. Stories load the same fonts and design tokens as the app (`src/index.css`), so buttons, sheets, the tab bar, pickers, icons, and shared cards match the product. The toolbar switches the Light and Dark token sets. `npm run build-storybook` writes a static build to `storybook-static/`.
 
 The hosted app is [https://ryanbyk.github.io/drip-by-drip/](https://ryanbyk.github.io/drip-by-drip/). A push to `main` builds `dist` and deploys it with GitHub Pages, once Pages is enabled for this repo.
 
@@ -29,7 +29,7 @@ Answers, bookmarks, and notes stay on this device. Passage text opens on Bible G
 
 Screens and the app store never call `localStorage` or IndexedDB themselves. They talk to a `StorageAdapter` (`src/lib/storage`):
 
-- `prefs` — ask time, notifications, reading mode
+- `prefs` — ask time, notifications, appearance, reading mode
 - `commitments` — each day’s yes / not today
 - `progress` — book place
 - `notes` — a day’s reflection and “Huh?”
