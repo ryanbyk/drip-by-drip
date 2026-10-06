@@ -161,9 +161,22 @@ export type PassageLink = {
   detail: string;
 };
 
+export type LaunchContext = {
+  userAgent: string;
+  /** Home-screen / standalone PWA. iOS ignores scripted custom schemes there. */
+  standalone?: boolean;
+  /** iPadOS reports a Macintosh UA; more than one touch point marks it as iPad. */
+  touchPoints?: number;
+};
+
 export type LaunchPlan =
-  | { kind: "web"; href: string }
-  | { kind: "app-then-web"; appHref: string; href: string };
+  | { kind: "tab"; href: string }
+  | { kind: "universal"; href: string }
+  | { kind: "scheme"; appHref: string; fallbackHref: string }
+  | { kind: "intent"; href: string };
+
+/** Play Store id. assetlinks.json grants this package every bible.com URL. */
+const YOUVERSION_ANDROID_PACKAGE = "com.sirma.mobile.bible.android";
 
 export function passageLink(reference: string, prefs: UserPrefs): PassageLink {
   const clean = normalizeBiblePrefs(prefs);
@@ -193,12 +206,41 @@ export function passageLink(reference: string, prefs: UserPrefs): PassageLink {
   };
 }
 
-export function launchPlan(link: Pick<PassageLink, "href" | "appHref">, userAgent: string): LaunchPlan | null {
+export function launchPlan(link: Pick<PassageLink, "href" | "appHref">, context: LaunchContext): LaunchPlan | null {
   if (!link.href) return null;
-  if (link.appHref && /Android|iPhone|iPad|iPod/i.test(userAgent)) {
-    return { kind: "app-then-web", appHref: link.appHref, href: link.href };
+  const bibleCom = isBibleCom(link.href);
+  if (/Android/i.test(context.userAgent) && bibleCom) {
+    if (/Firefox\//i.test(context.userAgent)) return { kind: "universal", href: link.href };
+    return { kind: "intent", href: bibleComIntent(link.href) };
   }
-  return { kind: "web", href: link.href };
+  // Standalone iOS swallows https universal links inside its webview, and
+  // location.assign("youversion://…") never leaves the PWA. The anchor itself
+  // has to be the scheme; Safari still gets the https universal link.
+  if (isIos(context) && bibleCom && context.standalone && link.appHref) {
+    return { kind: "scheme", appHref: link.appHref, fallbackHref: link.href };
+  }
+  if (isIos(context) && bibleCom) return { kind: "universal", href: link.href };
+  return { kind: "tab", href: link.href };
+}
+
+export function bibleComIntent(href: string): string {
+  const url = new URL(href);
+  const fallback = encodeURIComponent(url.href);
+  return `intent://${url.host}${url.pathname}${url.search}#Intent;scheme=https;package=${YOUVERSION_ANDROID_PACKAGE};S.browser_fallback_url=${fallback};end`;
+}
+
+function isIos(context: LaunchContext): boolean {
+  if (/iPhone|iPad|iPod/i.test(context.userAgent)) return true;
+  return /Macintosh/i.test(context.userAgent) && (context.touchPoints ?? 0) > 1;
+}
+
+function isBibleCom(href: string): boolean {
+  try {
+    const host = new URL(href).hostname;
+    return host === "www.bible.com" || host === "bible.com";
+  } catch {
+    return false;
+  }
 }
 
 function detailFor(source: BibleSourceId, ready: boolean): string {
