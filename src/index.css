@@ -156,8 +156,19 @@ body {
   font-size: 16px;
   line-height: 1.45;
 }
-button, input, textarea { font: inherit; color: inherit; }
+button, input, textarea, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
+/* iOS Safari focus-zooms a control whose font-size is under 16px. */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"] {
+  font-size: inherit;
+}
 p { margin: 0; }
 h1, h2 { font-family: var(--serif); font-weight: 400; letter-spacing: -0.03em; }
 h1 { font-size: 32px; line-height: 1.1; letter-spacing: -0.3px; margin: 0; }
@@ -1038,7 +1049,7 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
   font-weight: 600;
 }
 .verse-tag.is-add { background: transparent; border: 1px solid var(--line); color: var(--muted); font-weight: 500; }
-.tag-input { width: 72px; background: var(--bg); border: 1px solid var(--line); color: var(--ink); font-weight: 500; }
+.tag-input { width: 72px; background: var(--bg); border: 1px solid var(--line); color: var(--ink); font-weight: 500; font-size: 16px; line-height: 1; }
 .huh-row { display: flex; align-items: center; gap: var(--space-12); }
 .huh-row > span:nth-child(2) { flex: 1; }
 .huh-row strong { display: block; font-size: 14px; }
@@ -1145,7 +1156,7 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
   min-width: 0;
   padding: 0;
   border-radius: 0;
-  font-size: 15px;
+  font-size: 16px;
 }
 .share-link { align-self: center; }
 .note-edit-link { margin-left: auto; color: var(--accent); font-size: 13px; font-weight: 600; }
