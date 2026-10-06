@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
+import { PhoneShell } from "../components/PhoneShell";
 import { TabBar } from "../components/ui";
 import type { Snapshot } from "../domain/types";
 import { AppProvider } from "../state/AppState";
@@ -21,16 +22,16 @@ export function useFixture(create: () => Snapshot): Snapshot {
 export function Phone({
   children,
   tab,
+  prepare,
 }: {
   children: ReactNode;
   tab?: "today" | "history" | "settings";
+  prepare?: (phone: HTMLElement) => void;
 }) {
   return (
-    <div className="app-shell">
-      <div className="phone">
-        {children}
-        {tab ? <TabBar tab={tab} onTab={() => undefined} /> : null}
-      </div>
-    </div>
+    <PhoneShell prepare={prepare}>
+      {children}
+      {tab ? <TabBar tab={tab} onTab={() => undefined} /> : null}
+    </PhoneShell>
   );
 }
