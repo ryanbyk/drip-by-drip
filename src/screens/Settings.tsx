@@ -4,6 +4,7 @@ import { formatAskTime } from "../domain/dates";
 import { activePlace } from "../domain/resolve";
 import { isPlaceFinished } from "../domain/drip";
 import { paceBlurb } from "../domain/suggestions";
+import { bibleSourceLabel, normalizeBiblePrefs } from "../domain/bibleSource";
 import { SOURCE_URL } from "../domain/types";
 import { isStandalone, notificationsSupported, requestNotificationPermission } from "../lib/reminders";
 import { useApp } from "../state/AppState";
@@ -12,12 +13,14 @@ import {
   ArrowUpRight,
   Bell,
   BookOpen,
+  BookText,
   ChevronRight,
   Droplet,
   ExternalLink,
   RotateCcw,
 } from "../components/Icons";
 import { AppearanceField, AskTimePicker, Button, Sheet } from "../components/ui";
+import { BibleSource } from "./BibleSource";
 import { ChangeBookSheet } from "./today/MoreViews";
 
 export function Settings() {
@@ -29,7 +32,9 @@ export function Settings() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [editingTime, setEditingTime] = useState(false);
   const [editingBook, setEditingBook] = useState(false);
+  const [editingSource, setEditingSource] = useState(false);
   const [about, setAbout] = useState(false);
+  const bible = normalizeBiblePrefs(snapshot.prefs);
   const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   async function enableReminders() {
@@ -48,6 +53,8 @@ export function Settings() {
   const placeLabel = finished
     ? `${book?.name ?? "Book"} · finished`
     : `${book?.name ?? "Book"} · ch. ${place.chapter}`;
+
+  if (editingSource) return <BibleSource onBack={() => setEditingSource(false)} />;
 
   return (
     <section className="screen screen-tabbed">
@@ -92,6 +99,12 @@ export function Settings() {
             <BookOpen className="row-icon" size={18} aria-hidden="true" />
             <span className="row-label">{snapshot.prefs.readingMode === "plan" ? "Plan, with backup" : "Reading through"}</span>
             <strong className="row-value">{snapshot.prefs.readingMode === "plan" ? `Placeholder · ${placeLabel}` : placeLabel}</strong>
+            <ChevronRight className="chev" size={16} aria-hidden="true" />
+          </button>
+          <button type="button" className="settings-row" onClick={() => setEditingSource(true)}>
+            <BookText className="row-icon" size={18} aria-hidden="true" />
+            <span className="row-label">Open passages in</span>
+            <strong className="row-value">{bibleSourceLabel(bible.bibleSource)}</strong>
             <ChevronRight className="chev" size={16} aria-hidden="true" />
           </button>
           <AppearanceField value={snapshot.prefs.appearance} onChange={(appearance) => setPrefs({ appearance })} />
@@ -153,7 +166,7 @@ export function Settings() {
             A small, steady practice of reading Scripture. Frequency is not your standing with God — Christ alone is.
           </p>
           <p className="soft">
-            Bible text opens on Bible Gateway. This app keeps passage references and your own notes, not a Bible edition.
+            Bible text opens in {bibleSourceLabel(bible.bibleSource)}. This app keeps passage references and your own notes, not a Bible edition.
           </p>
           <a href={SOURCE_URL} target="_blank" rel="noopener noreferrer">
             Source notes

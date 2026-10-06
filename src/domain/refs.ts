@@ -43,11 +43,6 @@ export function chapterProgressLabel(range: Range): string {
   return `Chapters ${range.startChapter}–${range.endChapter} of ${book.verses.length} in ${book.name}`;
 }
 
-export function bibleUrl(ref: string): string {
-  const query = encodeURIComponent(ref.replace(/–/g, "-"));
-  return `https://www.biblegateway.com/passage/?search=${query}&version=NIV`;
-}
-
 function normalizeRef(input: string): string {
   return input.trim().toLowerCase().replace(/[–—]/g, "-").replace(/\s+/g, " ");
 }

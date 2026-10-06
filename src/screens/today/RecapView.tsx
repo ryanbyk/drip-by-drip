@@ -1,7 +1,7 @@
-import { bibleUrl } from "../../domain/refs";
 import { bookRecap, type ChapterSitting } from "../../domain/recap";
 import { useApp } from "../../state/AppState";
 import { ChevronLeft, CircleQuestionMark, CornerDownRight, MoonStar, NotebookPen, Share } from "../../components/Icons";
+import { OpenPassageLink } from "../../components/OpenPassageLink";
 import { Button } from "../../components/ui";
 
 export function RecapView({ onNext }: { onNext: () => void }) {
@@ -89,9 +89,9 @@ export function RecapView({ onNext }: { onNext: () => void }) {
               <span>{recap.topVerse ? `Most-tagged verse: ${recap.bookName} ${recap.topVerse}` : "Notes you kept along the way"}</span>
             </span>
             {recap.topVerse ? (
-              <a className="along-action" href={bibleUrl(`${recap.bookName} ${recap.topVerse}`)} target="_blank" rel="noopener noreferrer">
+              <OpenPassageLink className="along-action" reference={`${recap.bookName} ${recap.topVerse}`}>
                 Read
-              </a>
+              </OpenPassageLink>
             ) : null}
           </div>
           <div className="along-row">
@@ -116,9 +116,9 @@ export function RecapView({ onNext }: { onNext: () => void }) {
               <span>{recap.huhRefs.length > 0 ? recap.huhRefs.slice(0, 3).join(" · ") : "Nothing you marked to revisit"}</span>
             </span>
             {recap.huhRefs[0] ? (
-              <a className="along-action" href={bibleUrl(recap.huhRefs[0])} target="_blank" rel="noopener noreferrer">
+              <OpenPassageLink className="along-action" reference={recap.huhRefs[0]}>
                 Revisit
-              </a>
+              </OpenPassageLink>
             ) : null}
           </div>
           <div className="along-row">

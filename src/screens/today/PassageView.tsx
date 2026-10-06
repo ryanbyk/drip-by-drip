@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getBook } from "../../domain/books";
 import { parseLocalDate } from "../../domain/dates";
-import { bibleUrl } from "../../domain/refs";
+import { passageLink } from "../../domain/bibleSource";
 import type { ResolvedPassage } from "../../domain/resolve";
 import { activePlace } from "../../domain/resolve";
 import { detourIdeas } from "../../domain/suggestions";
@@ -19,6 +19,7 @@ import {
   Plus,
   Sun,
 } from "../../components/Icons";
+import { OpenPassageLink } from "../../components/OpenPassageLink";
 import { Button } from "../../components/ui";
 import { SomethingElse } from "./SomethingElse";
 
@@ -127,7 +128,8 @@ function BookPassage({
   today: string;
   days: Parameters<typeof detourIdeas>[1];
 }) {
-  const href = bibleUrl(passage.ref);
+  const { snapshot } = useApp();
+  const link = passageLink(passage.ref, snapshot.prefs);
   const total = getBook(passage.range.bookId)?.verses.length ?? 1;
   const progress = Math.min(100, Math.round((passage.range.startChapter / total) * 100));
   const shorts = detourIdeas(today, days).filter((item) => item.group === "short");
@@ -211,23 +213,12 @@ function BookPassage({
         <ChevronRight size={16} aria-hidden="true" />
       </button>
       <div className="footer">
-        <a
-          className={online ? "btn btn-quiet btn-open" : "btn btn-quiet btn-open is-disabled"}
-          href={online ? href : undefined}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-disabled={!online}
-          onClick={(event) => {
-            if (!online) event.preventDefault();
-          }}
-        >
-          Open {passage.ref} ↗
-        </a>
+        <OpenPassageLink reference={passage.ref} className="btn btn-quiet btn-open" online={online} />
         <Button className="btn-yes" data-testid="mark-read" onClick={onRead}>
           I read it
         </Button>
         <p className="caption">
-          {online ? "Opens in your Bible site · needs a connection" : "You’re offline. The passage link waits until you’re back — your place is saved here."}
+          {online ? link.detail : "You’re offline. The passage link waits until you’re back — your place is saved here."}
         </p>
       </div>
     </>
@@ -249,7 +240,6 @@ function PlanBody({
 }) {
   const [draft, setDraft] = useState(passage.ref);
   useEffect(() => setDraft(passage.ref), [passage.ref]);
-  const href = bibleUrl(passage.ref);
   return (
     <>
       <div className="passage-copy">
@@ -288,18 +278,7 @@ function PlanBody({
         <ChevronRight size={16} aria-hidden="true" />
       </button>
       <div className="footer">
-        <a
-          className={online ? "btn btn-quiet btn-open" : "btn btn-quiet btn-open is-disabled"}
-          href={online ? href : undefined}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-disabled={!online}
-          onClick={(event) => {
-            if (!online) event.preventDefault();
-          }}
-        >
-          Open {passage.ref} ↗
-        </a>
+        <OpenPassageLink reference={passage.ref} className="btn btn-quiet btn-open" online={online} />
         <Button className="btn-yes" data-testid="mark-read" onClick={onRead}>
           I read it
         </Button>
