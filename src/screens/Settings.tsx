@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { getBook } from "../domain/books";
 import { formatAskTime } from "../domain/dates";
 import { activePlace } from "../domain/resolve";
@@ -6,7 +6,14 @@ import { isPlaceFinished } from "../domain/drip";
 import { paceBlurb } from "../domain/suggestions";
 import { bibleSourceLabel, normalizeBiblePrefs } from "../domain/bibleSource";
 import { SOURCE_URL } from "../domain/types";
-import { isStandalone, notificationsSupported, requestNotificationPermission } from "../lib/reminders";
+import { readDeveloperTools } from "../lib/developerMode";
+import {
+  isStandalone,
+  notificationsSupported,
+  requestNotificationPermission,
+  sendTestAskNotification,
+  type TestReminderResult,
+} from "../lib/reminders";
 import { useApp } from "../state/AppState";
 import {
   AlarmClock,
@@ -23,9 +30,9 @@ import { AppearanceField, AskTimePicker, Button, Sheet } from "../components/ui"
 import { BibleSource } from "./BibleSource";
 import { ChangeBookSheet } from "./today/MoreViews";
 
-export function Settings() {
+export function Settings({ developerTools }: { developerTools?: boolean } = {}) {
   const app = useApp();
-  const { snapshot, today, dispatch, setPrefs, canInstall, standalone, promptInstall } = app;
+  const { snapshot, today, dispatch, setPrefs, showToast, canInstall, standalone, promptInstall } = app;
   const place = activePlace(snapshot);
   const book = getBook(snapshot.prefs.bookId);
   const finished = isPlaceFinished(place);
@@ -34,6 +41,10 @@ export function Settings() {
   const [editingBook, setEditingBook] = useState(false);
   const [editingSource, setEditingSource] = useState(false);
   const [about, setAbout] = useState(false);
+  const [showDeveloper] = useState(() => developerTools ?? readDeveloperTools());
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testNote, setTestNote] = useState<string | null>(null);
+  const sendingTestRef = useRef(false);
   const bible = normalizeBiblePrefs(snapshot.prefs);
   const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
@@ -48,6 +59,24 @@ export function Settings() {
       return;
     }
     setPrefs({ notificationsEnabled: false, notificationState: "denied" });
+  }
+
+  async function sendTestReminder() {
+    if (sendingTestRef.current) return;
+    sendingTestRef.current = true;
+    setSendingTest(true);
+    setTestNote(null);
+    try {
+      const result = await sendTestAskNotification();
+      if (result === "sent") {
+        showToast("Test reminder sent.");
+        return;
+      }
+      setTestNote(testReminderNote(result));
+    } finally {
+      sendingTestRef.current = false;
+      setSendingTest(false);
+    }
   }
 
   const placeLabel = finished
@@ -92,6 +121,23 @@ export function Settings() {
         ) : null}
         <p className="soft">{reminderCopy(snapshot.prefs.notificationState, snapshot.prefs.notificationsEnabled, ios && !standalone)}</p>
       </section>
+      {showDeveloper ? (
+        <section className="settings-group">
+          <p className="eyebrow">Developer</p>
+          <div className="settings-card">
+            <button
+              type="button"
+              className="settings-row"
+              onClick={() => void sendTestReminder()}
+              disabled={sendingTest}
+            >
+              <Bell className="row-icon" size={18} aria-hidden="true" />
+              <span className="row-label">{sendingTest ? "Sending test reminder…" : "Send test reminder"}</span>
+            </button>
+          </div>
+          <p className="soft">{testNote ?? DEVELOPER_REMINDER_NOTE}</p>
+        </section>
+      ) : null}
       <section className="settings-group">
         <p className="eyebrow">Reading</p>
         <div className="settings-card">
@@ -216,4 +262,24 @@ function reminderCopy(
     return "At your ask time, the reminder is the question itself. If the app is fully closed, your browser may only deliver it after you’ve opened Drip by drip at least once.";
   }
   return "Turn this on for one daily reminder. It asks the question — it doesn’t scold.";
+}
+
+const DEVELOPER_REMINDER_NOTE =
+  "Sends the same daily question. It doesn’t turn on your daily reminder, and it doesn’t mark today as reminded. This section shows in local development, or when the address includes ?dev=1. Use ?dev=0 to hide it.";
+
+function testReminderNote(result: Exclude<TestReminderResult, "sent">): string {
+  switch (result) {
+    case "unsupported":
+      return "This browser can’t send reminders. The question will be here whenever you open the app.";
+    case "denied":
+      return "Reminders are blocked in this browser, so the test couldn’t be sent. Allow notifications for this site in your browser settings whenever you want to try again.";
+    case "dismissed":
+      return "The test reminder waits until notifications are allowed. You can try again whenever you’re ready.";
+    case "failed":
+      return "The reminder couldn’t be sent just now. You can try again in a moment.";
+    default: {
+      const exhaustive: never = result;
+      return exhaustive;
+    }
+  }
 }
