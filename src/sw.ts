@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 import { clientsClaim } from "workbox-core";
 import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
+import { withBase } from "./lib/base";
 
 declare let self: ServiceWorkerGlobalScope;
 
@@ -23,7 +24,7 @@ self.addEventListener("notificationclick", (event) => {
         client.postMessage({ type: "OPEN_TODAY" });
         return;
       }
-      await self.clients.openWindow("/");
+      await self.clients.openWindow(withBase(""));
     })(),
   );
 });

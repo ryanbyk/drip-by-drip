@@ -1,5 +1,6 @@
 import { localDate, msUntilAsk } from "../domain/dates";
 import { QBE_QUESTION } from "../domain/types";
+import { withBase } from "./base";
 
 type NotificationWithTrigger = NotificationOptions & { showTrigger?: unknown };
 
@@ -22,8 +23,8 @@ export async function showAskNotification(): Promise<void> {
   const options: NotificationOptions = {
     body: QBE_QUESTION,
     tag: `qbe-${localDate()}`,
-    icon: "/icons/icon-192.png",
-    data: { href: "/" },
+    icon: withBase("icons/icon-192.png"),
+    data: { href: withBase("") },
   };
   if ("serviceWorker" in navigator) {
     const registration = await navigator.serviceWorker.ready;
@@ -43,9 +44,9 @@ export async function scheduleTrigger(askTime: string): Promise<boolean> {
     const options: NotificationWithTrigger = {
       body: QBE_QUESTION,
       tag: "qbe-scheduled",
-      icon: "/icons/icon-192.png",
+      icon: withBase("icons/icon-192.png"),
       showTrigger: new triggerCtor(when),
-      data: { href: "/" },
+      data: { href: withBase("") },
     };
     await registration.showNotification("Drip by drip", options);
     return true;
