@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BOOKS, verseCount } from "./books";
 import { formatRef } from "./refs";
-import { launchPlan, normalizeBiblePrefs, passageLink } from "./bibleSource";
+import { bibleComIntent, launchPlan, normalizeBiblePrefs, passageLink } from "./bibleSource";
 import type { UserPrefs } from "./types";
 import { createSnapshot, reducer } from "../state/reducer";
 
@@ -41,8 +41,10 @@ describe("bible source links", () => {
   });
 
   it("spans chapters in the YouVersion reference", () => {
-    const href = passageLink("Mark 4–5", prefs()).href;
-    expect(href).toBe(`https://www.bible.com/bible/59/MRK.4.1-MRK.5.${verseCount("mark", 5)}.ESV`);
+    const link = passageLink("Mark 4–5", prefs());
+    const usfm = `MRK.4.1-MRK.5.${verseCount("mark", 5)}`;
+    expect(link.href).toBe(`https://www.bible.com/bible/59/${usfm}.ESV`);
+    expect(link.appHref).toBe(`youversion://bible?reference=${usfm}&version_id=59`);
   });
 
   it("builds a YouVersion link for every book", () => {
@@ -92,20 +94,54 @@ describe("bible source links", () => {
     );
   });
 
-  it("tries the YouVersion app on a phone and the web link everywhere else", () => {
+  it("hands a phone tap to YouVersion and leaves other sources in a tab", () => {
     const link = passageLink("Mark 4", prefs());
-    expect(launchPlan(link, "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)")).toEqual({
-      kind: "app-then-web",
-      appHref: link.appHref,
+    const iphone = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)";
+    const android = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile";
+    expect(link.href).toBe("https://www.bible.com/bible/59/MRK.4.ESV");
+    expect(link.appHref).toBe("youversion://bible?reference=MRK.4&version_id=59");
+
+    expect(launchPlan(link, { userAgent: iphone })).toEqual({
+      kind: "universal",
+      href: "https://www.bible.com/bible/59/MRK.4.ESV",
+    });
+    expect(launchPlan(link, { userAgent: iphone, standalone: true })).toEqual({
+      kind: "scheme",
+      appHref: "youversion://bible?reference=MRK.4&version_id=59",
+      fallbackHref: "https://www.bible.com/bible/59/MRK.4.ESV",
+    });
+    expect(launchPlan(link, { userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)", touchPoints: 5 })).toEqual({
+      kind: "universal",
       href: link.href,
     });
-    expect(launchPlan(link, "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)")).toEqual({
-      kind: "web",
+    expect(launchPlan(link, { userAgent: android })).toEqual({
+      kind: "intent",
+      href: bibleComIntent("https://www.bible.com/bible/59/MRK.4.ESV"),
+    });
+    expect(bibleComIntent("https://www.bible.com/bible/59/MRK.4.ESV")).toBe(
+      "intent://www.bible.com/bible/59/MRK.4.ESV#Intent;scheme=https;package=com.sirma.mobile.bible.android;S.browser_fallback_url=https%3A%2F%2Fwww.bible.com%2Fbible%2F59%2FMRK.4.ESV;end",
+    );
+    expect(launchPlan(link, { userAgent: "Mozilla/5.0 (Android 14; Mobile; rv:109.0) Gecko/109.0 Firefox/120.0" })).toEqual({
+      kind: "universal",
       href: link.href,
     });
+    expect(launchPlan(link, { userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)" })).toEqual({
+      kind: "tab",
+      href: link.href,
+    });
+
+    const search = passageLink("Luke 10:38–42; Psalm 46", prefs());
+    expect(launchPlan(search, { userAgent: iphone, standalone: true })).toEqual({
+      kind: "universal",
+      href: search.href,
+    });
+    expect(bibleComIntent(search.href ?? "")).toBe(
+      "intent://www.bible.com/search/bible?query=Luke%2010%3A38-42%3B%20Psalm%2046#Intent;scheme=https;package=com.sirma.mobile.bible.android;S.browser_fallback_url=https%3A%2F%2Fwww.bible.com%2Fsearch%2Fbible%3Fquery%3DLuke%252010%253A38-42%253B%2520Psalm%252046;end",
+    );
+
     const gateway = passageLink("Mark 4", prefs({ bibleSource: "biblegateway" }));
-    expect(launchPlan(gateway, "Mozilla/5.0 (Linux; Android 14)")).toEqual({
-      kind: "web",
+    expect(launchPlan(gateway, { userAgent: android })).toEqual({
+      kind: "tab",
       href: gateway.href,
     });
   });
