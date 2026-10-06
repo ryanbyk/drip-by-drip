@@ -6,7 +6,6 @@ import { isPlaceFinished } from "../domain/drip";
 import { paceBlurb } from "../domain/suggestions";
 import { bibleSourceLabel, normalizeBiblePrefs } from "../domain/bibleSource";
 import { SOURCE_URL } from "../domain/types";
-import { readDeveloperTools } from "../lib/developerMode";
 import {
   isStandalone,
   notificationsSupported,
@@ -30,7 +29,7 @@ import { AppearanceField, AskTimePicker, Button, Sheet } from "../components/ui"
 import { BibleSource } from "./BibleSource";
 import { ChangeBookSheet } from "./today/MoreViews";
 
-export function Settings({ developerTools }: { developerTools?: boolean } = {}) {
+export function Settings() {
   const app = useApp();
   const { snapshot, today, dispatch, setPrefs, showToast, canInstall, standalone, promptInstall } = app;
   const place = activePlace(snapshot);
@@ -41,7 +40,6 @@ export function Settings({ developerTools }: { developerTools?: boolean } = {}) 
   const [editingBook, setEditingBook] = useState(false);
   const [editingSource, setEditingSource] = useState(false);
   const [about, setAbout] = useState(false);
-  const [showDeveloper] = useState(() => developerTools ?? readDeveloperTools());
   const [sendingTest, setSendingTest] = useState(false);
   const [testNote, setTestNote] = useState<string | null>(null);
   const sendingTestRef = useRef(false);
@@ -121,23 +119,21 @@ export function Settings({ developerTools }: { developerTools?: boolean } = {}) 
         ) : null}
         <p className="soft">{reminderCopy(snapshot.prefs.notificationState, snapshot.prefs.notificationsEnabled, ios && !standalone)}</p>
       </section>
-      {showDeveloper ? (
-        <section className="settings-group">
-          <p className="eyebrow">Developer</p>
-          <div className="settings-card">
-            <button
-              type="button"
-              className="settings-row"
-              onClick={() => void sendTestReminder()}
-              disabled={sendingTest}
-            >
-              <Bell className="row-icon" size={18} aria-hidden="true" />
-              <span className="row-label">{sendingTest ? "Sending test reminder…" : "Send test reminder"}</span>
-            </button>
-          </div>
-          <p className="soft">{testNote ?? DEVELOPER_REMINDER_NOTE}</p>
-        </section>
-      ) : null}
+      <section className="settings-group">
+        <p className="eyebrow">Developer</p>
+        <div className="settings-card">
+          <button
+            type="button"
+            className="settings-row"
+            onClick={() => void sendTestReminder()}
+            disabled={sendingTest}
+          >
+            <Bell className="row-icon" size={18} aria-hidden="true" />
+            <span className="row-label">{sendingTest ? "Sending test reminder…" : "Send test reminder"}</span>
+          </button>
+        </div>
+        <p className="soft">{testNote ?? DEVELOPER_REMINDER_NOTE}</p>
+      </section>
       <section className="settings-group">
         <p className="eyebrow">Reading</p>
         <div className="settings-card">
@@ -265,7 +261,7 @@ function reminderCopy(
 }
 
 const DEVELOPER_REMINDER_NOTE =
-  "Sends the same daily question. It doesn’t turn on your daily reminder, and it doesn’t mark today as reminded. This section shows in local development, or when the address includes ?dev=1. Use ?dev=0 to hide it.";
+  "Sends the same daily question. It doesn’t turn on your daily reminder, and it doesn’t mark today as reminded.";
 
 function testReminderNote(result: Exclude<TestReminderResult, "sent">): string {
   switch (result) {

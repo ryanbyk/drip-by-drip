@@ -24,7 +24,8 @@ export function developerToolsVisible(input: {
     case "off":
       return false;
     case null:
-      return input.devBuild || input.remembered;
+      // A normal visit stays visible, including production. ?dev=0 still reports hidden.
+      return true;
     default: {
       const exhaustive: never = input.flag;
       return exhaustive;

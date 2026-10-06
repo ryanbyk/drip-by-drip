@@ -26,11 +26,11 @@ describe("developer tools gate", () => {
     expect(developerFlagFromLocation("", "")).toBeNull();
   });
 
-  it("shows in a dev build and stays hidden for a normal production visit", () => {
+  it("shows for a dev build and a normal production visit", () => {
     const storage = memoryStorage();
     expect(applyDeveloperTools({ search: "", hash: "" }, storage, true)).toBe(true);
     expect(storage.data).toEqual({});
-    expect(applyDeveloperTools({ search: "", hash: "" }, storage, false)).toBe(false);
+    expect(applyDeveloperTools({ search: "", hash: "" }, storage, false)).toBe(true);
   });
 
   it("remembers ?dev=1 for later visits, including an installed app on this device", () => {
@@ -40,7 +40,7 @@ describe("developer tools gate", () => {
     expect(applyDeveloperTools({ search: "", hash: "" }, storage, false)).toBe(true);
   });
 
-  it("forgets the section when the address includes ?dev=0", () => {
+  it("clears the remembered flag and reports hidden for ?dev=0", () => {
     const storage = memoryStorage({ [DEVELOPER_TOOLS_KEY]: "1" });
     expect(applyDeveloperTools({ search: "?dev=0", hash: "" }, storage, true)).toBe(false);
     expect(storage.data[DEVELOPER_TOOLS_KEY]).toBeUndefined();
