@@ -156,6 +156,8 @@ describe("bible source links", () => {
     expect(clean.bibleSource).toBe("youversion");
     expect(clean.bibleTranslation).toBe("ESV");
     expect(clean.bibleCustomPattern).toBe("");
+    expect(clean.showInAppEsv).toBe(false);
+    expect(clean.esvApiKey).toBe("");
     expect(passageLink("Psalm 23", clean).href).toBe("https://www.bible.com/bible/59/PSA.23.ESV");
   });
 });

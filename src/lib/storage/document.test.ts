@@ -21,6 +21,8 @@ describe("snapshot document", () => {
     expect(clean?.prefs.appearance).toBe("system");
     expect(clean?.prefs.bibleSource).toBe("youversion");
     expect(clean?.prefs.bibleTranslation).toBe("ESV");
+    expect(clean?.prefs.showInAppEsv).toBe(false);
+    expect(clean?.prefs.esvApiKey).toBe("");
     expect(clean?.updatedAt).toBe(4);
   });
 
@@ -60,6 +62,29 @@ describe("snapshot document", () => {
     expect(clean?.prefs.bibleSource).toBe("youversion");
     expect(clean?.prefs.bibleCustomPattern).toBe("https://example.com/{passage}");
     expect(clean?.prefs.appearance).toBe("dark");
+    expect(clean?.prefs.esvApiKey).toBe("");
+  });
+
+  it("keeps an on-device ESV key and drops a key that is not text", () => {
+    const kept = sanitizeSnapshot({
+      version: 1,
+      updatedAt: 2,
+      prefs: { showInAppEsv: true, esvApiKey: "  device-key  " },
+      places: {},
+      days: {},
+    });
+    expect(kept?.prefs.showInAppEsv).toBe(true);
+    expect(kept?.prefs.esvApiKey).toBe("device-key");
+
+    const dropped = sanitizeSnapshot({
+      version: 1,
+      updatedAt: 2,
+      prefs: { showInAppEsv: "yes", esvApiKey: 12345 },
+      places: {},
+      days: {},
+    });
+    expect(dropped?.prefs.showInAppEsv).toBe(false);
+    expect(dropped?.prefs.esvApiKey).toBe("");
   });
 
   it("updates prefs, a day, a place, and a note on the snapshot", () => {

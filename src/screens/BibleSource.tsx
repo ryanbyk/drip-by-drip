@@ -2,22 +2,68 @@ import { useEffect, useRef, useState } from "react";
 import {
   BIBLE_SOURCE_OPTIONS,
   BIBLE_TRANSLATIONS,
-  bibleSourceLabel,
   normalizeBiblePrefs,
   passageLink,
 } from "../domain/bibleSource";
+import { ESV_SIGNUP_URL, maskEsvKey } from "../domain/esv";
 import type { BibleSourceId } from "../domain/types";
+import { validateEsvApiKey } from "../lib/esvApi";
 import { useApp } from "../state/AppState";
-import { Check, ChevronLeft, ChevronRight, Languages } from "../components/Icons";
+import { ArrowUpRight, Check, ChevronLeft, ChevronRight, CircleCheck, KeyRound, Languages } from "../components/Icons";
 import { Sheet } from "../components/ui";
 
-export function BibleSource({ onBack }: { onBack: () => void }) {
-  const { snapshot, setPrefs } = useApp();
+type EsvKeyStatus = "empty" | "checking" | "connected" | "invalid" | "stored";
+
+export function BibleSource({
+  onBack,
+  keyStatus,
+}: {
+  onBack: () => void;
+  /** Storybook can pin the badge so the frame does not call the ESV API. */
+  keyStatus?: EsvKeyStatus;
+}) {
+  const { snapshot, setPrefs, online } = useApp();
   const prefs = normalizeBiblePrefs(snapshot.prefs);
   const [pickingTranslation, setPickingTranslation] = useState(false);
+  const [editingKey, setEditingKey] = useState(false);
+  const [keyDraft, setKeyDraft] = useState("");
+  const [status, setStatus] = useState<EsvKeyStatus>(keyStatus ?? "empty");
   const patternRef = useRef<HTMLInputElement>(null);
+  const keyRef = useRef<HTMLInputElement>(null);
   const focusPattern = useRef(false);
   const sample = passageLink("Mark 4", { ...prefs, bibleSource: "custom" });
+
+  useEffect(() => {
+    if (!editingKey) return;
+    keyRef.current?.focus();
+  }, [editingKey]);
+
+  useEffect(() => {
+    if (keyStatus) {
+      setStatus(keyStatus);
+      return;
+    }
+    const key = prefs.esvApiKey.trim();
+    if (!key) {
+      setStatus("empty");
+      return;
+    }
+    if (!online) {
+      setStatus("stored");
+      return;
+    }
+    let cancelled = false;
+    setStatus("checking");
+    void validateEsvApiKey(key).then((result) => {
+      if (cancelled) return;
+      if (result === "connected") setStatus("connected");
+      else if (result === "invalid") setStatus("invalid");
+      else setStatus("stored");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [keyStatus, online, prefs.esvApiKey]);
 
   useEffect(() => {
     if (prefs.bibleSource !== "custom" || !focusPattern.current) return;
@@ -28,6 +74,25 @@ export function BibleSource({ onBack }: { onBack: () => void }) {
   function choose(source: BibleSourceId) {
     if (source === "custom") focusPattern.current = true;
     setPrefs({ bibleSource: source });
+  }
+
+  function toggleInApp() {
+    const next = !prefs.showInAppEsv;
+    setPrefs({ showInAppEsv: next });
+    if (next && !prefs.esvApiKey) setEditingKey(true);
+  }
+
+  function commitKey() {
+    const next = keyDraft.trim();
+    setEditingKey(false);
+    setKeyDraft("");
+    if (next) setPrefs({ esvApiKey: next });
+  }
+
+  function removeKey() {
+    setPrefs({ esvApiKey: "" });
+    setKeyDraft("");
+    setEditingKey(false);
   }
 
   return (
@@ -121,22 +186,70 @@ export function BibleSource({ onBack }: { onBack: () => void }) {
             </span>
             <button
               type="button"
-              className="switch"
+              className={prefs.showInAppEsv ? "switch is-on" : "switch"}
               role="switch"
-              aria-checked={false}
+              aria-checked={prefs.showInAppEsv}
               aria-label="Show ESV text in the app"
-              aria-describedby="esv-stub-note"
-              disabled
+              aria-describedby="esv-key-note"
+              onClick={toggleInApp}
             >
               <span />
             </button>
           </div>
+          {prefs.showInAppEsv ? (
+            <>
+              <div className="esv-key">
+                <span id="esv-key-label">API key</span>
+                <div className="esv-key-box">
+                  <KeyRound size={16} aria-hidden="true" />
+                  {editingKey || !prefs.esvApiKey ? (
+                    <input
+                      ref={keyRef}
+                      type="password"
+                      value={keyDraft}
+                      placeholder={prefs.esvApiKey ? "Paste a new key" : "Paste your API key"}
+                      autoComplete="off"
+                      autoCapitalize="off"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      aria-labelledby="esv-key-label"
+                      aria-invalid={status === "invalid"}
+                      onChange={(event) => setKeyDraft(event.target.value)}
+                      onBlur={commitKey}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") event.currentTarget.blur();
+                      }}
+                    />
+                  ) : (
+                    <button type="button" className="esv-key-mask" aria-label="Replace API key" onClick={() => setEditingKey(true)}>
+                      {maskEsvKey(prefs.esvApiKey)}
+                    </button>
+                  )}
+                  {editingKey ? null : <KeyStatus status={status} />}
+                </div>
+              </div>
+              {editingKey && prefs.esvApiKey ? (
+                <button
+                  type="button"
+                  className="esv-remove"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={removeKey}
+                >
+                  Remove key
+                </button>
+              ) : null}
+              <a className="esv-signup" href={ESV_SIGNUP_URL} target="_blank" rel="noopener noreferrer">
+                Get a free key at api.esv.org
+                <ArrowUpRight size={13} aria-hidden="true" />
+              </a>
+            </>
+          ) : null}
         </div>
-        <p id="esv-stub-note" className="footnote">
-          In-app ESV text isn’t available yet, so passages open in {bibleSourceLabel(prefs.bibleSource)}. Your source
-          choice stays on this device.
-        </p>
       </section>
+      <p id="esv-key-note" className="footnote">
+        Your key is stored only on this device. ESV text © Crossway, shown under the ESV API terms for personal,
+        non-commercial use. Without a key, passages open in your chosen source.
+      </p>
       {pickingTranslation ? (
         <Sheet title="Translation" onClose={() => setPickingTranslation(false)}>
           <div className="choice-list" role="radiogroup" aria-label="Translation">
@@ -167,4 +280,28 @@ export function BibleSource({ onBack }: { onBack: () => void }) {
       ) : null}
     </section>
   );
+}
+
+function KeyStatus({ status }: { status: EsvKeyStatus }) {
+  switch (status) {
+    case "empty":
+      return null;
+    case "checking":
+      return <span className="esv-status">Checking</span>;
+    case "connected":
+      return (
+        <span className="esv-connected">
+          <CircleCheck size={14} aria-hidden="true" />
+          Connected
+        </span>
+      );
+    case "invalid":
+      return <span className="esv-status is-invalid">Check key</span>;
+    case "stored":
+      return <span className="esv-status">On device</span>;
+    default: {
+      const exhaustive: never = status;
+      return exhaustive;
+    }
+  }
 }

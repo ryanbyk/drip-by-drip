@@ -127,11 +127,15 @@ export function normalizeBiblePrefs(prefs: UserPrefs): UserPrefs {
   const source: unknown = prefs.bibleSource;
   const translation: unknown = prefs.bibleTranslation;
   const pattern: unknown = prefs.bibleCustomPattern;
+  const showInApp: unknown = prefs.showInAppEsv;
+  const apiKey: unknown = prefs.esvApiKey;
   return {
     ...prefs,
     bibleSource: isBibleSource(source) ? source : "youversion",
     bibleTranslation: isBibleTranslation(translation) ? translation : "ESV",
     bibleCustomPattern: typeof pattern === "string" ? pattern : "",
+    showInAppEsv: showInApp === true,
+    esvApiKey: typeof apiKey === "string" ? apiKey.trim() : "",
   };
 }
 

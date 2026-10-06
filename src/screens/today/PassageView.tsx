@@ -31,6 +31,7 @@ export function PassageView({
   onReflect,
   onRead,
   onPlanRef,
+  onReadInApp,
 }: {
   passage: Extract<ResolvedPassage, { kind: "book" | "plan" | "detour" }>;
   onAdjust: () => void;
@@ -41,6 +42,7 @@ export function PassageView({
   onReflect: () => void;
   onRead: () => void;
   onPlanRef: (ref: string) => void;
+  onReadInApp?: () => void;
 }) {
   const { snapshot, today, online } = useApp();
   const bookName = getBook(snapshot.prefs.bookId)?.name ?? "Mark";
@@ -97,6 +99,7 @@ export function PassageView({
           onDetour={onDetour}
           onReflect={onReflect}
           onRead={onRead}
+          onReadInApp={onReadInApp}
         />
       ) : (
         <PlanBody
@@ -106,6 +109,7 @@ export function PassageView({
           online={online}
           onRead={onRead}
           onReflect={onReflect}
+          onReadInApp={onReadInApp}
         />
       )}
     </div>
@@ -125,6 +129,7 @@ function BookPassage({
   onDetour,
   onReflect,
   onRead,
+  onReadInApp,
 }: {
   passage: Extract<ResolvedPassage, { kind: "book" }>;
   bookName: string;
@@ -138,6 +143,7 @@ function BookPassage({
   onDetour: () => void;
   onReflect: () => void;
   onRead: () => void;
+  onReadInApp?: () => void;
 }) {
   const total = getBook(passage.range.bookId)?.verses.length ?? 1;
   const progress = Math.min(100, Math.round((passage.range.startChapter / total) * 100));
@@ -205,6 +211,7 @@ function BookPassage({
         <ChevronRight size={16} aria-hidden="true" />
       </button>
       <div className="footer">
+        <ReadInAppButton onReadInApp={onReadInApp} />
         <OpenPassageLink reference={passage.ref} className="btn btn-quiet btn-open" online={online} />
         <Button className="btn-yes" data-testid="mark-read" onClick={onRead}>
           I read it
@@ -221,6 +228,7 @@ function PlanBody({
   online,
   onRead,
   onReflect,
+  onReadInApp,
 }: {
   passage: Extract<ResolvedPassage, { kind: "plan" }>;
   note?: string;
@@ -228,6 +236,7 @@ function PlanBody({
   online: boolean;
   onRead: () => void;
   onReflect: () => void;
+  onReadInApp?: () => void;
 }) {
   const { snapshot } = useApp();
   const link = passageLink(passage.ref, snapshot.prefs);
@@ -276,6 +285,7 @@ function PlanBody({
         <ChevronRight size={16} aria-hidden="true" />
       </button>
       <div className="footer">
+        <ReadInAppButton onReadInApp={onReadInApp} />
         <OpenPassageLink reference={passage.ref} className="btn btn-quiet btn-open" online={online} />
         <Button className="btn-yes" data-testid="mark-read" onClick={onRead}>
           I read it
@@ -285,5 +295,14 @@ function PlanBody({
         </p>
       </div>
     </>
+  );
+}
+
+function ReadInAppButton({ onReadInApp }: { onReadInApp?: () => void }) {
+  if (!onReadInApp) return null;
+  return (
+    <button type="button" className="btn btn-quiet btn-open" onClick={onReadInApp}>
+      Read in app
+    </button>
   );
 }
