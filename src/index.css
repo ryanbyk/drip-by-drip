@@ -720,6 +720,7 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
 .settings-row .row-value { color: var(--muted); font-size: 14px; font-weight: 400; }
 .settings-row .chev { color: var(--faint); flex: none; }
 .settings-row.is-danger, .settings-row.is-danger .row-icon { color: var(--caution); }
+.settings-card .settings-row:disabled { opacity: 0.55; }
 .bible-source { gap: var(--space-22); padding-bottom: var(--space-28); }
 .source-nav {
   display: flex;

@@ -4,12 +4,12 @@ import { Settings } from "./Settings";
 import { bibleSourceSnapshot, settingsSnapshot } from "../storybook/fixtures";
 import { Phone, StoryApp, useFixture } from "../storybook/harness";
 
-function SettingsScreen() {
+function SettingsScreen({ developerTools }: { developerTools?: boolean }) {
   const snapshot = useFixture(settingsSnapshot);
   return (
     <StoryApp snapshot={snapshot}>
       <Phone tab="settings">
-        <Settings />
+        <Settings developerTools={developerTools} />
       </Phone>
     </StoryApp>
   );
@@ -36,13 +36,18 @@ type Story = StoryObj<typeof meta>;
 
 export const Main: Story = {
   name: "J · Settings",
-  render: () => <SettingsScreen />,
+  render: () => <SettingsScreen developerTools={false} />,
 };
 
 export const MainDark: Story = {
   name: "Dark · J · Settings",
   globals: { theme: "dark" },
-  render: () => <SettingsScreen />,
+  render: () => <SettingsScreen developerTools={false} />,
+};
+
+export const Developer: Story = {
+  name: "J · Settings — developer",
+  render: () => <SettingsScreen developerTools />,
 };
 
 export const BibleSourceStory: Story = {

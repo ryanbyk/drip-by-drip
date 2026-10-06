@@ -25,6 +25,8 @@ The hosted app is [https://ryanbyk.github.io/drip-by-drip/](https://ryanbyk.gith
 
 Answers, bookmarks, and notes stay on this device. Passage text opens in the Bible source you choose (YouVersion by default, with Bible Gateway, ESV.org, or a custom link). The app does not bundle a Bible edition. Daily reminders use the browser Notification API when it is available, and otherwise the question is waiting in the app.
 
+To try that notification without waiting for ask time, open Settings and tap **Send test reminder**. The control is on the screen during `npm run dev`. On the hosted app — including a phone browser or the installed home-screen app — append `?dev=1` to the address once, for example `https://ryanbyk.github.io/drip-by-drip/?dev=1`. That choice is remembered on the device until you open the app with `?dev=0`. The test asks for notification permission if needed, then uses the same title, question, icon, and service-worker path as the daily reminder. It does not turn the daily reminder on, and it does not mark today as already notified.
+
 ## Persistence
 
 Screens and the app store never call `localStorage` or IndexedDB themselves. They talk to a `StorageAdapter` (`src/lib/storage`):
