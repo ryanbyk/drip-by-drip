@@ -44,7 +44,16 @@
   --accent-soft: #dde9e5;
   --drop: #7faeb0;
   --warm: #c9a66b;
-  --warm-soft: #f3ead7;
+  --warm-soft: #c9a66b26;
+  --warm-ink: #8a6a33;
+  --subtle: #eae3d5;
+  --caution: #9a6b4f;
+  --scrim: #1e2a2d59;
+  --glass: #fffdf8d9;
+  --knob: #ffffff;
+  --ripple-1: #7faeb026;
+  --ripple-2: #7faeb040;
+  --ripple-3: #7faeb066;
   --serif: "Newsreader", "Iowan Old Style", Palatino, Georgia, serif;
   --sans: "Inter", system-ui, sans-serif;
   --shadow: 0 6px 20px #1e2a2d14;
@@ -78,6 +87,63 @@
   --space-28: 28px;
   --space-32: 32px;
   --space-40: 40px;
+}
+
+/* Dark values are the Design Tokens frame in drip-by-drip.pen.
+   The system block repeats them so System follows prefers-color-scheme.
+   Dark ripples use $drop at the same alphas as the light pen strokes. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121a1c;
+  --surface: #1a2427;
+  --ink: #ece6da;
+  --muted: #a9b2af;
+  --faint: #6f7b79;
+  --line: #2b393c;
+  --accent: #8cc3c2;
+  --accent-soft: #1d3638;
+  --drop: #5c9395;
+  --warm: #d9b97f;
+  --warm-soft: #d9b97f24;
+  --warm-ink: #e2c48e;
+  --subtle: #243134;
+  --caution: #d9a283;
+  --scrim: #000000a6;
+  --glass: #1a2427d9;
+  --knob: #ece6da;
+  --on-accent: #0e1d1f;
+  --shadow: 0 6px 20px #00000066;
+  --ripple-1: #5c939526;
+  --ripple-2: #5c939540;
+  --ripple-3: #5c939566;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="system"] {
+    color-scheme: dark;
+    --bg: #121a1c;
+    --surface: #1a2427;
+    --ink: #ece6da;
+    --muted: #a9b2af;
+    --faint: #6f7b79;
+    --line: #2b393c;
+    --accent: #8cc3c2;
+    --accent-soft: #1d3638;
+    --drop: #5c9395;
+    --warm: #d9b97f;
+    --warm-soft: #d9b97f24;
+    --warm-ink: #e2c48e;
+    --subtle: #243134;
+    --caution: #d9a283;
+    --scrim: #000000a6;
+    --glass: #1a2427d9;
+    --knob: #ece6da;
+    --on-accent: #0e1d1f;
+    --shadow: 0 6px 20px #00000066;
+    --ripple-1: #5c939526;
+    --ripple-2: #5c939540;
+    --ripple-3: #5c939566;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -160,9 +226,9 @@ a { color: var(--accent); }
   border: 1.5px solid transparent;
   box-sizing: border-box;
 }
-.ripple-1 { width: 200px; height: 90px; top: 75px; /* spacing-allow: pen ripple art, not a spacing step */ border-color: #7faeb026; }
-.ripple-2 { width: 150px; height: 67.5px; top: 86.25px; /* spacing-allow: pen ripple art, not a spacing step */ border-color: #7faeb040; }
-.ripple-3 { width: 100px; height: 45px; top: 97.5px; /* spacing-allow: pen ripple art, not a spacing step */ border-color: #7faeb066; }
+.ripple-1 { width: 200px; height: 90px; top: 75px; /* spacing-allow: pen ripple art, not a spacing step */ border-color: var(--ripple-1); }
+.ripple-2 { width: 150px; height: 67.5px; top: 86.25px; /* spacing-allow: pen ripple art, not a spacing step */ border-color: var(--ripple-2); }
+.ripple-3 { width: 100px; height: 45px; top: 97.5px; /* spacing-allow: pen ripple art, not a spacing step */ border-color: var(--ripple-3); }
 .drop-mark {
   position: absolute;
   left: 50%;
@@ -396,7 +462,7 @@ a { color: var(--accent); }
   font-family: var(--serif);
   font-size: 1.2rem;
 }
-.toggle { display: grid; grid-template-columns: 1fr 1fr; background: #eae3d5; border-radius: 22px; padding: var(--space-4); min-height: 44px; }
+.toggle { display: grid; grid-template-columns: 1fr 1fr; background: var(--subtle); border-radius: 22px; padding: var(--space-4); min-height: 44px; }
 .toggle button { border: 0; background: transparent; border-radius: 10px; min-height: 40px; color: var(--muted); }
 .toggle button.is-active { background: var(--surface); color: var(--ink); font-weight: 600; }
 .toggle button.is-active svg { color: var(--accent); }
@@ -423,12 +489,13 @@ a { color: var(--accent); }
   width: 30px;
   height: 30px;
   border-radius: 15px;
-  background: #c9a66b26;
-  color: #8a6a33;
+  background: var(--warm-soft);
+  color: var(--warm-ink);
   display: grid;
   place-items: center;
   flex: none;
 }
+.note-mark { color: var(--warm-ink); flex: none; }
 .note-head { display: flex; align-items: center; gap: var(--space-10); }
 button.note-card { width: 100%; text-align: left; display: flex; flex-direction: column; gap: var(--space-8); }
 .note-snippet { margin: 0; font-family: var(--serif); font-size: 16px; line-height: 1.4; color: var(--muted); }
@@ -440,7 +507,7 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
   display: inline-flex;
   border-radius: 999px;
   background: var(--warm-soft);
-  color: #6d5830;
+  color: var(--warm-ink);
   padding: var(--space-2) var(--space-8);
   font-size: 0.8rem;
   font-weight: 600;
@@ -457,7 +524,7 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
   height: 60px;
   gap: var(--space-4);
   padding: var(--space-6);
-  background: #fffdf8d9;
+  background: var(--glass);
   border: 1px solid var(--line);
   border-radius: 30px;
   box-shadow: var(--shadow);
@@ -484,7 +551,7 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
   position: fixed;
   inset: 0;
   z-index: 30;
-  background: rgba(30, 42, 45, 0.32);
+  background: var(--scrim);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -536,10 +603,10 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
 .mark-read { background: var(--accent); color: var(--on-accent); }
 .mark-yes { background: transparent; color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); }
 .cal-day.is-today.mark-yes { background: var(--accent-soft); }
-.mark-not_today { background: #eae3d5; color: var(--muted); }
+.mark-not_today { background: var(--subtle); color: var(--muted); }
 .mark-unanswered { background: transparent; color: var(--faint); box-shadow: inset 0 0 0 1px var(--line); }
 .pill.mark-read { background: var(--accent-soft); color: var(--accent); box-shadow: none; }
-.pill.mark-not_today { background: #eae3d5; color: var(--muted); }
+.pill.mark-not_today { background: var(--subtle); color: var(--muted); }
 .pill.mark-yes { background: var(--accent-soft); color: var(--accent); box-shadow: none; }
 .legend { display: flex; flex-wrap: wrap; gap: var(--space-12) var(--space-16); list-style: none; padding: 0; margin: 0; color: var(--muted); font-size: 0.85rem; }
 .legend li { display: flex; align-items: center; gap: var(--space-6); }
@@ -573,7 +640,7 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
 .settings-row .row-label { flex: 1; font-size: 15px; font-weight: 500; text-align: left; }
 .settings-row .row-value { color: var(--muted); font-size: 14px; font-weight: 400; }
 .settings-row .chev { color: var(--faint); flex: none; }
-.settings-row.is-danger, .settings-row.is-danger .row-icon { color: #9a6b4f; }
+.settings-row.is-danger, .settings-row.is-danger .row-icon { color: var(--caution); }
 .eyebrow {
   margin: 0;
   color: var(--faint);
@@ -586,7 +653,7 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
   display: flex;
   gap: var(--space-12);
   align-items: center;
-  background: #ffffffb3;
+  background: var(--glass);
   border-radius: 18px;
   padding: var(--space-14);
 }
@@ -652,7 +719,7 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
   padding: var(--space-3);
   display: flex;
 }
-.switch span { width: 22px; height: 22px; border-radius: 50%; background: white; transition: transform 160ms ease; }
+.switch span { width: 22px; height: 22px; border-radius: 50%; background: var(--knob); transition: transform 160ms ease; }
 .switch.is-on { background: var(--accent); }
 .switch.is-on span { transform: translateX(20px); }
 
@@ -710,7 +777,7 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
   letter-spacing: 1px;
   text-transform: uppercase;
 }
-.track { height: 4px; background: #eae3d5; border-radius: 2px; overflow: hidden; }
+.track { height: 4px; background: var(--subtle); border-radius: 2px; overflow: hidden; }
 .track span { display: block; height: 100%; background: var(--drop); }
 .pill-actions { display: flex; flex-wrap: wrap; gap: var(--space-8); }
 .pill-actions button {
@@ -731,8 +798,8 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
   gap: var(--space-8);
   align-items: flex-start;
   margin: 0;
-  background: #c9a66b1f;
-  color: #8a6a33;
+  background: var(--warm-soft);
+  color: var(--warm-ink);
   border-radius: 12px;
   padding: var(--space-10) var(--space-12);
   font-size: 12px;
@@ -785,7 +852,7 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
 }
 .ref-input .icon-btn { width: 28px; height: 28px; border: 0; color: var(--faint); }
 .saved-flag { display: flex; align-items: center; gap: var(--space-5); margin: 0; color: var(--faint); font-size: 12px; }
-.reflect-kicker { margin: 0; color: #8a6a33; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; }
+.reflect-kicker { margin: 0; color: var(--warm-ink); font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; }
 .reflect-title { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); }
 .reflect-title h1 { font-size: 36px; letter-spacing: -0.6px; line-height: 1; margin: 0; }
 .open-chip {

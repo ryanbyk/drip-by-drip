@@ -1,3 +1,4 @@
+import { appearanceFrom } from "../../domain/appearance";
 import type { DailyCommitment, Place, Snapshot, UserPrefs } from "../../domain/types";
 import { createSnapshot } from "../../state/reducer";
 import type { NoteRecord } from "./types";
@@ -10,7 +11,7 @@ export function sanitizeSnapshot(value: unknown): Snapshot | null {
   return {
     version: 1,
     updatedAt: typeof raw.updatedAt === "number" ? raw.updatedAt : 0,
-    prefs: { ...base.prefs, ...raw.prefs },
+    prefs: { ...base.prefs, ...raw.prefs, appearance: appearanceFrom(raw.prefs.appearance) },
     places: raw.places,
     days: raw.days,
   };

@@ -17,7 +17,7 @@ import {
   ExternalLink,
   RotateCcw,
 } from "../components/Icons";
-import { AskTimePicker, Button, Sheet } from "../components/ui";
+import { AppearanceField, AskTimePicker, Button, Sheet } from "../components/ui";
 import { ChangeBookSheet } from "./today/MoreViews";
 
 export function Settings() {
@@ -94,6 +94,7 @@ export function Settings() {
             <strong className="row-value">{snapshot.prefs.readingMode === "plan" ? `Placeholder · ${placeLabel}` : placeLabel}</strong>
             <ChevronRight className="chev" size={16} aria-hidden="true" />
           </button>
+          <AppearanceField value={snapshot.prefs.appearance} onChange={(appearance) => setPrefs({ appearance })} />
         </div>
         <p className="soft">{paceBlurb(snapshot.prefs.bookId, snapshot.prefs.dripSize)}</p>
         {snapshot.prefs.readingMode === "book" ? (

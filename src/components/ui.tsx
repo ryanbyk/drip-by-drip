@@ -1,8 +1,10 @@
 import { useEffect, useId, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { APPEARANCES, appearanceLabel, type Appearance } from "../domain/appearance";
 import { BOOKS } from "../domain/books";
 import { formatAskTime } from "../domain/dates";
 import type { DripSize } from "../domain/types";
-import { CalendarDays, Droplet, Settings2 } from "./Icons";
+import { CalendarDays, Check, ChevronRight, Droplet, Settings2, SunMoon } from "./Icons";
 
 export function Button({
   variant = "primary",
@@ -91,6 +93,50 @@ function TabIcon({ id }: { id: "today" | "history" | "settings" }) {
   if (id === "settings") return <Settings2 size={22} aria-hidden="true" />;
   const exhaustive: never = id;
   return exhaustive;
+}
+
+export function AppearanceField({
+  value,
+  onChange,
+}: {
+  value: Appearance;
+  onChange: (appearance: Appearance) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" className="settings-row" aria-haspopup="dialog" onClick={() => setOpen(true)}>
+        <SunMoon className="row-icon" size={18} aria-hidden="true" />
+        <span className="row-label">Appearance</span>
+        <strong className="row-value">{appearanceLabel(value)}</strong>
+        <ChevronRight className="chev" size={16} aria-hidden="true" />
+      </button>
+      {open
+        ? createPortal(
+            <Sheet title="Appearance" onClose={() => setOpen(false)}>
+              <div className="settings-card" role="group" aria-label="Appearance">
+                {APPEARANCES.map((option) => {
+                  const selected = value === option;
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      className="settings-row"
+                      aria-pressed={selected}
+                      onClick={() => onChange(option)}
+                    >
+                      <span className="row-label">{appearanceLabel(option)}</span>
+                      {selected ? <Check className="row-icon" size={18} aria-hidden="true" /> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </Sheet>,
+            document.body,
+          )
+        : null}
+    </>
+  );
 }
 
 const PRESETS = [

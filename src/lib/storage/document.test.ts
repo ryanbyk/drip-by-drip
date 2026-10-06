@@ -18,7 +18,27 @@ describe("snapshot document", () => {
     });
     expect(clean?.prefs.askTime).toBe("07:15");
     expect(clean?.prefs.bookId).toBe("mark");
+    expect(clean?.prefs.appearance).toBe("system");
     expect(clean?.updatedAt).toBe(4);
+  });
+
+  it("keeps a stored appearance and drops one the settings row cannot show", () => {
+    const dark = sanitizeSnapshot({
+      version: 1,
+      updatedAt: 1,
+      prefs: { appearance: "dark" },
+      places: {},
+      days: {},
+    });
+    const unknown = sanitizeSnapshot({
+      version: 1,
+      updatedAt: 1,
+      prefs: { appearance: "sepia" },
+      places: {},
+      days: {},
+    });
+    expect(dark?.prefs.appearance).toBe("dark");
+    expect(unknown?.prefs.appearance).toBe("system");
   });
 
   it("updates prefs, a day, a place, and a note on the snapshot", () => {

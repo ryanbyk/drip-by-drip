@@ -94,7 +94,7 @@ export function History({ onOpenToday }: { onOpenToday: () => void }) {
                 </span>
               </span>
               {snapshot.days[item.iso]?.reflection || snapshot.days[item.iso]?.huh ? (
-                <NotebookPen size={16} color="#8A6A33" aria-hidden="true" />
+                <NotebookPen className="note-mark" size={16} aria-hidden="true" />
               ) : null}
               <span className={`pill mark-${item.mark}`}>{labelFor(item.mark)}</span>
               <ChevronRight size={16} aria-hidden="true" />

@@ -31,6 +31,7 @@ import {
   Settings2,
   Share,
   Sun,
+  SunMoon,
   X,
 } from "lucide-react";
 
@@ -97,5 +98,6 @@ export {
   Settings2,
   Share,
   Sun,
+  SunMoon,
   X,
 };
