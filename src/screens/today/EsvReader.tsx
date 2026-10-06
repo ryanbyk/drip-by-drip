@@ -49,7 +49,7 @@ export function EsvReader({
     let cancelled = false;
     setPassage(null);
     setFailed(false);
-    void fetchEsvPassage(reference, snapshot.prefs.esvApiKey).then((result) => {
+    void fetchEsvPassage(reference).then((result) => {
       if (cancelled) return;
       if (!result.ok) {
         setFailed(true);
@@ -61,7 +61,7 @@ export function EsvReader({
     return () => {
       cancelled = true;
     };
-  }, [provided, reference, snapshot.prefs.esvApiKey]);
+  }, [provided, reference]);
 
   function toggleTag(tag: string) {
     if (!day) return;

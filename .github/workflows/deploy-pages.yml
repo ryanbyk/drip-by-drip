@@ -35,7 +35,13 @@ jobs:
       - name: Check spacing tokens
         run: npm run audit:spacing
 
+      # Public client config. Repository Variables override the defaults in
+      # src/lib/supabaseConfig.ts. Use the legacy anon JWT, not sb_publishable_.
+      # Leave VITE_ESV_API_KEY unset — the Crossway key stays in Edge Function secrets.
       - name: Build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
         run: npm run build
 
       - name: Upload Pages artifact

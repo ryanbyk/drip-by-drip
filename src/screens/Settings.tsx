@@ -278,7 +278,7 @@ export function Settings() {
             A small, steady practice of reading Scripture. Frequency is not your standing with God — Christ alone is.
           </p>
           <p className="soft">
-            Passages open in {bibleSourceLabel(bible.bibleSource)}, unless you’ve turned on in-app ESV with your own key.
+            Open passage goes to {bibleSourceLabel(bible.bibleSource)}. Today’s passage can be read here in the ESV.
             This app keeps passage references and your own notes, not a Bible edition.
           </p>
           <a href={SOURCE_URL} target="_blank" rel="noopener noreferrer">

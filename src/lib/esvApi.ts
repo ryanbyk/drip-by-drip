@@ -1,14 +1,13 @@
 import { ESV_COPYRIGHT } from "../domain/esv";
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "./supabaseConfig";
 
 /**
- * Personal ESV API client.
- * The key is sent only as an Authorization header. Do not log it, put it in
- * the query string, or persist it anywhere except the StorageAdapter snapshot.
+ * In-app ESV client. Passage text comes from the esv-passage Edge Function.
+ * The browser sends the public anon key. It never sends a Crossway API token.
  */
 
-const TEXT_URL = "https://api.esv.org/v3/passage/text/";
-const HTML_URL = "https://api.esv.org/v3/passage/html/";
 const TIMEOUT_MS = 12_000;
+const PROBE_REFERENCE = "John 11:35";
 
 export type EsvFetcher = typeof fetch;
 
@@ -41,7 +40,7 @@ export type EsvFetchFailure = "unauthorized" | "empty" | "network" | "invalid";
 
 export type EsvFetchResult = { ok: true; passage: EsvPassage } | { ok: false; reason: EsvFetchFailure };
 
-export type EsvKeyCheck = "connected" | "invalid" | "unreachable";
+export type EsvAvailability = "available" | "unavailable" | "unreachable";
 
 type EsvPayload = {
   canonical?: unknown;
@@ -49,11 +48,11 @@ type EsvPayload = {
 };
 
 const cache = new Map<string, EsvPassage>();
-const rejectedKeys = new Set<string>();
+let proxyDown = false;
 
 export function resetEsvClientForTests(): void {
   cache.clear();
-  rejectedKeys.clear();
+  proxyDown = false;
 }
 
 export function esvQuery(reference: string): string {
@@ -64,67 +63,24 @@ export function cachedEsvPassage(reference: string): EsvPassage | null {
   return cache.get(esvQuery(reference)) ?? null;
 }
 
-export function esvKeyRejected(apiKey: string): boolean {
-  const id = fingerprint(apiKey.trim());
-  return id !== "" && rejectedKeys.has(id);
+/** True after the proxy rejects the client or cannot reach ESV, until a later success. */
+export function esvUnavailable(): boolean {
+  return proxyDown;
 }
 
-export async function validateEsvApiKey(apiKey: string, fetchImpl: EsvFetcher = fetch): Promise<EsvKeyCheck> {
-  const key = apiKey.trim();
-  if (!key) return "invalid";
-  const result = await esvRequest(
-    TEXT_URL,
-    {
-      q: "John 11:35",
-      "include-headings": "false",
-      "include-footnotes": "false",
-      "include-footnote-body": "false",
-      "include-verse-numbers": "false",
-      "include-first-verse-numbers": "false",
-      "include-passage-references": "false",
-      "include-short-copyright": "true",
-      "include-copyright": "false",
-    },
-    key,
-    fetchImpl,
-  );
-  if (!result.ok) return result.reason === "unauthorized" ? "invalid" : "unreachable";
-  if (!passageText(result.payload.passages)) return "invalid";
-  return "connected";
+export async function checkEsvAvailability(fetchImpl: EsvFetcher = fetch): Promise<EsvAvailability> {
+  const result = await esvRequest(PROBE_REFERENCE, fetchImpl, "text");
+  if (!result.ok) return result.reason === "network" ? "unreachable" : "unavailable";
+  if (!passageText(result.payload.passages)) return "unavailable";
+  return "available";
 }
 
-export async function fetchEsvPassage(
-  reference: string,
-  apiKey: string,
-  fetchImpl: EsvFetcher = fetch,
-): Promise<EsvFetchResult> {
+export async function fetchEsvPassage(reference: string, fetchImpl: EsvFetcher = fetch): Promise<EsvFetchResult> {
   const query = esvQuery(reference);
-  const key = apiKey.trim();
-  if (!query || !key) return { ok: false, reason: "invalid" };
+  if (!query) return { ok: false, reason: "invalid" };
   const cached = cache.get(query);
   if (cached) return { ok: true, passage: cached };
-  const result = await esvRequest(
-    HTML_URL,
-    {
-      q: query,
-      "include-headings": "true",
-      "include-footnotes": "false",
-      "include-footnote-body": "false",
-      "include-verse-numbers": "true",
-      "include-first-verse-numbers": "true",
-      "include-chapter-numbers": "true",
-      "include-passage-references": "false",
-      "include-audio-link": "false",
-      "include-short-copyright": "false",
-      "include-copyright": "true",
-      "include-subheadings": "true",
-      "include-crossrefs": "false",
-      "inline-styles": "false",
-      "wrapping-div": "false",
-    },
-    key,
-    fetchImpl,
-  );
+  const result = await esvRequest(query, fetchImpl);
   if (!result.ok) return result;
   const html = passageText(result.payload.passages);
   if (!html) return { ok: false, reason: "empty" };
@@ -182,54 +138,43 @@ function hasVerseText(passage: EsvPassage): boolean {
 }
 
 async function esvRequest(
-  endpoint: string,
-  params: Record<string, string>,
-  apiKey: string,
+  query: string,
   fetchImpl: EsvFetcher,
+  format?: "text",
 ): Promise<{ ok: true; payload: EsvPayload } | { ok: false; reason: EsvFetchFailure }> {
-  const url = new URL(endpoint);
-  for (const [name, value] of Object.entries(params)) url.searchParams.set(name, value);
+  const url = new URL("/functions/v1/esv-passage", SUPABASE_URL);
+  url.searchParams.set("q", query);
+  if (format === "text") url.searchParams.set("format", "text");
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     const response = await fetchImpl(url, {
       method: "GET",
       headers: {
-        Authorization: `Token ${apiKey}`,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        apikey: SUPABASE_ANON_KEY,
         Accept: "application/json",
       },
       signal: controller.signal,
     });
-    if (response.status === 401 || response.status === 403) {
-      rememberKey(apiKey, false);
+    if (
+      response.status === 401 ||
+      response.status === 403 ||
+      response.status === 502 ||
+      response.status === 503
+    ) {
+      proxyDown = true;
       return { ok: false, reason: "unauthorized" };
     }
     if (!response.ok) return { ok: false, reason: "invalid" };
     const payload = (await response.json()) as EsvPayload;
-    rememberKey(apiKey, true);
+    proxyDown = false;
     return { ok: true, payload };
   } catch {
     return { ok: false, reason: "network" };
   } finally {
     clearTimeout(timer);
   }
-}
-
-function rememberKey(apiKey: string, accepted: boolean): void {
-  const id = fingerprint(apiKey.trim());
-  if (!id) return;
-  if (accepted) rejectedKeys.delete(id);
-  else rejectedKeys.add(id);
-}
-
-function fingerprint(key: string): string {
-  if (!key) return "";
-  let hash = 2166136261;
-  for (let index = 0; index < key.length; index += 1) {
-    hash ^= key.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0).toString(16);
 }
 
 function parseRuns(inner: string): EsvRun[] {
@@ -316,6 +261,10 @@ function isCopyright(cls: string, text: string): boolean {
 
 function preferCopyright(current: string, next: string): string {
   if (!next) return current;
+  // The HTML endpoint sends the Crossway permission line, then a separate
+  // adaptation note that also says "English Standard Version". Keep the
+  // Crossway line once we have it.
+  if (/crossway/i.test(current) && !/crossway/i.test(next)) return current;
   if (/crossway|english standard version/i.test(next)) return next;
   return current || next;
 }

@@ -5,65 +5,67 @@ import {
   normalizeBiblePrefs,
   passageLink,
 } from "../domain/bibleSource";
-import { ESV_SIGNUP_URL, maskEsvKey } from "../domain/esv";
 import type { BibleSourceId } from "../domain/types";
-import { validateEsvApiKey } from "../lib/esvApi";
+import { checkEsvAvailability } from "../lib/esvApi";
 import { useApp } from "../state/AppState";
-import { ArrowUpRight, Check, ChevronLeft, ChevronRight, CircleCheck, KeyRound, Languages } from "../components/Icons";
+import { Check, ChevronLeft, ChevronRight, Languages } from "../components/Icons";
 import { Sheet } from "../components/ui";
 
-type EsvKeyStatus = "empty" | "checking" | "connected" | "invalid" | "stored";
+type PinnedReach = "available" | "unavailable" | "offline";
+type LiveReach = "ready" | "unavailable" | "offline";
 
 export function BibleSource({
   onBack,
-  keyStatus,
+  reach,
 }: {
   onBack: () => void;
-  /** Storybook can pin the badge so the frame does not call the ESV API. */
-  keyStatus?: EsvKeyStatus;
+  /** Storybook can pin reach so the frame does not call the ESV proxy. */
+  reach?: PinnedReach;
 }) {
   const { snapshot, setPrefs, online } = useApp();
   const prefs = normalizeBiblePrefs(snapshot.prefs);
   const [pickingTranslation, setPickingTranslation] = useState(false);
-  const [editingKey, setEditingKey] = useState(false);
-  const [keyDraft, setKeyDraft] = useState("");
-  const [status, setStatus] = useState<EsvKeyStatus>(keyStatus ?? "empty");
+  const [liveReach, setLiveReach] = useState<LiveReach>(reach ? pinnedReach(reach) : "ready");
   const patternRef = useRef<HTMLInputElement>(null);
-  const keyRef = useRef<HTMLInputElement>(null);
   const focusPattern = useRef(false);
   const sample = passageLink("Mark 4", { ...prefs, bibleSource: "custom" });
 
   useEffect(() => {
-    if (!editingKey) return;
-    keyRef.current?.focus();
-  }, [editingKey]);
-
-  useEffect(() => {
-    if (keyStatus) {
-      setStatus(keyStatus);
+    if (reach) {
+      setLiveReach(pinnedReach(reach));
       return;
     }
-    const key = prefs.esvApiKey.trim();
-    if (!key) {
-      setStatus("empty");
+    if (!prefs.showInAppEsv) {
+      setLiveReach("ready");
       return;
     }
     if (!online) {
-      setStatus("stored");
+      setLiveReach("offline");
       return;
     }
     let cancelled = false;
-    setStatus("checking");
-    void validateEsvApiKey(key).then((result) => {
+    void checkEsvAvailability().then((result) => {
       if (cancelled) return;
-      if (result === "connected") setStatus("connected");
-      else if (result === "invalid") setStatus("invalid");
-      else setStatus("stored");
+      switch (result) {
+        case "available":
+          setLiveReach("ready");
+          return;
+        case "unreachable":
+          setLiveReach("offline");
+          return;
+        case "unavailable":
+          setLiveReach("unavailable");
+          return;
+        default: {
+          const exhaustive: never = result;
+          return exhaustive;
+        }
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [keyStatus, online, prefs.esvApiKey]);
+  }, [reach, online, prefs.showInAppEsv]);
 
   useEffect(() => {
     if (prefs.bibleSource !== "custom" || !focusPattern.current) return;
@@ -77,22 +79,7 @@ export function BibleSource({
   }
 
   function toggleInApp() {
-    const next = !prefs.showInAppEsv;
-    setPrefs({ showInAppEsv: next });
-    if (next && !prefs.esvApiKey) setEditingKey(true);
-  }
-
-  function commitKey() {
-    const next = keyDraft.trim();
-    setEditingKey(false);
-    setKeyDraft("");
-    if (next) setPrefs({ esvApiKey: next });
-  }
-
-  function removeKey() {
-    setPrefs({ esvApiKey: "" });
-    setKeyDraft("");
-    setEditingKey(false);
+    setPrefs({ showInAppEsv: !prefs.showInAppEsv });
   }
 
   return (
@@ -182,7 +169,7 @@ export function BibleSource({
           <div className="esv-stub-row">
             <span className="source-copy">
               <strong>Show ESV text in the app</strong>
-              <span className="source-detail">Uses your own ESV API key</span>
+              <span className="source-detail">{inAppDetail(prefs.showInAppEsv, liveReach)}</span>
             </span>
             <button
               type="button"
@@ -190,65 +177,17 @@ export function BibleSource({
               role="switch"
               aria-checked={prefs.showInAppEsv}
               aria-label="Show ESV text in the app"
-              aria-describedby="esv-key-note"
+              aria-describedby="esv-note"
               onClick={toggleInApp}
             >
               <span />
             </button>
           </div>
-          {prefs.showInAppEsv ? (
-            <>
-              <div className="esv-key">
-                <span id="esv-key-label">API key</span>
-                <div className="esv-key-box">
-                  <KeyRound size={16} aria-hidden="true" />
-                  {editingKey || !prefs.esvApiKey ? (
-                    <input
-                      ref={keyRef}
-                      type="password"
-                      value={keyDraft}
-                      placeholder={prefs.esvApiKey ? "Paste a new key" : "Paste your API key"}
-                      autoComplete="off"
-                      autoCapitalize="off"
-                      autoCorrect="off"
-                      spellCheck={false}
-                      aria-labelledby="esv-key-label"
-                      aria-invalid={status === "invalid"}
-                      onChange={(event) => setKeyDraft(event.target.value)}
-                      onBlur={commitKey}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") event.currentTarget.blur();
-                      }}
-                    />
-                  ) : (
-                    <button type="button" className="esv-key-mask" aria-label="Replace API key" onClick={() => setEditingKey(true)}>
-                      {maskEsvKey(prefs.esvApiKey)}
-                    </button>
-                  )}
-                  {editingKey ? null : <KeyStatus status={status} />}
-                </div>
-              </div>
-              {editingKey && prefs.esvApiKey ? (
-                <button
-                  type="button"
-                  className="esv-remove"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={removeKey}
-                >
-                  Remove key
-                </button>
-              ) : null}
-              <a className="esv-signup" href={ESV_SIGNUP_URL} target="_blank" rel="noopener noreferrer">
-                Get a free key at api.esv.org
-                <ArrowUpRight size={13} aria-hidden="true" />
-              </a>
-            </>
-          ) : null}
         </div>
       </section>
-      <p id="esv-key-note" className="footnote">
-        Your key is stored only on this device. ESV text © Crossway, shown under the ESV API terms for personal,
-        non-commercial use. Without a key, passages open in your chosen source.
+      <p id="esv-note" className="footnote">
+        ESV text © Crossway, shown under the ESV API terms for personal, non-commercial use. The key is held on the
+        server, not on this device. If the text can’t load, Open passage uses the source you chose.
       </p>
       {pickingTranslation ? (
         <Sheet title="Translation" onClose={() => setPickingTranslation(false)}>
@@ -282,25 +221,32 @@ export function BibleSource({
   );
 }
 
-function KeyStatus({ status }: { status: EsvKeyStatus }) {
-  switch (status) {
-    case "empty":
-      return null;
-    case "checking":
-      return <span className="esv-status">Checking</span>;
-    case "connected":
-      return (
-        <span className="esv-connected">
-          <CircleCheck size={14} aria-hidden="true" />
-          Connected
-        </span>
-      );
-    case "invalid":
-      return <span className="esv-status is-invalid">Check key</span>;
-    case "stored":
-      return <span className="esv-status">On device</span>;
+function inAppDetail(showInApp: boolean, reach: LiveReach): string {
+  if (!showInApp) return "Today’s passage, in the app";
+  switch (reach) {
+    case "ready":
+      return "Today’s passage, in the app";
+    case "unavailable":
+      return "Unavailable right now";
+    case "offline":
+      return "Needs a connection";
     default: {
-      const exhaustive: never = status;
+      const exhaustive: never = reach;
+      return exhaustive;
+    }
+  }
+}
+
+function pinnedReach(reach: PinnedReach): LiveReach {
+  switch (reach) {
+    case "available":
+      return "ready";
+    case "unavailable":
+      return "unavailable";
+    case "offline":
+      return "offline";
+    default: {
+      const exhaustive: never = reach;
       return exhaustive;
     }
   }
