@@ -37,11 +37,13 @@ const localStorageAdapter = createLocalStorageAdapter();
 export function AppProvider({
   children,
   storage = localStorageAdapter,
+  initialSnapshot,
 }: {
   children: ReactNode;
   storage?: StorageAdapter;
+  initialSnapshot?: Snapshot;
 }) {
-  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(initialSnapshot ?? null);
   const [today, setToday] = useState(localDate);
   const [online, setOnline] = useState(() => navigator.onLine);
   const [toast, setToast] = useState<string | null>(null);
@@ -49,6 +51,7 @@ export function AppProvider({
   const [standalone, setStandalone] = useState(false);
 
   useEffect(() => {
+    if (initialSnapshot) return;
     let cancelled = false;
     void storage.load().then((loaded) => {
       if (!cancelled) setSnapshot(loaded);
@@ -56,7 +59,7 @@ export function AppProvider({
     return () => {
       cancelled = true;
     };
-  }, [storage]);
+  }, [storage, initialSnapshot]);
 
   const appearance = snapshot?.prefs.appearance;
   useEffect(() => {

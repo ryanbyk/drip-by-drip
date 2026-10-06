@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import type { Preview } from "@storybook/react-vite";
 import "@fontsource/inter/latin-400.css";
 import "@fontsource/inter/latin-500.css";
@@ -11,6 +11,9 @@ import "../src/index.css";
 
 function ThemeFrame({ theme, children }: { theme: "light" | "dark"; children: ReactNode }) {
   document.documentElement.dataset.theme = theme;
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
   return children;
 }
 

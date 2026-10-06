@@ -93,7 +93,7 @@ export function Settings() {
         <p className="soft">{reminderCopy(snapshot.prefs.notificationState, snapshot.prefs.notificationsEnabled, ios && !standalone)}</p>
       </section>
       <section className="settings-group">
-        <p className="eyebrow">What you’re reading</p>
+        <p className="eyebrow">Reading</p>
         <div className="settings-card">
           <button type="button" className="settings-row" onClick={() => setEditingBook(true)}>
             <BookOpen className="row-icon" size={18} aria-hidden="true" />

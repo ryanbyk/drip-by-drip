@@ -6,7 +6,7 @@ import { isPlaceFinished } from "../../domain/drip";
 import { currentStreak, longestStreak, powerOfFour } from "../../domain/streaks";
 import { suggestedNext } from "../../domain/suggestions";
 import { useApp } from "../../state/AppState";
-import { Check, NotebookPen } from "../../components/Icons";
+import { Bookmark, Check, NotebookPen } from "../../components/Icons";
 import { BookPicker, Button, Sheet } from "../../components/ui";
 
 export function DoneView() {
@@ -133,8 +133,19 @@ function NoteSummary() {
           </span>
           <strong>{day?.reflection ? "Your note" : "Add a note"}</strong>
           {day?.huh ? <span className="huh">Huh?</span> : null}
+          {day?.reflection ? <span className="note-edit-link">Edit</span> : null}
         </span>
         <p className="note-snippet">{day?.reflection ?? "Huh? is welcome. A short note is optional."}</p>
+        {day?.verseTags && day.verseTags.length > 0 ? (
+          <span className="note-tags">
+            {day.verseTags.map((tag) => (
+              <span key={tag} className="verse-tag">
+                <Bookmark size={11} aria-hidden="true" />
+                {tag}
+              </span>
+            ))}
+          </span>
+        ) : null}
       </button>
     );
   }

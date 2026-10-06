@@ -4,7 +4,6 @@ import { parseLocalDate } from "../../domain/dates";
 import { passageLink } from "../../domain/bibleSource";
 import type { ResolvedPassage } from "../../domain/resolve";
 import { activePlace } from "../../domain/resolve";
-import { detourIdeas } from "../../domain/suggestions";
 import { lastReadDate, showWelcomeBack, yesterdayDetour } from "../../domain/streaks";
 import { useApp } from "../../state/AppState";
 import {
@@ -16,7 +15,6 @@ import {
   NotebookPen,
   Pencil,
   PenLine,
-  Plus,
   Sun,
 } from "../../components/Icons";
 import { OpenPassageLink } from "../../components/OpenPassageLink";
@@ -62,14 +60,29 @@ export function PassageView({
     );
   }
 
+  const welcome =
+    passage.kind === "book" &&
+    showWelcomeBack(snapshot.days, today, snapshot.prefs.planStartDate) &&
+    !yesterdayDetour(snapshot.days, today);
+  const passageClass = passage.kind === "plan" ? "passage passage-plan" : welcome ? "passage passage-welcome" : "passage";
+  const note = snapshot.days[today]?.note?.trim();
+
   return (
-    <div className="passage">
-      <div className="nav-row">
-        <p className="commit-tag">
-          <Check size={14} aria-hidden="true" />
-          You said yes
-        </p>
-      </div>
+    <div className={passageClass}>
+      {passage.kind === "plan" ? (
+        <div className="nav-row is-centered">
+          <p className="nav-title">
+            Day {passage.dayIndex} of {passage.planLength}
+          </p>
+        </div>
+      ) : (
+        <div className="nav-row">
+          <p className="commit-tag">
+            <Check size={14} aria-hidden="true" />
+            You said yes
+          </p>
+        </div>
+      )}
       {passage.kind === "book" ? (
         <BookPassage
           passage={passage}
@@ -82,14 +95,18 @@ export function PassageView({
           onAdjust={onAdjust}
           onChangeBook={onChangeBook}
           onDetour={onDetour}
-          onUseDetour={onUseDetour}
           onReflect={onReflect}
           onRead={onRead}
-          today={today}
-          days={snapshot.days}
         />
       ) : (
-        <PlanBody passage={passage} onPlanRef={onPlanRef} online={online} onRead={onRead} onReflect={onReflect} />
+        <PlanBody
+          passage={passage}
+          note={note}
+          onPlanRef={onPlanRef}
+          online={online}
+          onRead={onRead}
+          onReflect={onReflect}
+        />
       )}
     </div>
   );
@@ -106,11 +123,8 @@ function BookPassage({
   onAdjust,
   onChangeBook,
   onDetour,
-  onUseDetour,
   onReflect,
   onRead,
-  today,
-  days,
 }: {
   passage: Extract<ResolvedPassage, { kind: "book" }>;
   bookName: string;
@@ -122,17 +136,11 @@ function BookPassage({
   onAdjust: () => void;
   onChangeBook: () => void;
   onDetour: () => void;
-  onUseDetour: (ref: string) => void;
   onReflect: () => void;
   onRead: () => void;
-  today: string;
-  days: Parameters<typeof detourIdeas>[1];
 }) {
-  const { snapshot } = useApp();
-  const link = passageLink(passage.ref, snapshot.prefs);
   const total = getBook(passage.range.bookId)?.verses.length ?? 1;
   const progress = Math.min(100, Math.round((passage.range.startChapter / total) * 100));
-  const shorts = detourIdeas(today, days).filter((item) => item.group === "short");
   const returned = Boolean(returnedRef);
   const greeting = welcome && !returned;
   const eyebrow = returned ? `Back to ${bookName}` : greeting ? "Welcome back" : "Pick up where you left off";
@@ -186,22 +194,6 @@ function BookPassage({
           </button>
         </div>
       </article>
-      {!greeting ? (
-        <div className="chip-block">
-          <p>Or a short drip today</p>
-          <div className="chips">
-            {shorts.map((item) => (
-              <button key={item.ref} type="button" className="chip" onClick={() => onUseDetour(item.ref)}>
-                {item.ref}
-              </button>
-            ))}
-            <button type="button" className="chip" onClick={onDetour}>
-              <Plus size={14} aria-hidden="true" /> Other…
-            </button>
-          </div>
-          <p className="caption">Your place in {bookName} stays saved.</p>
-        </div>
-      ) : null}
       <button type="button" className="reflect-row" onClick={onReflect}>
         <span className="note-icon" aria-hidden="true">
           <NotebookPen size={16} />
@@ -217,9 +209,6 @@ function BookPassage({
         <Button className="btn-yes" data-testid="mark-read" onClick={onRead}>
           I read it
         </Button>
-        <p className="caption">
-          {online ? link.detail : "You’re offline. The passage link waits until you’re back — your place is saved here."}
-        </p>
       </div>
     </>
   );
@@ -227,32 +216,41 @@ function BookPassage({
 
 function PlanBody({
   passage,
+  note,
   onPlanRef,
   online,
   onRead,
   onReflect,
 }: {
   passage: Extract<ResolvedPassage, { kind: "plan" }>;
+  note?: string;
   onPlanRef: (ref: string) => void;
   online: boolean;
   onRead: () => void;
   onReflect: () => void;
 }) {
+  const { snapshot } = useApp();
+  const link = passageLink(passage.ref, snapshot.prefs);
   const [draft, setDraft] = useState(passage.ref);
   useEffect(() => setDraft(passage.ref), [passage.ref]);
+  const commit = note ? `You said yes · ${note.toLowerCase()}` : "You said yes";
   return (
     <>
       <div className="passage-copy">
-        <p className="kicker">
-          Day {passage.dayIndex} of {passage.planLength}
+        <p className="commit-tag">
+          <Check size={14} aria-hidden="true" />
+          {commit}
         </p>
-        {passage.title ? <p className="meta">{passage.title}</p> : null}
+        <p className="kicker">Today’s drip</p>
         <h1 className="display-52">{passage.ref}</h1>
+        {passage.title ? <p className="day-title">{passage.title}</p> : null}
         {passage.prompt ? (
-          <p className="prompt">
-            <span className="kicker">As you read</span>
-            {passage.prompt}
-          </p>
+          <div className="prompt">
+            <div className="prompt-body">
+              <span className="kicker">As you read</span>
+              <p className="prompt-copy">{passage.prompt}</p>
+            </div>
+          </div>
         ) : null}
         <label className="field">
           <span>Or enter the reading you already follow</span>
@@ -282,6 +280,9 @@ function PlanBody({
         <Button className="btn-yes" data-testid="mark-read" onClick={onRead}>
           I read it
         </Button>
+        <p className="caption">
+          {online ? link.detail : "You’re offline. The passage link waits until you’re back — your place is saved here."}
+        </p>
       </div>
     </>
   );
