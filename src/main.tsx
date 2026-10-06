@@ -21,10 +21,10 @@ if (!root) throw new Error("Missing root");
 
 createRoot(root).render(
   <StrictMode>
-    <AppProvider>
-      <AuthProvider>
+    <AuthProvider>
+      <AppProvider>
         <App />
-      </AuthProvider>
-    </AppProvider>
+      </AppProvider>
+    </AuthProvider>
   </StrictMode>,
 );

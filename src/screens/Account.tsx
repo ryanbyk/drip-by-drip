@@ -158,7 +158,7 @@ export function Account({ onBack }: { onBack: () => void }) {
       </section>
       {syncOpen ? (
         <Sheet title="Sync" onClose={() => setSyncOpen(false)}>
-          <p>Coming with sync. Your reading and notes stay on this device until then.</p>
+          <p>On, this account keeps your reading, plan, and notes. Off, changes stay on this device.</p>
           <div className="settings-card">
             <div className="settings-row">
               <Cloud className="row-icon" size={18} aria-hidden="true" />
@@ -179,7 +179,7 @@ export function Account({ onBack }: { onBack: () => void }) {
       ) : null}
       {confirmDelete ? (
         <Sheet title="Delete account?" onClose={() => setConfirmDelete(false)}>
-          <p>This deletes your sign-in and profile. Reading and notes on this device stay here.</p>
+          <p>This deletes your sign-in, profile, and the reading stored with this account. A copy stays on this device.</p>
           <div className="footer">
             <Button className="btn-caution" onClick={() => void removeAccount()} disabled={deleting}>
               {deleting ? "Deleting…" : "Delete account"}

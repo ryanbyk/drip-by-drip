@@ -6,3 +6,4 @@ dist
 coverage
 storybook-static
 *storybook.log
+supabase/.temp/

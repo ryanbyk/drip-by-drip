@@ -41,13 +41,15 @@ Screens and the app store never call `localStorage` or IndexedDB themselves. The
 
 v1 uses `createLocalStorageAdapter()`. It writes one snapshot to IndexedDB and keeps a localStorage copy; if the two disagree, the newer `updatedAt` wins. An account is optional. Skipping sign-in leaves reading, notes, and reminders on this device, same as before.
 
-To sync later, implement the same `StorageAdapter` and pass it to `AppProvider`. `SupabaseStorageAdapter` (`src/lib/storage/supabase.ts`) is still a stub: it documents the table shape and throws if called. Sign-in uses Supabase Auth, but it does not upload the snapshot.
+Signed in, with Sync on, the app also stores that same snapshot in `public.user_snapshots` (one row per account). On sign-in it keeps whichever copy has the newer `updatedAt`. Guests never call that table. `SupabaseStorageAdapter` (`src/lib/storage/supabase.ts`) is the cloud `StorageAdapter` for that row. The running app still passes the local adapter to `AppProvider` and syncs beside it, so the two implementations stay swappable.
 
 ## Optional sign-in
 
-Open Settings and tap **Sign in**. You can continue with Apple, Google, or an email magic link, or tap **Keep using without an account**. After a magic link or OAuth return, the app reads the session from the URL and opens Account. Sign out is a real Supabase session. Sync is not on yet: the Sync switch only remembers On or Off on this device, and export downloads the local snapshot as JSON.
+Open Settings and tap **Sign in**. You can continue with Apple, Google, or an email magic link, or tap **Keep using without an account**. After a magic link or OAuth return, the app reads the session from the URL and opens Account. Sign out is a real Supabase session. Export downloads the snapshot on this device as JSON.
 
-Delete account calls the `delete-account` Edge Function, which deletes that auth user with the service role on the server. The service role is not in the app.
+Sync defaults to on. The Account switch stores that choice on this device (`drip-by-drip.sync-enabled`). While it is on, sign-in pulls the account snapshot when it is newer than this device (or this device has never saved), and later edits push this device’s snapshot. Turning Sync off stops those reads and writes; the account row is left as it was. The app assumes one primary device, so the newer `updatedAt` wins and there is no merge screen. This device also remembers which account last synced (`drip-by-drip.snapshot-owner`) so a different sign-in does not upload the previous account’s reading.
+
+Delete account calls the `delete-account` Edge Function, which deletes that auth user with the service role on the server. The service role is not in the app. Deleting the auth user also deletes that user’s snapshot row. Reading on this device stays here.
 
 ### Supabase dashboard
 
@@ -70,6 +72,8 @@ The app sends people back to the current origin plus the Vite base (`/drip-by-dr
 - Apple: enable the provider and paste the Services ID, Team ID, Key ID, and private key. Apple’s return URL is that same Supabase callback.
 
 Display names live in `public.profiles` (one row per auth user, RLS so a person can read and update only their own row). A private trigger creates the row when someone signs up.
+
+Reading sync lives in `public.user_snapshots` (`user_id` primary key, `payload` jsonb, `updated_at` timestamptz). RLS lets the signed-in user select, insert, and update only their own row. `anon` has no grants. The client uses the public anon key already in `src/lib/supabaseConfig.ts`. No new Auth URL or provider settings are required for sync.
 
 ## Docs
 
