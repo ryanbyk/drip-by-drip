@@ -45,7 +45,7 @@ Signed in, with Sync on, the app also stores that same snapshot in `public.user_
 
 ## Optional sign-in
 
-Open Settings and tap **Sign in**. You can continue with Apple, Google, or an email magic link, or tap **Keep using without an account**. After a magic link or OAuth return, the app reads the session from the URL and opens Account. Sign out is a real Supabase session. Export downloads the snapshot on this device as JSON.
+Open Settings and tap **Sign in**. Sign in with an email magic link, or tap **Keep using without an account**. After a magic link or an OAuth return, the app reads the session from the URL and opens Account. Sign out is a real Supabase session. Export downloads the snapshot on this device as JSON.
 
 Sync defaults to on. The Account switch stores that choice on this device (`drip-by-drip.sync-enabled`). While it is on, sign-in pulls the account snapshot when it is newer than this device (or this device has never saved), and later edits push this device’s snapshot. Turning Sync off stops those reads and writes; the account row is left as it was. The app assumes one primary device, so the newer `updatedAt` wins and there is no merge screen. This device also remembers which account last synced (`drip-by-drip.snapshot-owner`) so a different sign-in does not upload the previous account’s reading.
 
@@ -67,9 +67,11 @@ The app sends people back to the current origin plus the Vite base (`/drip-by-dr
 
 **Authentication → Providers**
 
-- Email: leave magic link enabled.
+- Email: leave magic link enabled. The sign-in screen shows this path only.
 - Google: enable the provider and paste the Google OAuth client ID and secret. In Google Cloud, the authorized redirect URI is `https://gfacmaaehvlhbskrajyj.supabase.co/auth/v1/callback`.
 - Apple: enable the provider and paste the Services ID, Team ID, Key ID, and private key. Apple’s return URL is that same Supabase callback.
+
+The initial release hides the Apple and Google buttons (`socialSignInVisible` in `src/screens/SignIn.tsx`). Leave both providers enabled so those buttons can be shown again without new dashboard setup.
 
 Display names live in `public.profiles` (one row per auth user, RLS so a person can read and update only their own row). A private trigger creates the row when someone signs up.
 
