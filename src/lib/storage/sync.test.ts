@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Snapshot } from "../../domain/types";
-import { createSnapshot } from "../../state/reducer";
+import { createSnapshot, reducer } from "../../state/reducer";
 import {
   SNAPSHOT_OWNER_KEY,
   chooseSnapshot,
@@ -104,6 +104,29 @@ describe("syncAccountSnapshot", () => {
     expect(saved).toEqual([remoteSnap]);
     expect(readSnapshotOwner(owner)).toBe("user-a");
     expect(remote.writes).toEqual([]);
+  });
+
+  it("pushes a past day marked read with the bookmark it advanced", async () => {
+    const local = reducer(
+      reducer(createSnapshot(), {
+        type: "completeOnboarding",
+        today: "2026-10-06",
+        at: "2026-10-06T12:00:00.000Z",
+        mode: "book",
+        bookId: "mark",
+        dripSize: "chapter",
+        startChapter: 4,
+        askTime: "06:30",
+      }),
+      { type: "markPastRead", date: "2026-10-07", today: "2026-10-08", at: "2026-10-08T12:00:00.000Z" },
+    );
+    const remote = cloud(snap(1));
+    const owner = ownerStore("user-a");
+    const result = await syncAccountSnapshot(local, { userId: "user-a", enabled: true }, remote, owner, async () => true);
+    expect(result.failed).toBe(false);
+    expect(result.snapshot.days["2026-10-07"]?.readDone).toBe(true);
+    expect(remote.writes[0]?.days["2026-10-07"]?.passageRef).toBe("Mark 4");
+    expect(remote.writes[0]?.places.mark).toEqual({ bookId: "mark", chapter: 5, verse: 1 });
   });
 
   it("pushes a newer local snapshot and records the owner", async () => {

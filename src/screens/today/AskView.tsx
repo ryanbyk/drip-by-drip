@@ -25,7 +25,7 @@ export function AskView({ onYes, onNotToday }: { onYes: () => void; onNotToday: 
         <p className="kicker">Today’s question</p>
         <h1 className="display-48">{QBE_QUESTION}</h1>
         {reask ? (
-          <p className="ask-hint">Yesterday went by without an answer. No catching up — just today’s question.</p>
+          <p className="ask-hint">Yesterday went by without an answer. If you read, you can mark it in History.</p>
         ) : (
           <p className="ask-hint">Just a yes or a not today. Your answer is saved.</p>
         )}

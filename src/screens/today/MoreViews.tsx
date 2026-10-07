@@ -510,10 +510,24 @@ function buildPresets(range: Range): { label: string; range: Range }[] {
   return presets;
 }
 
-export function StopSheet({ onClose }: { onClose: () => void }) {
+export function StopSheet({
+  onClose,
+  range: rangeProp,
+  onFinish,
+  lead,
+  nextLabel = "Tomorrow’s drip",
+}: {
+  onClose: () => void;
+  /** Passage to finish. Defaults to today’s locked book drip. */
+  range?: Range;
+  /** When set, save this stop instead of finishing today. */
+  onFinish?: (stop: { chapter: number; verse: number }) => void;
+  lead?: string;
+  nextLabel?: string;
+}) {
   const { snapshot, today, dispatch } = useApp();
   const day = snapshot.days[today];
-  const range = day?.range;
+  const range = rangeProp ?? day?.range;
   const [mode, setMode] = useState<"all" | "part">("all");
   const [chapter, setChapter] = useState(range?.endChapter ?? 1);
   const [verse, setVerse] = useState(range?.endVerse ?? 1);
@@ -553,7 +567,7 @@ export function StopSheet({ onClose }: { onClose: () => void }) {
 
   return (
     <Sheet title="Where did you stop?" onClose={onClose}>
-      <p className="soft">So tomorrow picks up in the right place.</p>
+      <p className="soft">{lead ?? "So tomorrow picks up in the right place."}</p>
       <div className="choice-list">
         <button type="button" className={mode === "all" ? "choice is-active" : "choice"} onClick={() => setMode("all")}>
           <strong>Read all of it</strong>
@@ -609,14 +623,15 @@ export function StopSheet({ onClose }: { onClose: () => void }) {
         {finished
           ? `That finishes ${book?.name ?? "the book"}.`
           : upcoming
-            ? `Tomorrow’s drip: ${formatRef(upcoming)}`
+            ? `${nextLabel}: ${formatRef(upcoming)}`
             : "Your place is saved."}
       </p>
       <div className="footer">
         <Button
           disabled={!valid}
           onClick={() => {
-            dispatch({ type: "finish", today, at: new Date().toISOString(), stop });
+            if (onFinish) onFinish(stop);
+            else dispatch({ type: "finish", today, at: new Date().toISOString(), stop });
             onClose();
           }}
         >
