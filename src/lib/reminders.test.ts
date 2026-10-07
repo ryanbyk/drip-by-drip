@@ -10,6 +10,7 @@ import {
   scheduleTrigger,
   sendTestAskNotification,
   showAskNotification,
+  showGraceNotification,
 } from "./reminders";
 
 type ShownOptions = NotificationOptions & { showTrigger?: { when: number } };
@@ -97,6 +98,23 @@ describe("ask notification", () => {
         tag: `qbe-${localDate()}`,
       }),
     );
+  });
+});
+
+describe("partner nudge notification", () => {
+  it("shows the grace note and leaves the daily question alone", async () => {
+    const { shown } = installNotifications({ worker: "registered" });
+    const body = "Thinking of you. How’s the Word today?";
+    await expect(showGraceNotification(body, "partner-nudge-1")).resolves.toBe(true);
+    expect(shown[0]?.options?.body).toBe(body);
+    expect(shown[0]?.options?.body).not.toBe(QBE_QUESTION);
+    expect(shown[0]?.options?.tag).toBe("partner-nudge-1");
+  });
+
+  it("stays quiet until notification permission was already granted", async () => {
+    const { shown } = installNotifications({ permission: "default" });
+    await expect(showGraceNotification("Thinking of you.", "partner-nudge-2")).resolves.toBe(false);
+    expect(shown).toHaveLength(0);
   });
 });
 

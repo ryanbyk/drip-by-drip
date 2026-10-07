@@ -28,26 +28,35 @@ import {
   Cloud,
   Droplet,
   ExternalLink,
+  HeartHandshake,
   RotateCcw,
   WaterDrop,
 } from "../components/Icons";
 import { AppearanceField, AskTimePicker, Button, Sheet } from "../components/ui";
+import { partnerSettingsValue } from "../domain/partner";
 import { initialsFor, profileHeading } from "../lib/auth";
 import { useAuth } from "../state/auth-context";
+import { usePartner } from "../state/partner-context";
 import { BibleSource } from "./BibleSource";
 import { Account } from "./Account";
+import { Partner } from "./Partner";
 import { ChangeBookSheet } from "./today/MoreViews";
 
 export function Settings({
   accountOpen = false,
   onAccountOpen = () => undefined,
+  partnerOpen = false,
+  onPartnerOpen = () => undefined,
   onSignIn = () => undefined,
 }: {
   accountOpen?: boolean;
   onAccountOpen?: (open: boolean) => void;
+  partnerOpen?: boolean;
+  onPartnerOpen?: (open: boolean) => void;
   onSignIn?: () => void;
 }) {
   const auth = useAuth();
+  const readingPartner = usePartner();
   const app = useApp();
   const { snapshot, today, dispatch, setPrefs, showToast, canInstall, standalone, promptInstall } = app;
   const place = activePlace(snapshot);
@@ -157,9 +166,16 @@ export function Settings({
     : `${book?.name ?? "Book"} · ch. ${place.chapter}`;
 
   if (editingSource) return <BibleSource onBack={() => setEditingSource(false)} />;
-  if (accountOpen && auth.status === "signed-in") return <Account onBack={() => onAccountOpen(false)} />;
+  if (partnerOpen && auth.status === "signed-in") return <Partner onBack={() => onPartnerOpen(false)} />;
+  if (accountOpen && auth.status === "signed-in") {
+    return <Account onBack={() => onAccountOpen(false)} onOpenPartner={() => onPartnerOpen(true)} />;
+  }
 
   const signedIn = auth.status === "signed-in" && auth.user ? auth.user : null;
+  const partnerLabel = partnerSettingsValue({
+    partnerName: readingPartner.partner?.displayName ?? null,
+    inviteOpen: Boolean(readingPartner.invite),
+  });
 
   return (
     <section className="screen screen-tabbed">
@@ -191,6 +207,20 @@ export function Settings({
           <ChevronRight className="chev" size={16} aria-hidden="true" />
         </button>
       )}
+      {signedIn ? (
+        <section className="settings-group">
+          <p className="eyebrow">Together</p>
+          <div className="settings-card">
+            <button type="button" className="settings-row" onClick={() => onPartnerOpen(true)}>
+              <HeartHandshake className="row-icon" size={18} aria-hidden="true" />
+              <span className="row-label">Reading partner</span>
+              <strong className="row-value">{partnerLabel}</strong>
+              <ChevronRight className="chev" size={16} aria-hidden="true" />
+            </button>
+          </div>
+          <p className="soft">One person. A gentle note. Never your answer or notes.</p>
+        </section>
+      ) : null}
       <section className="settings-group">
         <p className="eyebrow">Daily ask</p>
         <div className="settings-card">
