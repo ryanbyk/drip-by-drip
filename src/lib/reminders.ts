@@ -38,17 +38,31 @@ function askNotificationOptions(tag: string): NotificationOptions {
   };
 }
 
-export async function showAskNotification(tag = `qbe-${localDate()}`): Promise<boolean> {
+async function showAppNotification(options: NotificationOptions): Promise<boolean> {
   if (!notificationsSupported() || Notification.permission !== "granted") return false;
-  const title = ASK_NOTIFICATION_TITLE;
-  const options = askNotificationOptions(tag);
   const registration = await serviceWorkerRegistration();
   if (registration) {
-    await registration.showNotification(title, options);
+    await registration.showNotification(ASK_NOTIFICATION_TITLE, options);
     return true;
   }
-  new Notification(title, options);
+  new Notification(ASK_NOTIFICATION_TITLE, options);
   return true;
+}
+
+export async function showAskNotification(tag = `qbe-${localDate()}`): Promise<boolean> {
+  return showAppNotification(askNotificationOptions(tag));
+}
+
+/** A grace note from a partner. Does not ask for permission and never uses the daily question. */
+export async function showGraceNotification(body: string, tag: string): Promise<boolean> {
+  const trimmed = body.trim();
+  if (!trimmed) return false;
+  return showAppNotification({
+    body: trimmed,
+    tag,
+    icon: withBase("icons/icon-192.png"),
+    data: { href: withBase("") },
+  });
 }
 
 export type TestReminderResult = "sent" | "denied" | "dismissed" | "unsupported" | "failed";

@@ -12,6 +12,7 @@ import "@fontsource/roboto/latin-500.css";
 import { App } from "./App";
 import { AppProvider } from "./state/AppState";
 import { AuthProvider } from "./state/AuthState";
+import { PartnerProvider } from "./state/PartnerState";
 import "./index.css";
 
 registerSW({ immediate: true });
@@ -23,7 +24,9 @@ createRoot(root).render(
   <StrictMode>
     <AuthProvider>
       <AppProvider>
-        <App />
+        <PartnerProvider>
+          <App />
+        </PartnerProvider>
       </AppProvider>
     </AuthProvider>
   </StrictMode>,

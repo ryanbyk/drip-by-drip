@@ -4,6 +4,8 @@ import { TabBar } from "../components/ui";
 import type { Snapshot } from "../domain/types";
 import { AuthFixtureProvider } from "../state/AuthFixture";
 import type { AuthUser } from "../state/auth-context";
+import { PartnerFixtureProvider } from "../state/PartnerFixture";
+import type { PartnerValue } from "../state/partner-context";
 import { AppProvider } from "../state/AppState";
 import { createMemoryStorage } from "./memory";
 
@@ -11,15 +13,19 @@ export function StoryApp({
   snapshot,
   children,
   authUser = null,
+  partner,
 }: {
   snapshot: Snapshot;
   children: ReactNode;
   authUser?: AuthUser | null;
+  partner?: Partial<PartnerValue>;
 }) {
   const storage = useMemo(() => createMemoryStorage(snapshot), [snapshot]);
   return (
     <AppProvider storage={storage} initialSnapshot={snapshot}>
-      <AuthFixtureProvider user={authUser}>{children}</AuthFixtureProvider>
+      <AuthFixtureProvider user={authUser}>
+        <PartnerFixtureProvider value={partner}>{children}</PartnerFixtureProvider>
+      </AuthFixtureProvider>
     </AppProvider>
   );
 }

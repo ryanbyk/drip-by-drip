@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, ChevronLeft, ChevronRight, Cloud, Download, LogOut, Trash } from "../components/Icons";
+import { Camera, ChevronLeft, ChevronRight, Cloud, Download, HeartHandshake, LogOut, Trash } from "../components/Icons";
 import { Button, Sheet } from "../components/ui";
+import { partnerSettingsValue } from "../domain/partner";
 import { accountLine, initialsFor, profileHeading } from "../lib/auth";
 import { downloadSnapshot } from "../lib/exportData";
 import { useApp } from "../state/AppState";
 import { useAuth } from "../state/auth-context";
+import { usePartner } from "../state/partner-context";
 
-export function Account({ onBack }: { onBack: () => void }) {
+export function Account({ onBack, onOpenPartner }: { onBack: () => void; onOpenPartner?: () => void }) {
   const auth = useAuth();
+  const readingPartner = usePartner();
   const { snapshot, showToast, today } = useApp();
   const user = auth.user;
   const savedName = user?.displayName ?? "";
@@ -116,6 +119,23 @@ export function Account({ onBack }: { onBack: () => void }) {
           </p>
         ) : null}
       </div>
+      <section className="settings-group">
+        <p className="eyebrow">Together</p>
+        <div className="settings-card">
+          <button type="button" className="settings-row" onClick={onOpenPartner}>
+            <HeartHandshake className="row-icon" size={18} aria-hidden="true" />
+            <span className="row-label">Reading partner</span>
+            <strong className="row-value">
+              {partnerSettingsValue({
+                partnerName: readingPartner.partner?.displayName ?? null,
+                inviteOpen: Boolean(readingPartner.invite),
+              })}
+            </strong>
+            <ChevronRight className="chev" size={16} aria-hidden="true" />
+          </button>
+        </div>
+        <p className="soft">Unlink anytime. A partner never sees your answer or notes.</p>
+      </section>
       <section className="settings-group">
         <p className="eyebrow">Data</p>
         <div className="settings-card">

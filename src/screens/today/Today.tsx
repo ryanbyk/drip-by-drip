@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { normalizeBiblePrefs } from "../../domain/bibleSource";
 import { esvReadMode } from "../../domain/esv";
 import type { ResolvedPassage } from "../../domain/resolve";
@@ -20,6 +20,7 @@ import {
   StopSheet,
 } from "./MoreViews";
 import { EsvReader } from "./EsvReader";
+import { PartnerBanner } from "../Partner";
 import { PassageView } from "./PassageView";
 import { RecapView } from "./RecapView";
 
@@ -95,32 +96,32 @@ export function Today({ onHistory }: { onHistory: () => void }) {
 
   if (intro === "dog") {
     return (
-      <section className="screen screen-tabbed">
+      <TodayFrame>
         <DogView onSkip={() => setIntro(null)} onContinue={() => setIntro(null)} />
-      </section>
+      </TodayFrame>
     );
   }
 
   if (mode === "reflect" && snapshot.days[today]?.answer === "yes" && !snapshot.days[today]?.readDone) {
     return (
-      <section className="screen screen-tabbed">
+      <TodayFrame>
         <ReflectView onKeep={() => setMode("read")} onRead={readIt} />
         {sheet === "stop" && passage.kind === "book" ? <StopSheet onClose={() => setSheet(null)} /> : null}
-      </section>
+      </TodayFrame>
     );
   }
 
   if (mode === "recap") {
     return (
-      <section className="screen screen-tabbed">
+      <TodayFrame>
         <RecapView onNext={() => setMode("read")} />
-      </section>
+      </TodayFrame>
     );
   }
 
   if (mode === "detour" && snapshot.days[today]?.answer === "yes" && !snapshot.days[today]?.readDone) {
     return (
-      <section className="screen screen-tabbed">
+      <TodayFrame>
         <DetourView
           onBack={() => {
             dispatch({ type: "clearDetour", today });
@@ -131,7 +132,7 @@ export function Today({ onHistory }: { onHistory: () => void }) {
           onRead={readIt}
           backup={backupLabel(snapshot)}
         />
-      </section>
+      </TodayFrame>
     );
   }
 
@@ -151,7 +152,7 @@ export function Today({ onHistory }: { onHistory: () => void }) {
   }
 
   return (
-    <section className="screen screen-tabbed">
+    <TodayFrame>
       {phase === "ask" || intro === "commit" ? (
         <AskView onYes={answerYes} onNotToday={answerNotToday} />
       ) : null}
@@ -200,6 +201,15 @@ export function Today({ onHistory }: { onHistory: () => void }) {
       ) : null}
       {sheet === "stop" && passage.kind === "book" ? <StopSheet onClose={() => setSheet(null)} /> : null}
       {sheet === "books" ? <ChangeBookSheet when={bookWhen} onClose={() => setSheet(null)} /> : null}
+    </TodayFrame>
+  );
+}
+
+function TodayFrame({ children }: { children: ReactNode }) {
+  return (
+    <section className="screen screen-tabbed">
+      <PartnerBanner />
+      {children}
     </section>
   );
 }
