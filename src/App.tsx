@@ -124,6 +124,11 @@ export function App() {
           partnerOpen={partnerOpen}
           onPartnerOpen={setPartnerOpen}
           onSignIn={() => setSigningIn(true)}
+          onSignedOut={() => {
+            setAccountOpen(false);
+            setPartnerOpen(false);
+            setSigningIn(true);
+          }}
         />
       ) : null}
       <TabBar tab={tab} onTab={selectTab} />

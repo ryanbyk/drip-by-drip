@@ -1,5 +1,11 @@
 import { FunctionsHttpError } from "@supabase/supabase-js";
-import { authRedirectUrl, emailCodeError, emailOtpType, fallbackDisplayName, type AuthProviderId } from "./auth";
+import {
+  authRedirectUrl,
+  emailOtpType,
+  fallbackDisplayName,
+  verifyEmailCodeAttempts,
+  type AuthProviderId,
+} from "./auth";
 import { supabase } from "./supabaseClient";
 
 export function currentRedirect(): string {
@@ -30,13 +36,11 @@ export function requestEmailCode(email: string): Promise<string | null> {
 }
 
 /** Checks the 6-digit code in this window and stores the session here. */
-export async function verifyEmailCode(email: string, token: string): Promise<string | null> {
-  const { error } = await supabase.auth.verifyOtp({
-    email,
-    token,
-    type: "email",
+export function verifyEmailCode(email: string, token: string): Promise<string | null> {
+  return verifyEmailCodeAttempts(async (type) => {
+    const { error } = await supabase.auth.verifyOtp({ email, token, type });
+    return error ? error.message : null;
   });
-  return error ? emailCodeError(error.message) : null;
 }
 
 export async function requestOAuth(provider: Extract<AuthProviderId, "apple" | "google">): Promise<string | null> {

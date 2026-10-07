@@ -50,12 +50,14 @@ export function Settings({
   partnerOpen = false,
   onPartnerOpen = () => undefined,
   onSignIn = () => undefined,
+  onSignedOut,
 }: {
   accountOpen?: boolean;
   onAccountOpen?: (open: boolean) => void;
   partnerOpen?: boolean;
   onPartnerOpen?: (open: boolean) => void;
   onSignIn?: () => void;
+  onSignedOut?: () => void;
 }) {
   const auth = useAuth();
   const readingPartner = usePartner();
@@ -197,7 +199,13 @@ export function Settings({
   if (editingSource) return <BibleSource onBack={() => setEditingSource(false)} />;
   if (partnerOpen && auth.status === "signed-in") return <Partner onBack={() => onPartnerOpen(false)} />;
   if (accountOpen && auth.status === "signed-in") {
-    return <Account onBack={() => onAccountOpen(false)} onOpenPartner={() => onPartnerOpen(true)} />;
+    return (
+      <Account
+        onBack={() => onAccountOpen(false)}
+        onSignedOut={onSignedOut}
+        onOpenPartner={() => onPartnerOpen(true)}
+      />
+    );
   }
 
   const signedIn = auth.status === "signed-in" && auth.user ? auth.user : null;

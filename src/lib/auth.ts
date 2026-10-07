@@ -60,10 +60,37 @@ export function isEmailCode(value: string): boolean {
 }
 
 export function emailCodeError(message: string): string {
-  if (/expired|invalid/i.test(message)) {
+  if (emailCodeFailureCanRetry(message)) {
     return "That code did not work. Request a new one and try again.";
   }
   return message;
+}
+
+/**
+ * First account creation stores a confirmation token. Signing in again after
+ * sign-out stores a recovery token. `email` matches both on current Auth;
+ * `magiclink` and `signup` cover a server that keeps those tokens separate.
+ */
+export const EMAIL_CODE_VERIFY_ORDER = ["email", "magiclink", "signup"] as const;
+
+export type EmailCodeVerifyType = (typeof EMAIL_CODE_VERIFY_ORDER)[number];
+
+export function emailCodeFailureCanRetry(message: string): boolean {
+  return /expired|invalid/i.test(message);
+}
+
+/** Tries the email code, then the returning-user and first-signup token types. */
+export async function verifyEmailCodeAttempts(
+  verify: (type: EmailCodeVerifyType) => Promise<string | null>,
+): Promise<string | null> {
+  let last: string | null = null;
+  for (const type of EMAIL_CODE_VERIFY_ORDER) {
+    const message = await verify(type);
+    if (!message) return null;
+    last = message;
+    if (!emailCodeFailureCanRetry(message)) break;
+  }
+  return last ? emailCodeError(last) : null;
 }
 
 export function authProviderId(provider: unknown): AuthProviderId {

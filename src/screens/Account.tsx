@@ -8,7 +8,16 @@ import { useApp } from "../state/AppState";
 import { useAuth } from "../state/auth-context";
 import { usePartner } from "../state/partner-context";
 
-export function Account({ onBack, onOpenPartner }: { onBack: () => void; onOpenPartner?: () => void }) {
+export function Account({
+  onBack,
+  onOpenPartner,
+  onSignedOut,
+}: {
+  onBack: () => void;
+  onOpenPartner?: () => void;
+  /** After a real sign-out, open sign-in again. Falls back to leaving Account. */
+  onSignedOut?: () => void;
+}) {
   const auth = useAuth();
   const readingPartner = usePartner();
   const { snapshot, showToast, today } = useApp();
@@ -53,7 +62,8 @@ export function Account({ onBack, onOpenPartner }: { onBack: () => void; onOpenP
       return;
     }
     showToast("Signed out. This device still has your reading.");
-    onBack();
+    if (onSignedOut) onSignedOut();
+    else onBack();
   }
 
   async function removeAccount() {
