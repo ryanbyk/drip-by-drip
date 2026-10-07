@@ -8,6 +8,9 @@ import { useAuth } from "../state/auth-context";
 
 const RESEND_SECONDS = 60;
 
+/** Initial release shows email only. Set to true to show Apple and Google again. */
+const socialSignInVisible: boolean = false;
+
 type SignInPreview = {
   email: string;
   linkSent?: boolean;
@@ -79,19 +82,23 @@ export function SignIn({ onSkip, preview }: { onSkip: () => void; preview?: Sign
         <h1>Keep your drips, on every device.</h1>
         <p>Optional. Sign in to sync, join a group, or read a church plan together. Your notes stay private.</p>
       </header>
-      <div className="auth-oauth">
-        <button type="button" className="btn btn-apple" onClick={() => void continueWith("apple")} disabled={oauth !== null}>
-          <AppleLogo />
-          {oauth === "apple" ? "Opening Apple…" : "Continue with Apple"}
-        </button>
-        <button type="button" className="btn btn-google" onClick={() => void continueWith("google")} disabled={oauth !== null}>
-          <GoogleLogo />
-          {oauth === "google" ? "Opening Google…" : "Continue with Google"}
-        </button>
-      </div>
-      <div className="auth-or" role="separator">
-        or
-      </div>
+      {socialSignInVisible ? (
+        <>
+          <div className="auth-oauth">
+            <button type="button" className="btn btn-apple" onClick={() => void continueWith("apple")} disabled={oauth !== null}>
+              <AppleLogo />
+              {oauth === "apple" ? "Opening Apple…" : "Continue with Apple"}
+            </button>
+            <button type="button" className="btn btn-google" onClick={() => void continueWith("google")} disabled={oauth !== null}>
+              <GoogleLogo />
+              {oauth === "google" ? "Opening Google…" : "Continue with Google"}
+            </button>
+          </div>
+          <div className="auth-or" role="separator">
+            or
+          </div>
+        </>
+      ) : null}
       <form
         className="auth-email"
         onSubmit={(event) => {
