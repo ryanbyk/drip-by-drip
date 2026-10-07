@@ -224,7 +224,7 @@ export function SignIn({ onSkip, preview }: { onSkip: () => void; preview?: Sign
             setError(null);
           }}
           onResend={() => void deliver(sentTo, "link")}
-          onUseCode={installed ? () => showOther("code") : undefined}
+          onUseCode={() => showOther("code")}
         />
       ) : null}
       {sentTo && sentMode === "code" ? (

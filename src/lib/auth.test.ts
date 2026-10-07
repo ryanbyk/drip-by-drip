@@ -7,7 +7,10 @@ import {
   alternateEmailSignIn,
   digitsFromEmailCode,
   emailCodeError,
+  emailCodeFailureCanRetry,
+  EMAIL_CODE_VERIFY_ORDER,
   emailOtpType,
+  verifyEmailCodeAttempts,
   emailSignInLabel,
   formatResendCountdown,
   initialsFor,
@@ -54,6 +57,30 @@ describe("auth helpers", () => {
       "That code did not work. Request a new one and try again.",
     );
     expect(emailCodeError("Email rate limit exceeded")).toBe("Email rate limit exceeded");
+    expect(emailCodeFailureCanRetry("Email link is invalid or has expired")).toBe(true);
+    expect(emailCodeFailureCanRetry("Email rate limit exceeded")).toBe(false);
+  });
+
+  it("checks a returning sign-in when the email token type does not match", async () => {
+    expect(EMAIL_CODE_VERIFY_ORDER).toEqual(["email", "magiclink", "signup"]);
+    const tried: string[] = [];
+    const signedIn = await verifyEmailCodeAttempts(async (type) => {
+      tried.push(type);
+      return type === "magiclink" ? null : "Token has expired or is invalid";
+    });
+    expect(signedIn).toBeNull();
+    expect(tried).toEqual(["email", "magiclink"]);
+
+    const stopped: string[] = [];
+    const limited = await verifyEmailCodeAttempts(async (type) => {
+      stopped.push(type);
+      return "Email rate limit exceeded";
+    });
+    expect(limited).toBe("Email rate limit exceeded");
+    expect(stopped).toEqual(["email"]);
+
+    const rejected = await verifyEmailCodeAttempts(async () => "Token has expired or is invalid");
+    expect(rejected).toBe("That code did not work. Request a new one and try again.");
   });
 
   it("accepts a normal email and rejects a blank one", () => {
