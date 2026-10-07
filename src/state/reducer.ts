@@ -2,6 +2,7 @@ import { normalizeBiblePrefs } from "../domain/bibleSource";
 import { getBook } from "../domain/books";
 import { startPlace } from "../domain/chapters";
 import { placeAfter, verseInRange } from "../domain/drip";
+import { describePastRead } from "../domain/pastRead";
 import { formatRef } from "../domain/refs";
 import { lockPassage } from "../domain/resolve";
 import {
@@ -44,6 +45,13 @@ export type Action =
       stop?: { chapter: number; verse: number };
       huh?: boolean;
       reflection?: string;
+    }
+  | {
+      type: "markPastRead";
+      date: string;
+      today: string;
+      at: string;
+      stop?: { chapter: number; verse: number };
     }
   | {
       type: "reading";
@@ -302,6 +310,36 @@ export function reducer(state: Snapshot, action: Action): Snapshot {
           },
         },
       });
+    }
+    case "markPastRead": {
+      const described = describePastRead(state, action.date, action.today);
+      if (!described) return state;
+      let places = state.places;
+      let advanced = false;
+      if (described.advance && described.range) {
+        const stop = action.stop ?? { chapter: described.range.endChapter, verse: described.range.endVerse };
+        if (!verseInRange(described.range, stop.chapter, stop.verse)) return state;
+        const nextPlace = keepCounted(
+          placeAfter(described.range.bookId, stop.chapter, stop.verse),
+          places[described.range.bookId],
+        );
+        places = { ...places, [described.range.bookId]: nextPlace };
+        advanced = true;
+      }
+      const day: DailyCommitment = {
+        ...described.day,
+        answer: "yes",
+        answeredAt: described.day.answeredAt ?? action.at,
+        readDone: true,
+        readDoneAt: action.at,
+      };
+      const next = touch({
+        ...state,
+        places,
+        days: { ...state.days, [action.date]: day },
+      });
+      if (advanced && described.range?.bookId === state.prefs.bookId) return relockToday(next, action.today);
+      return next;
     }
     case "reading": {
       const bookId = action.bookId ?? state.prefs.bookId;

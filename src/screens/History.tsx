@@ -1,19 +1,22 @@
 import { useMemo, useState } from "react";
 import { addDays, formatDayLabel, formatMonth, formatShortDay, monthGrid } from "../domain/dates";
+import { describePastRead } from "../domain/pastRead";
 import { currentStreak, longestStreak, markForDate, type DayMark } from "../domain/streaks";
 import type { DailyCommitment } from "../domain/types";
 import { useApp } from "../state/AppState";
 import { ChevronLeft, ChevronRight, NotebookPen } from "../components/Icons";
 import { OpenPassageLink } from "../components/OpenPassageLink";
 import { Button, Sheet } from "../components/ui";
+import { StopSheet } from "./today/MoreViews";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 export function History({ onOpenToday }: { onOpenToday: () => void }) {
-  const { snapshot, today, online } = useApp();
+  const { snapshot, today, online, dispatch } = useApp();
   const start = snapshot.prefs.planStartDate;
   const [cursor, setCursor] = useState(today);
   const [selected, setSelected] = useState<string | null>(null);
+  const [stopping, setStopping] = useState(false);
   const cells = useMemo(() => monthGrid(cursor), [cursor]);
   const streak = currentStreak(snapshot.days, today, start);
   const longest = longestStreak(snapshot.days, today, start);
@@ -21,6 +24,24 @@ export function History({ onOpenToday }: { onOpenToday: () => void }) {
   const recent = recentDays(start, today, snapshot.days);
   const selectedDay = selected ? snapshot.days[selected] : undefined;
   const selectedMark = selected ? markForDate(selected, today, start, selectedDay) : null;
+  const pastRead = selected ? describePastRead(snapshot, selected, today) : null;
+  const passageRef = selectedDay?.passageRef ?? pastRead?.day.passageRef;
+
+  function selectDay(iso: string) {
+    setStopping(false);
+    setSelected(iso);
+  }
+
+  function closeDay() {
+    setStopping(false);
+    setSelected(null);
+  }
+
+  function markRead(stop?: { chapter: number; verse: number }) {
+    if (!selected) return;
+    dispatch({ type: "markPastRead", date: selected, today, at: new Date().toISOString(), stop });
+    closeDay();
+  }
 
   return (
     <section className="screen screen-tabbed screen-gap-20">
@@ -72,7 +93,7 @@ export function History({ onOpenToday }: { onOpenToday: () => void }) {
               aria-label={`${formatDayLabel(cell.iso)}, ${labelFor(mark)}`}
               onClick={() => {
                 if (cell.iso === today) onOpenToday();
-                else setSelected(cell.iso);
+                else selectDay(cell.iso);
               }}
             >
               {Number(cell.iso.slice(8))}
@@ -96,7 +117,7 @@ export function History({ onOpenToday }: { onOpenToday: () => void }) {
               className="recent-row"
               onClick={() => {
                 if (item.mark === "today") onOpenToday();
-                else setSelected(item.iso);
+                else selectDay(item.iso);
               }}
             >
               <span className="recent-main">
@@ -115,27 +136,60 @@ export function History({ onOpenToday }: { onOpenToday: () => void }) {
           ))}
         </div>
       ) : null}
-      {selected && selectedMark ? (
-        <Sheet title={formatDayLabel(selected)} onClose={() => setSelected(null)}>
+      {selected && selectedMark && !stopping ? (
+        <Sheet title={formatDayLabel(selected)} onClose={closeDay}>
           <p className="meta">{labelFor(selectedMark)}</p>
-          {selectedDay?.passageRef ? <h2 className="sheet-ref">{selectedDay.passageRef}</h2> : null}
+          {passageRef ? <h2 className="sheet-ref">{passageRef}</h2> : null}
           {selectedDay?.prompt ? <p>{selectedDay.prompt}</p> : null}
           {selectedDay?.note ? <p className="soft">{selectedDay.note}</p> : null}
           {selectedDay?.reflection ? <p>{selectedDay.reflection}</p> : null}
           {selectedDay?.huh ? <p className="huh">Huh?</p> : null}
           {selectedMark === "not_today" ? <p>Rest day. The Word was still there.</p> : null}
           {selectedMark === "today" ? <p>Today is still open.</p> : null}
-          {selectedMark === "unanswered" ? <p>No answer that day.</p> : null}
-          {selectedDay?.passageRef && online ? (
-            <OpenPassageLink reference={selectedDay.passageRef} className="btn btn-quiet" />
+          {selectedMark === "unanswered" && !pastRead ? <p>No answer that day.</p> : null}
+          {pastRead ? (
+            <p className="soft">{markReadCopy(selected, today, selectedMark, pastRead.advance)}</p>
           ) : null}
-          <Button variant="text" onClick={() => setSelected(null)}>
-            Close
-          </Button>
+          <div className="footer">
+            {pastRead ? (
+              <Button
+                data-testid="history-mark-read"
+                onClick={() => {
+                  if (pastRead.advance && pastRead.range) setStopping(true);
+                  else markRead();
+                }}
+              >
+                I read it
+              </Button>
+            ) : null}
+            {passageRef && online ? <OpenPassageLink reference={passageRef} className="btn btn-quiet" /> : null}
+            <Button variant="text" onClick={closeDay}>
+              Close
+            </Button>
+          </div>
         </Sheet>
+      ) : null}
+      {stopping && pastRead?.range ? (
+        <StopSheet
+          range={pastRead.range}
+          lead="So the next drip picks up in the right place."
+          nextLabel="Next drip"
+          onClose={() => setStopping(false)}
+          onFinish={markRead}
+        />
       ) : null}
     </section>
   );
+}
+
+function markReadCopy(date: string, today: string, mark: DayMark, advance: boolean): string {
+  const lead =
+    mark === "yes"
+      ? "If you finished this reading, mark it here."
+      : date === addDays(today, -1)
+        ? "If you read yesterday, mark it here."
+        : "If you read, mark it here.";
+  return advance ? `${lead} Today’s suggestion moves on with you.` : lead;
 }
 
 function labelFor(mark: DayMark): string {
