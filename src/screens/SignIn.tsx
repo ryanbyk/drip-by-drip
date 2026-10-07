@@ -4,7 +4,7 @@ import { AppleLogo, GoogleLogo } from "../components/AuthIcons";
 import { Mail, MailCheck, WaterDrop } from "../components/Icons";
 import { Button, Sheet } from "../components/ui";
 import {
-  EMAIL_CODE_LENGTH,
+  EMAIL_CODE_MAX_LENGTH,
   digitsFromEmailCode,
   formatResendCountdown,
   alternateEmailSignIn,
@@ -106,7 +106,7 @@ export function SignIn({ onSkip, preview }: { onSkip: () => void; preview?: Sign
     if (!sentTo || verifyLock.current) return;
     const next = digitsFromEmailCode(raw);
     if (!isEmailCode(next)) {
-      setError("Enter the 6-digit code from the email.");
+      setError("Enter the code from your email.");
       return;
     }
     if (preview) return;
@@ -239,7 +239,8 @@ export function SignIn({ onSkip, preview }: { onSkip: () => void; preview?: Sign
           onCode={(next) => {
             setCode(next);
             setError(null);
-            if (next.length === EMAIL_CODE_LENGTH) void verify(next);
+            // The longest code submits itself. A shorter valid code uses Sign in, so an 8-digit token is not sent after six digits.
+            if (next.length === EMAIL_CODE_MAX_LENGTH) void verify(next);
           }}
           onVerify={() => void verify(code)}
           onDifferentEmail={() => {
@@ -357,7 +358,7 @@ function EmailCodeSheet({
       </div>
       <div className="magic-copy">
         <h2 id={titleId}>Check your email</h2>
-        <p>We sent a 6-digit code to {email}. Enter it here. It works for 15 minutes.</p>
+        <p>We sent a code to {email}. Enter it here. It works for 15 minutes.</p>
         {safariNote ? <p>{safariNote}</p> : null}
       </div>
       <form
@@ -379,7 +380,7 @@ function EmailCodeSheet({
               autoCorrect="off"
               autoCapitalize="none"
               spellCheck={false}
-              placeholder="6-digit code"
+              placeholder="Code from email"
               value={code}
               onChange={(event) => onCode(digitsFromEmailCode(event.target.value))}
             />

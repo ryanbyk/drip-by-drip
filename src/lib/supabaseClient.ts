@@ -9,7 +9,7 @@ export { authCallback } from "./authCallback";
  * in the URL hash. PKCE would need a token_hash template plus the storage that
  * started the request, which an iPhone Home Screen app does not share with Safari.
  *
- * A 6-digit code is verified in this window. persistSession writes that session
+ * A 6- to 8-digit code is verified in this window. persistSession writes that session
  * to this origin’s storage, so the installed app still has it on the next launch.
  */
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {

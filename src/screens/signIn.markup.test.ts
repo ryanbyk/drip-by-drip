@@ -29,4 +29,11 @@ describe("sign-in surfaces", () => {
     expect(linkSheet).toContain("Enter a code instead");
     expect(linkSheet).not.toContain("On iPhone, a sign-in link may open Safari");
   });
+
+  it("asks for the email code without pinning the length to 6 digits", () => {
+    const codeSheet = markup({ email: "ryan@example.com", installed: true, codeSent: true });
+    expect(codeSheet).toContain("We sent a code to");
+    expect(codeSheet).toContain("Code from email");
+    expect(codeSheet).not.toContain("6-digit");
+  });
 });
