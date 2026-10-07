@@ -16,7 +16,9 @@ export function isEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
-export const EMAIL_CODE_LENGTH = 6;
+/** Supabase email OTP length is set in Auth. This project sends 8; older setups send 6. */
+export const EMAIL_CODE_MIN_LENGTH = 6;
+export const EMAIL_CODE_MAX_LENGTH = 8;
 
 export type EmailSignInMethod = "code" | "link";
 
@@ -52,11 +54,11 @@ export function emailSignInLabel(method: EmailSignInMethod): string {
 }
 
 export function digitsFromEmailCode(value: string): string {
-  return value.replace(/\D/g, "").slice(0, EMAIL_CODE_LENGTH);
+  return value.replace(/\D/g, "").slice(0, EMAIL_CODE_MAX_LENGTH);
 }
 
 export function isEmailCode(value: string): boolean {
-  return new RegExp(`^\\d{${EMAIL_CODE_LENGTH}}$`).test(value);
+  return new RegExp(`^\\d{${EMAIL_CODE_MIN_LENGTH},${EMAIL_CODE_MAX_LENGTH}}$`).test(value);
 }
 
 export function emailCodeError(message: string): string {

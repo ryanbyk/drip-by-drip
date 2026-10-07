@@ -44,11 +44,16 @@ describe("auth helpers", () => {
     expect(emailSignInLabel("link")).toBe("Email me a sign-in link");
   });
 
-  it("keeps six digits from a pasted email code", () => {
+  it("keeps a 6- to 8-digit email code and drops anything longer", () => {
     expect(digitsFromEmailCode("12 34-56")).toBe("123456");
-    expect(digitsFromEmailCode("code 12345678")).toBe("123456");
+    expect(digitsFromEmailCode("code 12345678")).toBe("12345678");
+    expect(digitsFromEmailCode("1234567890")).toBe("12345678");
     expect(isEmailCode("123456")).toBe(true);
+    expect(isEmailCode("1234567")).toBe(true);
+    expect(isEmailCode("12345678")).toBe(true);
     expect(isEmailCode("12345")).toBe(false);
+    expect(isEmailCode("1234")).toBe(false);
+    expect(isEmailCode("123456789")).toBe(false);
     expect(isEmailCode("12345a")).toBe(false);
   });
 

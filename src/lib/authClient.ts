@@ -35,7 +35,7 @@ export function requestEmailCode(email: string): Promise<string | null> {
   return requestEmailSignIn(email);
 }
 
-/** Checks the 6-digit code in this window and stores the session here. */
+/** Checks the email code in this window and stores the session here. */
 export function verifyEmailCode(email: string, token: string): Promise<string | null> {
   return verifyEmailCodeAttempts(async (type) => {
     const { error } = await supabase.auth.verifyOtp({ email, token, type });
