@@ -16,6 +16,8 @@ export function AuthFixtureProvider({ user: initial, children }: { user: AuthUse
       setSyncEnabled,
       acknowledgeLanding: () => undefined,
       sendMagicLink: async () => null,
+      sendEmailCode: async () => null,
+      verifyEmailCode: async () => null,
       signInWithProvider: async () => null,
       signOut: async () => null,
       saveDisplayName: async (name: string) => {

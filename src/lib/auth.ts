@@ -16,6 +16,56 @@ export function isEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
+export const EMAIL_CODE_LENGTH = 6;
+
+export type EmailSignInMethod = "code" | "link";
+
+/** Home Screen / standalone keeps its own storage, so a code is the path that stays there. */
+export function primaryEmailSignIn(installed: boolean): EmailSignInMethod {
+  return installed ? "code" : "link";
+}
+
+export function alternateEmailSignIn(method: EmailSignInMethod): EmailSignInMethod {
+  switch (method) {
+    case "code":
+      return "link";
+    case "link":
+      return "code";
+    default: {
+      const exhaustive: never = method;
+      return exhaustive;
+    }
+  }
+}
+
+export function emailSignInLabel(method: EmailSignInMethod): string {
+  switch (method) {
+    case "code":
+      return "Email me a code";
+    case "link":
+      return "Email me a sign-in link";
+    default: {
+      const exhaustive: never = method;
+      return exhaustive;
+    }
+  }
+}
+
+export function digitsFromEmailCode(value: string): string {
+  return value.replace(/\D/g, "").slice(0, EMAIL_CODE_LENGTH);
+}
+
+export function isEmailCode(value: string): boolean {
+  return new RegExp(`^\\d{${EMAIL_CODE_LENGTH}}$`).test(value);
+}
+
+export function emailCodeError(message: string): string {
+  if (/expired|invalid/i.test(message)) {
+    return "That code did not work. Request a new one and try again.";
+  }
+  return message;
+}
+
 export function authProviderId(provider: unknown): AuthProviderId {
   switch (provider) {
     case "apple":

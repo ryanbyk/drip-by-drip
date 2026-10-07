@@ -4,11 +4,17 @@ import {
   accountLine,
   authCallbackFromLocation,
   authRedirectUrl,
+  alternateEmailSignIn,
+  digitsFromEmailCode,
+  emailCodeError,
   emailOtpType,
+  emailSignInLabel,
   formatResendCountdown,
   initialsFor,
   isEmail,
+  isEmailCode,
   mailAppHref,
+  primaryEmailSignIn,
   profileHeading,
   providerIdFromUser,
   signedInWith,
@@ -24,6 +30,30 @@ describe("auth helpers", () => {
     expect(authRedirectUrl("https://ryanbyk.github.io", "/drip-by-drip")).toBe(
       "https://ryanbyk.github.io/drip-by-drip/",
     );
+  });
+
+  it("prefers a code in the installed app and a link in the browser", () => {
+    expect(primaryEmailSignIn(true)).toBe("code");
+    expect(primaryEmailSignIn(false)).toBe("link");
+    expect(alternateEmailSignIn("code")).toBe("link");
+    expect(alternateEmailSignIn("link")).toBe("code");
+    expect(emailSignInLabel("code")).toBe("Email me a code");
+    expect(emailSignInLabel("link")).toBe("Email me a sign-in link");
+  });
+
+  it("keeps six digits from a pasted email code", () => {
+    expect(digitsFromEmailCode("12 34-56")).toBe("123456");
+    expect(digitsFromEmailCode("code 12345678")).toBe("123456");
+    expect(isEmailCode("123456")).toBe(true);
+    expect(isEmailCode("12345")).toBe(false);
+    expect(isEmailCode("12345a")).toBe(false);
+  });
+
+  it("rewrites an expired or invalid code and leaves other errors", () => {
+    expect(emailCodeError("Token has expired or is invalid")).toBe(
+      "That code did not work. Request a new one and try again.",
+    );
+    expect(emailCodeError("Email rate limit exceeded")).toBe("Email rate limit exceeded");
   });
 
   it("accepts a normal email and rejects a blank one", () => {

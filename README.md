@@ -45,7 +45,7 @@ Signed in, with Sync on, the app also stores that same snapshot in `public.user_
 
 ## Optional sign-in
 
-Open Settings and tap **Sign in**. Sign in with an email magic link, or tap **Keep using without an account**. After a magic link or an OAuth return, the app reads the session from the URL and opens Account. Sign out is a real Supabase session. Export downloads the snapshot on this device as JSON.
+Open Settings and tap **Sign in**. In the Home Screen app, the main button emails a 6-digit code. Type it in that app. The session is stored there and is still there the next time the app opens, including sync. A sign-in link stays available, with a note that on iPhone the link may open Safari, which does not share the Home Screen app’s storage. In a browser tab, the link stays the main button and a code is available too. After a code is checked, or after a magic link or an OAuth return, the app opens Account. Or tap **Keep using without an account**. Sign out is a real Supabase session. Export downloads the snapshot on this device as JSON.
 
 Sync defaults to on. The Account switch stores that choice on this device (`drip-by-drip.sync-enabled`). While it is on, sign-in pulls the account snapshot when it is newer than this device (or this device has never saved), and later edits push this device’s snapshot. Turning Sync off stops those reads and writes; the account row is left as it was. The app assumes one primary device, so the newer `updatedAt` wins and there is no merge screen. This device also remembers which account last synced (`drip-by-drip.snapshot-owner`) so a different sign-in does not upload the previous account’s reading.
 
@@ -63,11 +63,26 @@ Project `gfacmaaehvlhbskrajyj` (`https://gfacmaaehvlhbskrajyj.supabase.co`).
   - `http://localhost:5173/drip-by-drip/`
   - `http://localhost:5173/`
 
-The app sends people back to the current origin plus the Vite base (`/drip-by-drip/`). Magic link uses Supabase’s built-in email. No template change is required once those URLs are allowed.
+The app sends people back to the current origin plus the Vite base (`/drip-by-drip/`).
+
+**Authentication → Email Templates → Magic link**
+
+The code and the link are the same email. The template has to include `{{ .Token }}` or the message only contains a link and the code field has nothing to accept. Subject: `Your Drip by drip code`. Body:
+
+```html
+<h2>Your sign-in code</h2>
+<p>Enter this code in Drip by drip:</p>
+<p><strong>{{ .Token }}</strong></p>
+<p>The code works once. On iPhone, stay in the Home Screen app and type it there.</p>
+<p>Or follow this link. On iPhone it may open Safari, which does not share that app’s sign-in.</p>
+<p><a href="{{ .ConfirmationURL }}">Sign in with a link</a></p>
+```
+
+Email OTP expiration is the same timer the screen calls 15 minutes. Set that under **Authentication → Providers → Email** if it is still the one-hour default and you want the sentence to match.
 
 **Authentication → Providers**
 
-- Email: leave magic link enabled. The sign-in screen shows this path only.
+- Email: leave it enabled. The installed app prefers the code. A browser tab still offers the link.
 - Google: enable the provider and paste the Google OAuth client ID and secret. In Google Cloud, the authorized redirect URI is `https://gfacmaaehvlhbskrajyj.supabase.co/auth/v1/callback`.
 - Apple: enable the provider and paste the Services ID, Team ID, Key ID, and private key. Apple’s return URL is that same Supabase callback.
 

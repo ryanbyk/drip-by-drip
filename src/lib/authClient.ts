@@ -1,12 +1,16 @@
 import { FunctionsHttpError } from "@supabase/supabase-js";
-import { authRedirectUrl, emailOtpType, fallbackDisplayName, type AuthProviderId } from "./auth";
+import { authRedirectUrl, emailCodeError, emailOtpType, fallbackDisplayName, type AuthProviderId } from "./auth";
 import { supabase } from "./supabaseClient";
 
 export function currentRedirect(): string {
   return authRedirectUrl(window.location.origin, import.meta.env.BASE_URL);
 }
 
-export async function requestMagicLink(email: string): Promise<string | null> {
+/**
+ * One email serves both paths. The Magic Link template includes {{ .Token }}
+ * (typed here) and {{ .ConfirmationURL }} (may open Safari on iPhone).
+ */
+async function requestEmailSignIn(email: string): Promise<string | null> {
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
@@ -15,6 +19,24 @@ export async function requestMagicLink(email: string): Promise<string | null> {
     },
   });
   return error ? error.message : null;
+}
+
+export function requestMagicLink(email: string): Promise<string | null> {
+  return requestEmailSignIn(email);
+}
+
+export function requestEmailCode(email: string): Promise<string | null> {
+  return requestEmailSignIn(email);
+}
+
+/** Checks the 6-digit code in this window and stores the session here. */
+export async function verifyEmailCode(email: string, token: string): Promise<string | null> {
+  const { error } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: "email",
+  });
+  return error ? emailCodeError(error.message) : null;
 }
 
 export async function requestOAuth(provider: Extract<AuthProviderId, "apple" | "google">): Promise<string | null> {
