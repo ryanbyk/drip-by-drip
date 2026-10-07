@@ -18,7 +18,18 @@ function SignInScreen() {
   return (
     <StoryApp snapshot={snapshot}>
       <Phone>
-        <SignIn onSkip={() => undefined} />
+        <SignIn onSkip={() => undefined} preview={{ email: "", installed: false }} />
+      </Phone>
+    </StoryApp>
+  );
+}
+
+function InstalledSignInScreen() {
+  const snapshot = useFixture(settingsSnapshot);
+  return (
+    <StoryApp snapshot={snapshot}>
+      <Phone>
+        <SignIn onSkip={() => undefined} preview={{ email: "", installed: true }} />
       </Phone>
     </StoryApp>
   );
@@ -31,7 +42,21 @@ function MagicLinkScreen() {
       <Phone>
         <SignIn
           onSkip={() => undefined}
-          preview={{ email: "ryan@example.com", linkSent: true, resendSeconds: 42 }}
+          preview={{ email: "ryan@example.com", linkSent: true, resendSeconds: 42, installed: false }}
+        />
+      </Phone>
+    </StoryApp>
+  );
+}
+
+function EmailCodeScreen() {
+  const snapshot = useFixture(settingsSnapshot);
+  return (
+    <StoryApp snapshot={snapshot}>
+      <Phone>
+        <SignIn
+          onSkip={() => undefined}
+          preview={{ email: "ryan@example.com", codeSent: true, resendSeconds: 42, installed: true }}
         />
       </Phone>
     </StoryApp>
@@ -62,9 +87,19 @@ export const SignInStory: Story = {
   render: () => <SignInScreen />,
 };
 
+export const InstalledSignInStory: Story = {
+  name: "v1.5 · Sign in · installed",
+  render: () => <InstalledSignInScreen />,
+};
+
 export const MagicLinkStory: Story = {
   name: "v1.5 · 2 · Magic link sent",
   render: () => <MagicLinkScreen />,
+};
+
+export const EmailCodeStory: Story = {
+  name: "v1.5 · Code sent",
+  render: () => <EmailCodeScreen />,
 };
 
 export const AccountGuest: Story = {

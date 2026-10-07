@@ -4,11 +4,13 @@ import { authCallback } from "../lib/authCallback";
 import {
   deleteSignedInAccount,
   loadProfile,
+  requestEmailCode,
   requestMagicLink,
   requestOAuth,
   requestSignOut,
   saveProfileName,
   settleAuthCallback,
+  verifyEmailCode as confirmEmailCode,
 } from "../lib/authClient";
 import { fallbackDisplayName, providerIdFromUser } from "../lib/auth";
 import { readSyncEnabled, writeSyncEnabled } from "../lib/syncPreference";
@@ -101,6 +103,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return requestMagicLink(email);
   }, []);
 
+  const sendEmailCode = useCallback(async (email: string) => {
+    setAuthError(null);
+    return requestEmailCode(email);
+  }, []);
+
+  const verifyEmailCode = useCallback(async (email: string, code: string) => {
+    setAuthError(null);
+    return confirmEmailCode(email, code);
+  }, []);
+
   const signInWithProvider = useCallback(async (provider: "apple" | "google") => {
     setAuthError(null);
     return requestOAuth(provider);
@@ -138,6 +150,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSyncEnabled,
       acknowledgeLanding,
       sendMagicLink,
+      sendEmailCode,
+      verifyEmailCode,
       signInWithProvider,
       signOut,
       saveDisplayName,
@@ -152,6 +166,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSyncEnabled,
       acknowledgeLanding,
       sendMagicLink,
+      sendEmailCode,
+      verifyEmailCode,
       signInWithProvider,
       signOut,
       saveDisplayName,
