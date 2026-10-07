@@ -10,6 +10,7 @@ import {
 } from "react";
 import { localDate, msUntilAsk } from "../domain/dates";
 import { isStandalone, scheduleTrigger, showAskNotification } from "../lib/reminders";
+import { browserTimeZone, syncWebPush } from "../lib/webPush";
 import { shareCommitment } from "../lib/share";
 import { createLocalStorageAdapter, type StorageAdapter } from "../lib/storage";
 import { liveCloudSnapshotIO } from "../lib/storage/supabase";
@@ -59,6 +60,10 @@ export function AppProvider({
   const [toast, setToast] = useState<string | null>(null);
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [standalone, setStandalone] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | "unsupported">(() => {
+    if (typeof Notification === "undefined") return "unsupported";
+    return Notification.permission;
+  });
   const snapshotRef = useRef(snapshot);
   const bootedRef = useRef(Boolean(initialSnapshot));
   const syncFailedRef = useRef(false);
@@ -209,6 +214,40 @@ export function AppProvider({
       if (timer) window.clearTimeout(timer);
     };
   }, [remindersOn, askTime, lastNotifiedDate, todayAnswer, today, dispatch]);
+
+  useEffect(() => {
+    if (!("permissions" in navigator) || typeof navigator.permissions?.query !== "function") return;
+    let active = true;
+    let status: PermissionStatus | undefined;
+    void navigator.permissions
+      .query({ name: "notifications" as PermissionName })
+      .then((result) => {
+        if (!active) return;
+        status = result;
+        setNotificationPermission(result.state === "granted" || result.state === "denied" ? result.state : "default");
+        result.onchange = () => {
+          setNotificationPermission(result.state === "granted" || result.state === "denied" ? result.state : "default");
+        };
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+      if (status) status.onchange = null;
+    };
+  }, []);
+
+  const pushReady = Boolean(snapshot);
+  const storedTimeZone = snapshot?.prefs.timeZone ?? "";
+  const authReady = Boolean(auth);
+
+  useEffect(() => {
+    if (!authReady || !pushReady || authStatus === "loading") return;
+    if (authStatus === "signed-in" && remindersOn) {
+      const zone = browserTimeZone();
+      if (zone && storedTimeZone !== zone) dispatch({ type: "prefs", prefs: { timeZone: zone } });
+    }
+    void syncWebPush({ remindersOn, userId: authStatus === "signed-in" ? syncUserId : null }).catch(() => undefined);
+  }, [authReady, pushReady, authStatus, syncUserId, remindersOn, storedTimeZone, notificationPermission, dispatch]);
 
   useEffect(() => {
     if (!toast) return;

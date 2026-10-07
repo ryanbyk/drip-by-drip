@@ -23,7 +23,7 @@ Opens Storybook at `http://localhost:6006`. Stories load the same fonts and desi
 
 The hosted app is [https://ryanbyk.github.io/drip-by-drip/](https://ryanbyk.github.io/drip-by-drip/). A push to `main` builds `dist` and deploys it with GitHub Pages, once Pages is enabled for this repo.
 
-Answers, bookmarks, and notes stay on this device. Today’s passage is read in the app as the ESV. Open passage still uses the Bible source you choose (YouVersion by default, with Bible Gateway, ESV.org, or a custom link). ESV text is loaded through a server proxy, so the Crossway API key is not stored on this device. If in-app ESV is turned off, you are offline, or the request fails, Open passage uses your external source. The app does not bundle a Bible edition. Daily reminders use the browser Notification API when it is available, and otherwise the question is waiting in the app.
+Answers, bookmarks, and notes stay on this device. Today’s passage is read in the app as the ESV. Open passage still uses the Bible source you choose (YouVersion by default, with Bible Gateway, ESV.org, or a custom link). ESV text is loaded through a server proxy, so the Crossway API key is not stored on this device. If in-app ESV is turned off, you are offline, or the request fails, Open passage uses your external source. The app does not bundle a Bible edition. Daily reminders use the browser Notification API when it is available, and otherwise the question is waiting in the app. A signed-in reader can also receive that reminder as a Web Push when the app is closed, where the browser supports it. Guests stay on the local schedule. iPhone delivers Web Push only to the Home Screen app, and iOS may still hold the notification.
 
 `npm run build` works without extra env. The public Supabase URL and legacy anon key have defaults in `src/lib/supabaseConfig.ts`. GitHub Pages can override them with repository **Variables** (not secrets) named `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. Use the legacy anon JWT (`role` `anon`), not an `sb_publishable_…` key. Do not set `VITE_ESV_API_KEY` or put the Crossway key in the client, the repo, or Actions secrets — that key stays in the Edge Function secret `ESV_API_KEY`.
 
@@ -76,6 +76,44 @@ The initial release hides the Apple and Google buttons (`socialSignInVisible` in
 Display names live in `public.profiles` (one row per auth user, RLS so a person can read and update only their own row). A private trigger creates the row when someone signs up.
 
 Reading sync lives in `public.user_snapshots` (`user_id` primary key, `payload` jsonb, `updated_at` timestamptz). RLS lets the signed-in user select, insert, and update only their own row. `anon` has no grants. The client uses the public anon key already in `src/lib/supabaseConfig.ts`. No new Auth URL or provider settings are required for sync.
+
+### Web Push
+
+Ask-time Web Push needs a signed-in account. The browser stores one row in `public.push_subscriptions` (endpoint, `p256dh`, `auth`, user agent, IANA time zone). RLS lets that person select, insert, update, and delete only their own rows, so sign-out and turning reminders off can remove this device. Other devices keep their rows. Deleting the account cascades the rows. Guests are not written here; their reminder stays on the device.
+
+The server reads ask time, reminders, and today’s answer from `user_snapshots` when Sync has saved them. It matches “now” in the device time zone on the subscription (or `prefs.timeZone` when the row has none). Sync should stay on so a changed ask time reaches the server. With Sync off, the last saved snapshot is what the server uses.
+
+`npm run dev` does not register a service worker, so subscribing happens in a production build (`npm run build` and `npm run preview`, or the hosted app).
+
+**Secrets — do not commit the values.** Generate a VAPID key pair and a long random cron secret:
+
+```bash
+npx web-push generate-vapid-keys --json
+```
+
+Store them as Edge Function secrets on project `gfacmaaehvlhbskrajyj`:
+
+```bash
+supabase secrets set --project-ref gfacmaaehvlhbskrajyj \
+  VAPID_PUBLIC_KEY="<publicKey>" \
+  VAPID_PRIVATE_KEY="<privateKey>" \
+  VAPID_SUBJECT="mailto:you@example.com" \
+  PUSH_CRON_SECRET="<long random string>"
+```
+
+`VAPID_SUBJECT` is optional. It defaults to `mailto:drip@ryanbyk.github.io`. The private key and cron secret never go in the client or the repo. The public key is not a secret. The signed-in app reads it from the `vapid-public-key` function. A build can override that with the GitHub Pages variable `VITE_VAPID_PUBLIC_KEY`.
+
+The minute job `send-ask-push` calls `private.invoke_send_ask_push()`. That function does nothing until Vault has three secrets (names only — create them in the SQL editor, not in a migration):
+
+```sql
+select vault.create_secret('https://gfacmaaehvlhbskrajyj.supabase.co', 'project_url');
+select vault.create_secret('<legacy anon JWT, role anon>', 'publishable_key');
+select vault.create_secret('<same value as PUSH_CRON_SECRET>', 'push_cron_secret');
+```
+
+`publishable_key` must be the legacy anon JWT so the function gateway accepts the cron request. The function still requires header `x-cron-secret` before it sends to anyone. A signed-in reader can POST `{ "mode": "test" }` to `send-ask-push` (Settings → Send test Web Push) to deliver the daily question to their own subscriptions without waiting for ask time. `{ "mode": "schedule" }` is the cron path. Expired endpoints (HTTP 404 or 410) are deleted.
+
+Partner nudges are not sent as Web Push in this change.
 
 ## Docs
 

@@ -12,6 +12,7 @@ import {
 } from "../lib/authClient";
 import { fallbackDisplayName, providerIdFromUser } from "../lib/auth";
 import { readSyncEnabled, writeSyncEnabled } from "../lib/syncPreference";
+import { dropLocalPushSubscription, releaseWebPush } from "../lib/webPush";
 import { supabase } from "../lib/supabaseClient";
 import { AuthContext, type AuthLanding, type AuthStatus, type AuthUser } from "./auth-context";
 
@@ -105,7 +106,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return requestOAuth(provider);
   }, []);
 
-  const signOut = useCallback(async () => requestSignOut(), []);
+  const signOut = useCallback(async () => {
+    const cleanup = await releaseWebPush();
+    if (cleanup) return cleanup;
+    return requestSignOut();
+  }, []);
 
   const saveDisplayName = useCallback(
     async (name: string) => {
@@ -119,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const deleteAccount = useCallback(async () => {
     const error = await deleteSignedInAccount();
+    if (!error) await dropLocalPushSubscription();
     return error;
   }, []);
 

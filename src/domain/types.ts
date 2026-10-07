@@ -72,6 +72,8 @@ export type UserPrefs = {
   bibleCustomPattern: string;
   /** When true, today’s passage renders in the app. Defaults on when this flag was never stored. */
   showInAppEsv: boolean;
+  /** IANA zone last seen on this device. Empty until the app has read one. */
+  timeZone: string;
 };
 
 export type Snapshot = {

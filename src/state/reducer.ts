@@ -95,6 +95,7 @@ export function createSnapshot(): Snapshot {
       bibleTranslation: "ESV",
       bibleCustomPattern: "",
       showInAppEsv: true,
+      timeZone: "",
     },
     places: { mark: { bookId: "mark", chapter: 1, verse: 1 } },
     days: {},

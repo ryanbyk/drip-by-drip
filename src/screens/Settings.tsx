@@ -6,6 +6,7 @@ import { isPlaceFinished } from "../domain/drip";
 import { paceBlurb } from "../domain/suggestions";
 import { bibleSourceLabel, normalizeBiblePrefs } from "../domain/bibleSource";
 import { SOURCE_URL } from "../domain/types";
+import { reminderCopy, reminderDevice } from "../lib/reminderCopy";
 import {
   cancelDelayedTestReminder,
   DELAYED_TEST_DELAY_MS,
@@ -17,6 +18,7 @@ import {
   type DelayedTestReminderResult,
   type TestReminderResult,
 } from "../lib/reminders";
+import { sendTestAskPush, syncWebPush, testWebPushNote } from "../lib/webPush";
 import { useApp } from "../state/AppState";
 import {
   AlarmClock,
@@ -67,10 +69,10 @@ export function Settings({
   const [editingBook, setEditingBook] = useState(false);
   const [editingSource, setEditingSource] = useState(false);
   const [about, setAbout] = useState(false);
-  const [developerAction, setDeveloperAction] = useState<"now" | "later" | null>(null);
+  const [developerAction, setDeveloperAction] = useState<"now" | "later" | "push" | null>(null);
   const [testNote, setTestNote] = useState<string | null>(null);
   const [delayPending, setDelayPending] = useState(false);
-  const developerActionRef = useRef<"now" | "later" | null>(null);
+  const developerActionRef = useRef<"now" | "later" | "push" | null>(null);
   const pendingHideRef = useRef<number | null>(null);
   const bible = normalizeBiblePrefs(snapshot.prefs);
   const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -112,7 +114,7 @@ export function Settings({
     setDelayPending(false);
   }
 
-  async function runDeveloperAction(action: "now" | "later", work: () => Promise<void>) {
+  async function runDeveloperAction(action: "now" | "later" | "push", work: () => Promise<void>) {
     if (developerActionRef.current) return;
     developerActionRef.current = action;
     setDeveloperAction(action);
@@ -151,6 +153,33 @@ export function Settings({
         return;
       }
       setTestNote(delayedReminderNote(result));
+    });
+  }
+
+  async function sendTestWebPush() {
+    await runDeveloperAction("push", async () => {
+      const synced = await syncWebPush({
+        remindersOn: snapshot.prefs.notificationsEnabled,
+        userId: auth.status === "signed-in" ? (auth.user?.id ?? null) : null,
+      });
+      if (synced === "unconfigured") {
+        setTestNote(testWebPushNote("unconfigured"));
+        return;
+      }
+      if (synced === "failed") {
+        setTestNote(testWebPushNote("failed"));
+        return;
+      }
+      if (synced !== "subscribed") {
+        setTestNote(testWebPushNote("none"));
+        return;
+      }
+      const result = await sendTestAskPush();
+      if (result === "sent") {
+        showToast("Test Web Push sent.");
+        return;
+      }
+      setTestNote(testWebPushNote(result));
     });
   }
 
@@ -250,7 +279,15 @@ export function Settings({
         {editingTime ? (
           <AskTimePicker value={snapshot.prefs.askTime} onChange={(askTime) => setPrefs({ askTime })} />
         ) : null}
-        <p className="soft">{reminderCopy(snapshot.prefs.notificationState, snapshot.prefs.notificationsEnabled, ios && !standalone)}</p>
+        <p className="soft">
+          {reminderCopy({
+            state: snapshot.prefs.notificationState,
+            enabled: snapshot.prefs.notificationsEnabled,
+            supported: notificationsSupported(),
+            signedIn: Boolean(signedIn),
+            device: reminderDevice(ios, standalone || isStandalone()),
+          })}
+        </p>
       </section>
       <section className="settings-group">
         <p className="eyebrow">Developer</p>
@@ -273,6 +310,17 @@ export function Settings({
             <AlarmClock className="row-icon" size={18} aria-hidden="true" />
             <span className="row-label">{delayedTestLabel(developerAction, delayPending)}</span>
           </button>
+          {signedIn ? (
+            <button
+              type="button"
+              className="settings-row"
+              onClick={() => void sendTestWebPush()}
+              disabled={developerAction !== null}
+            >
+              <Bell className="row-icon" size={18} aria-hidden="true" />
+              <span className="row-label">{developerAction === "push" ? "Sending test Web Push…" : "Send test Web Push"}</span>
+            </button>
+          ) : null}
         </div>
         <p className="soft">{testNote ?? DEVELOPER_REMINDER_NOTE}</p>
       </section>
@@ -389,33 +437,13 @@ export function Settings({
   );
 }
 
-function reminderCopy(
-  state: "unknown" | "granted" | "denied" | "dismissed" | "unsupported",
-  enabled: boolean,
-  iosBrowser: boolean,
-): string {
-  if (!notificationsSupported() || state === "unsupported") {
-    return "This browser can’t send reminders. The question will be here whenever you open the app.";
-  }
-  if (state === "denied") {
-    return "Reminders are blocked in this browser. Allow notifications for this site in your browser settings, then turn them on here. We won’t keep asking.";
-  }
-  if (iosBrowser) {
-    return "On iPhone, reminders work after you add Drip by drip to your Home Screen. The notification is only the daily question.";
-  }
-  if (enabled) {
-    return "At your ask time, the reminder is the question itself. If the app is fully closed, your browser may only deliver it after you’ve opened Drip by drip at least once.";
-  }
-  return "Turn this on for one daily reminder. It asks the question — it doesn’t scold.";
-}
-
 const DEVELOPER_REMINDER_NOTE =
-  "Each sends the same daily question. Neither turns on your daily reminder, or marks today as reminded.";
+  "Each sends the same daily question. They don’t turn on your daily reminder, or mark today as reminded.";
 
 const DELAYED_TIMER_NOTE =
   "This one uses a timer in the page. If you leave or the phone sleeps, it may not arrive — especially on iPhone. It’s most reliable in Chrome, or with the app left open.";
 
-function delayedTestLabel(action: "now" | "later" | null, pending: boolean): string {
+function delayedTestLabel(action: "now" | "later" | "push" | null, pending: boolean): string {
   if (action === "later") return "Scheduling the one-minute test…";
   if (pending) return "Cancel the one-minute test";
   return "Send test reminder in 1 minute";
