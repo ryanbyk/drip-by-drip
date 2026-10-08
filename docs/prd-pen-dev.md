@@ -3,7 +3,7 @@
 **For:** pen.dev design/build  
 **Product:** Drip by drip — local-first PWA with an optional account  
 **Phase:** v1 and v1.5a shipped; v1.5b next  
-**Rev:** r3 · Oct 8, 2026  
+**Rev:** r3 · Oct 7, 2026  
 **Design file:** [drip-by-drip.pen](../drip-by-drip.pen) (screens A–Z + v1.5 1–20, design tokens)  
 **Source:** [bible-reading-app-plan.md](./bible-reading-app-plan.md) · [sermon notes 2026-10-04](https://ryanbyk.github.io/crossway-milwaukee-sermon-notes/notes/drip-by-drift/2026-10-04/)  
 **Do not invent sermon text.** Passage refs + optional short prompts only.
@@ -14,7 +14,7 @@
 
 | Rev | Change |
 | --- | --- |
-| **r3** | Caught the PRD up to main (Oct 8, 2026). Optional email sign-in (magic link plus a 6–8 digit code; the code is primary in the installed iPhone PWA; Apple/Google built and hidden). Snapshot sync to `user_snapshots` (newest `updatedAt` wins, no merge screen). One reading partner. Web Push ask-time reminders when signed in. In-app ESV on by default through the Edge proxy — §8 now matches §4; no API key on the device. Weeks run Sunday–Saturday. Default ask time 6:30 AM. History can mark any of the last 7 days (not today) read. Phasing splits **v1.5a shipped** (sign-in, sync, partner, push), **v1.5b next** (groups, more than one partner, drops), **v1.5c** (church/group plans), and later (activity feed, leader dashboard). |
+| **r3** | Caught the PRD up to main (Oct 7, 2026). Optional email sign-in (magic link plus a 6–8 digit code; the code is primary in the installed iPhone PWA; Apple/Google built and hidden). Snapshot sync to `user_snapshots` (newest `updatedAt` wins, no merge screen). One reading partner. Web Push ask-time reminders when signed in. In-app ESV on by default through the Edge proxy — §8 now matches §4; no API key on the device. Weeks run Sunday–Saturday. Default ask time 6:30 AM. History can mark any of the last 7 days (not today) read. Phasing splits **v1.5a shipped** (sign-in, sync, partner, push), **v1.5b next** (groups, more than one partner, drops), **v1.5c** (church/group plans), and later (activity feed, leader dashboard). |
 | **r2** | Replaced placeholder day-indexed plan with **reading tracks** (one book + bookmark, plus one-day "something else" detours). Church plan → **v1.5**. Added book / chapter pickers (incl. long-book sections), adjust-passage, "where did you stop?", welcome-back and back-after-detour states, book finished + recap, **Reflect** notes (Huh? folded in), **Bible source** setting (YouVersion default) with optional **in-app ESV text** via user API key, and **light / dark / system** appearance with themed design tokens. Resolved Bible URL + Huh? open items. |
 | r1 | Initial v1 PRD: QBE loop, placeholder plan, streaks, Power of Four, history, settings, DOG, share. |
 
