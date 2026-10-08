@@ -35,11 +35,15 @@ jobs:
       - name: Check spacing tokens
         run: npm run audit:spacing
 
-      # Public client config. Repository Variables override the defaults in
-      # src/lib/supabaseConfig.ts. Use the legacy anon JWT, not sb_publishable_.
+      # Public client config. Repository Variables override the defaults.
+      # VITE_APP_URL empty → https://app.drip-by-drip.com (src/lib/appUrl.ts).
+      # The artifact is the site root. Pages serves it on the custom domain;
+      # a CNAME file is not used (Actions publishing ignores it).
+      # Use the legacy anon JWT, not sb_publishable_.
       # Leave VITE_ESV_API_KEY unset — the Crossway key stays in Edge Function secrets.
       - name: Build
         env:
+          VITE_APP_URL: ${{ vars.VITE_APP_URL }}
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
         run: npm run build

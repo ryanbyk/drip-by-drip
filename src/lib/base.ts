@@ -1,4 +1,4 @@
-/** Join a public path onto Vite's base (`/drip-by-drip/` on GitHub Pages). */
+/** Join a public path onto Vite's base (`/` on the hosted app). */
 export function withBase(path: string): string {
   return `${import.meta.env.BASE_URL}${path.replace(/^\//, "")}`;
 }

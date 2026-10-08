@@ -6,7 +6,8 @@
 **Rev:** r3 · Oct 7, 2026  
 **Design file:** [drip-by-drip.pen](../drip-by-drip.pen) (screens A–Z + v1.5 1–20, design tokens)  
 **Source:** [bible-reading-app-plan.md](./bible-reading-app-plan.md) · [sermon notes 2026-10-04](https://ryanbyk.github.io/crossway-milwaukee-sermon-notes/notes/drip-by-drift/2026-10-04/)  
-**Do not invent sermon text.** Passage refs + optional short prompts only.
+**Do not invent sermon text.** Passage refs + optional short prompts only.  
+**App URL:** [https://app.drip-by-drip.com](https://app.drip-by-drip.com) (GitHub Pages, site root). The apex `drip-by-drip.com` is reserved for a future marketing site.
 
 ---
 

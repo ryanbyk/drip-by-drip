@@ -27,12 +27,9 @@ import { readSyncEnabled, writeSyncEnabled } from "./syncPreference";
 
 describe("auth helpers", () => {
   it("builds the redirect used after a magic link or OAuth return", () => {
-    expect(authRedirectUrl("http://localhost:5173", "/drip-by-drip/")).toBe(
-      "http://localhost:5173/drip-by-drip/",
-    );
-    expect(authRedirectUrl("https://ryanbyk.github.io", "/drip-by-drip")).toBe(
-      "https://ryanbyk.github.io/drip-by-drip/",
-    );
+    expect(authRedirectUrl("http://localhost:5173", "/")).toBe("http://localhost:5173/");
+    expect(authRedirectUrl("https://app.drip-by-drip.com", "/")).toBe("https://app.drip-by-drip.com/");
+    expect(authRedirectUrl("http://localhost:5173", "/preview")).toBe("http://localhost:5173/preview/");
   });
 
   it("prefers a code in the installed app and a link in the browser", () => {
