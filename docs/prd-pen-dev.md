@@ -2,8 +2,8 @@
 
 **For:** pen.dev design/build  
 **Product:** Drip by drip — local-first PWA with an optional account  
-**Phase:** v1 and v1.5a shipped; v1.5b next  
-**Rev:** r3 · Oct 7, 2026  
+**Phase:** v1 and v1.5a shipped; v1.5b social layer plus group plans and opt-in notes  
+**Rev:** r4 · Oct 8, 2026  
 **Design file:** [drip-by-drip.pen](../drip-by-drip.pen) (screens A–Z + v1.5 1–20, design tokens)  
 **Source:** [bible-reading-app-plan.md](./bible-reading-app-plan.md) · [sermon notes 2026-10-04](https://ryanbyk.github.io/crossway-milwaukee-sermon-notes/notes/drip-by-drift/2026-10-04/)  
 **Do not invent sermon text.** Passage refs + optional short prompts only.  
@@ -15,6 +15,7 @@
 
 | Rev | Change |
 | --- | --- |
+| **r4** | Group reading plans move out of v1.5c into this slice. A group owner sets one plan (book, optional chapter range, the app’s drip size, reading days, start date). Members join where the group is or start at day 1. Today shows that plan’s drip when the reader has joined it; otherwise personal reading. Opt-in note sharing: a note stays private unless the reader shares that note with chosen groups or partners. Church-wide plans, browse plans, the admin plan editor, and the leader dashboard stay later. |
 | **r3** | Caught the PRD up to main (Oct 7, 2026). Optional email sign-in (magic link plus a 6–8 digit code; the code is primary in the installed iPhone PWA; Apple/Google built and hidden). Snapshot sync to `user_snapshots` (newest `updatedAt` wins, no merge screen). One reading partner. Web Push ask-time reminders when signed in. In-app ESV on by default through the Edge proxy — §8 now matches §4; no API key on the device. Weeks run Sunday–Saturday. Default ask time 6:30 AM. History can mark any of the last 7 days (not today) read. Phasing splits **v1.5a shipped** (sign-in, sync, partner, push), **v1.5b next** (groups, more than one partner, drops), **v1.5c** (church/group plans), and later (activity feed, leader dashboard). |
 | **r2** | Replaced placeholder day-indexed plan with **reading tracks** (one book + bookmark, plus one-day "something else" detours). Church plan → **v1.5**. Added book / chapter pickers (incl. long-book sections), adjust-passage, "where did you stop?", welcome-back and back-after-detour states, book finished + recap, **Reflect** notes (Huh? folded in), **Bible source** setting (YouVersion default) with optional **in-app ESV text** via user API key, and **light / dark / system** appearance with themed design tokens. Resolved Bible URL + Huh? open items. |
 | r1 | Initial v1 PRD: QBE loop, placeholder plan, streaks, Power of Four, history, settings, DOG, share. |
@@ -32,7 +33,7 @@
 | Stay shippable as a thin PWA | Works offline for today’s ask + suggestion; an account is optional |
 | Let people read alongside each other without replacing the ask | A signed-in reader can sync, keep one partner, and receive the ask as Web Push. The partner sees read-done only |
 
-**Non-goals:** required accounts; a separate friends or follower graph; groups, extra partners, and drops until **v1.5b**; church or group reading plans until **v1.5c**; activity feed and leader dashboard (later); pastor CMS; seasons planner; a bundled Bible edition; a sync merge screen.
+**Non-goals:** required accounts; a separate friends or follower graph; activity feed and leader dashboard (later); church-wide plans, browse-plans, and the admin plan editor (later); pastor CMS; seasons planner; a bundled Bible edition; a sync merge screen.
 
 ---
 
@@ -43,7 +44,7 @@
 | **Primary — “I want to stick with it”** | Adult who intends to read Scripture regularly but drifts; wants a simple daily ask + clear next drip |
 | **Plan follower** | Already follows another plan (church bulletin, other app); wants the daily ask + a fast way to log “something else” without losing a backup book |
 | **Reading partner (v1.5a)** | One optional person. Sees read-done days and a display name. Never sees answers, Not today, notes, Huh?, or the book |
-| **Group member (v1.5b)** | Same person in a group they created or joined. Everyone reads their own book at first. The group home shows who has read today, under the same privacy rule |
+| **Group member** | Same person in a group they created or joined. Without a plan, everyone reads their own book. With a plan, Today can follow that plan. Members never see notes unless you choose to share one |
 
 Assumes personal use and one primary device for sync. Sign-in is optional. Skipping it leaves reading, notes, and reminders on this device.
 
@@ -55,8 +56,9 @@ Assumes personal use and one primary device for sync. Sign-in is optional. Skipp
 | --- | --- | --- |
 | **v1 (shipped)** | Solo QBE loop, **reading track (book + bookmark) with detours**, streaks + soft Power of Four, reminders = ask, history (including mark-read on a recent day), reflect notes, book recap, settings (Bible source, appearance), optional DOG prayer, optional OS share, in-app ESV text (server-held key, on by default) | Local storage. No account required |
 | **v1.5a (shipped)** | Optional email sign-in, snapshot sync, **one** reading partner (invite, accept/decline, unlink, one canned note a day), Web Push ask-time reminders | Supabase Auth, `user_snapshots`, partner tables, `push_subscriptions`, Edge Functions |
-| **v1.5b (next)** | **Groups**, **more than one partner**, **drops** | Group and drop records. Same privacy rule as the partner |
-| **v1.5c** | Church / group reading plans as a track. A group may share a plan; until then everyone reads their own book | Plan content feed |
+| **v1.5b** | **Groups**, **more than one partner**, **drops** | Group and drop records |
+| **This slice** | **Group reading plans** and **opt-in note sharing**. Church-wide plans stay later | Plan, follow, and shared-note rows. Apply after the social-layer migration |
+| **v1.5c** | Church-wide plans, browse plans (v1.5·9), the admin plan editor (v1.5·11) | Plan content feed |
 | **Later** | Activity feed (v1.5·13), leader dashboard (v1.5·20) | Explicit product ask |
 
 **v1.5a note:** The partner watches read-done days and must not replace the personal daily ask.
@@ -70,9 +72,9 @@ The social layer plays off the name. People encourage each other **drip by drip*
 Create a group, join with a code, and invite with a code or a link. Matches design screens v1.5·4–8.
 
 - **My groups** (v1.5·4) lists groups the reader belongs to.
-- **Create** (v1.5·5) asks for a name. Copy on that screen: members see who read today — never answers or notes. Choosing a shared plan is offered in the design and waits for **v1.5c**. The v1.5b default is “everyone reads their own book.”
+- **Create** (v1.5·5) asks for a name. A new group starts as “everyone reads their own book.” The owner sets a plan later, from the group home.
 - **Join** (v1.5·6) takes the group’s code. The design shows a 6-character code.
-- **Group home** (v1.5·7) shows who has read today (display name + a read-done mark, and a count such as “5 have read”). Same privacy rule as a partner: never answers, Not today, notes, Huh?, or the book. A missing mark is silence, not a No. The plan card on that screen is **v1.5c**.
+- **Group home** (v1.5·7) shows who has read today (display name + a read-done mark, and a count such as “5 have read”). Never answers, Not today, Huh?, or the book. Members never see notes unless you choose to share one. A missing mark is silence, not a No. When the group has a plan, the home shows **Our plan** with today’s passage and progress.
 - **Invite** (v1.5·8) shares a code or a link.
 - Group size cap for v1.5b is **20** members (§11).
 
@@ -103,6 +105,27 @@ The activity feed (v1.5·13, later) already shows a **Drop** thank-you on a read
 
 **Friends** is not a separate follower graph. A friend is someone you share a group or a partnership with. Screens that say “Friends” mean that set.
 
+#### Group reading plans
+
+One active plan per group. The owner (the leader) sets it and can end or replace it. Replacing deletes the old plan, so members choose again.
+
+- **Book**, and an optional chapter range inside that book.
+- **Pace** is the app’s existing drip size: a few verses, one chapter, or two chapters. There is no separate “N chapters” control beyond those two chapter sizes.
+- **Reading days** are a Sunday-first weekday mask (Mon–Fri, every day, or a custom set). Off days are grace: Today shows the personal book, and that day does not count as a plan read.
+- **Start date** anchors the group calendar.
+
+A member opens plan detail (v1.5·10) and picks **Join where the group is** (the group’s calendar) or **Start at Day 1** (the same sequence, dated from the day they join). Personal reading keeps working. Today shows the plan’s drip only when the reader has joined a plan and today is one of its reading days. Otherwise Today is the personal book, and the bookmark does not move for plan days. One followed plan is Today’s reading; joining another replaces it. The older “I already follow a plan” placeholder remains for someone who is not on a group plan.
+
+A group with no plan stays “everyone reads their own book.” Read-today on a plan group counts plan reads among people currently following that plan. Church-wide plans, browse-plans tabs, the admin editor (v1.5·11), and the leader dashboard are out of this slice.
+
+#### Opt-in note sharing
+
+After a drip, wherever the day’s note is written, the reader may share that note with one or more of their groups and/or partners. Sharing is **off** until they pick recipients. It is a choice for that note, not a setting.
+
+Only the note text is shared. Answers, Not today, and Huh? are never sent. Copy on the share sheet: “Only the people you pick will see this note.”
+
+Recipients see the note for that day: on the group home under Shared notes, and on the partner screen. They can react with the existing drop. A note does not get its own drop; the one-per-pair-per-day limit still applies. The author can stop sharing or delete the note at any time. Leaving a group or unlinking a partner removes access, because a read requires current membership or an active partnership.
+
 ---
 
 ## 4. Locked defaults (v1, plus what v1.5a locked)
@@ -124,9 +147,11 @@ The activity feed (v1.5·13, later) already shows a **Drop** thank-you on a read
 | Accounts | **Optional.** Email sign-in is a magic link plus a 6–8 digit code in the same email. In the installed iPhone PWA the **code is the primary path**; the link stays available (on iPhone it may open Safari, which does not share the Home Screen app’s storage). In a browser tab the link is primary and “Email me a code” stays on the screen. Apple and Google are built and **hidden** for v1. Settings → Sign in, and the screen after Sign out, use this same path |
 | Sync | One row in `user_snapshots` per account. Newest snapshot `updatedAt` wins. **No merge screen.** Sync defaults on. Guests never write that table |
 | Partner | **Optional.** v1.5a shipped exactly one. v1.5b allows up to **5**. Invite by code or link; accept, decline, or unlink. Sees read-done days and display name only |
-| Groups | **v1.5b.** Up to **20** members. Everyone reads their own book. Members see who read today |
-| Drops | **v1.5b.** One drop per sender per recipient per local day, with an optional canned line. In the app |
-| Church / group plan | **v1.5c** |
+| Groups | Up to **20** members. Without a plan, everyone reads their own book. Members see who read today |
+| Drops | One drop per sender per recipient per local day, with an optional canned line. In the app. A shared note uses that same drop |
+| Group plan | One active plan per group. Pace is the drip size. Today follows it only after the reader joins |
+| Shared notes | Off unless that note is shared. Members never see notes unless you choose to share one |
+| Church-wide plan | Later, with browse plans and the admin editor |
 
 ---
 
@@ -153,12 +178,13 @@ The activity feed (v1.5·13, later) already shows a **Drop** thank-you on a read
 | Book finished | “You finished [book]. 16 chapters, one drip at a time.” |
 | Recap footer | “Not a score — just a look back at the drips. Every one was grace.” |
 | Share (optional) | “I said yes—I’m reading [passage] today.” via OS share sheet |
-| Sign in | “Optional. Sign in to sync, join a group, or read a church plan together. Your notes stay private.” |
+| Sign in | “Optional. Sign in to sync, join a group, or read a plan together. Your notes stay private unless you share one.” |
 | Check email (installed app) | “On iPhone, a sign-in link may open Safari. Enter the code so this app stays signed in.” |
-| Partner | “One person who sees whether you read today — never your answers or notes.” |
-| Partner will see | “Whether you read today.” “Never: Yes, Not today, or unanswered days.” “Never: your notes and Huh? moments.” The book is not on this card, and it is not in the shared data |
+| Partner | “One person who sees whether you read today — never your answers. A note stays private unless you share it.” |
+| Partner will see | “Whether you read today.” “Never: Yes, Not today, or unanswered days.” “Never: Huh?, or a note you didn’t share.” The book is not on this card |
 | Canned note (one per sender per day) | “Thinking of you. How’s the Word today?” · “A quiet hello. The Word will still be here whenever you’re ready.” · “Praying you get a drip in today, whenever it fits.” |
-| Group (v1.5b) | “Read together, gently. Members see who read today — never answers or notes.” |
+| Group | “Read together, gently. Members see who read today — never answers. A note stays private unless you share it.” |
+| Share a note | “Only the people you pick will see this note.” |
 | Drop (v1.5b) | A quiet thank-you. The control label in the design is **Drop** |
 
 Reminders **are** the QBE question (not “Don’t forget to read!” guilt).
@@ -274,11 +300,11 @@ F (plan-based passage) is **superseded by M** and kept only for v1.5c plan refer
 | 4 | My groups | v1.5b |
 | 5 | Create group | v1.5b |
 | 6 | Join with code | v1.5b |
-| 7 | Group home | v1.5b (plan card waits for v1.5c) |
-| 8 | Invite | v1.5b |
-| 9 | Browse plans | v1.5c |
-| 10 | Plan detail | v1.5c |
-| 11 | Admin — create / edit plan | v1.5c |
+| 7 | Group home | Social layer; Our plan card is this slice |
+| 8 | Invite | Social layer |
+| 9 | Browse plans | Later (church-wide) |
+| 10 | Plan detail | This slice (group plan; hide the church tag) |
+| 11 | Admin — create / edit plan | Later |
 | 12 | Partner pick | v1.5b (book line stays off; see §11) |
 | 13 | Activity feed | Later |
 | 14 | Insights share card | Later |
@@ -377,9 +403,11 @@ SHARE (optional, after Yes or Done)
 | Offline | Can answer QBE, see suggestion, write notes, mark done. Link-out needs network; in-app ESV needs network unless today’s passage was pre-cached. Sync waits for a connection |
 | Accounts | Optional. The code verifies in this window and stores the session here, including after sign-out. A new account and a returning account both use it |
 | Sync | While Sync is on, sign-in keeps whichever snapshot has the newer `updatedAt`. A device that has never saved adopts the account row. Later edits push this device. Equal timestamps keep the local copy. A device that last synced as someone else adopts that account’s row when one exists, and does not upload the previous account’s reading. Turning Sync off stops reads and writes and leaves the account row as it was |
-| Partner | Up to **5** active partners (v1.5a was exactly one; existing single partnerships stay valid). Invite code or `?partner=` link; the other person accepts or declines; either person can unlink one partnership. Shared presence is read-done days plus display name. The screen shows **Read today** or nothing. Never the QBE answer, Not today, notes, Huh?, or the book. A drop may carry one canned line |
-| Group | Up to **20** members. Create, join with a 6-character code, invite by code or link, leave. The owner can rename and remove a member. Group home shows who read today and a count of readers. A missing mark is silence. Never answers, Not today, notes, Huh?, or the book. No shared plan in v1.5b |
-| Drop | One per sender per recipient per local day, to a partner or a group member. Optional canned line from the three v1.5a notes, or none. Shows on Today, on that person’s group row, and in a small inbox. No push |
+| Partner | Up to **5** active partners (v1.5a was exactly one; existing single partnerships stay valid). Invite code or `?partner=` link; the other person accepts or declines; either person can unlink one partnership. Shared presence is read-done days plus display name. The screen shows **Read today** or nothing. Never the QBE answer, Not today, Huh?, or the book. A note appears only when that person shared it with this partner. A drop may carry one canned line |
+| Group | Up to **20** members. Create, join with a 6-character code, invite by code or link, leave. The owner can rename and remove a member. Group home shows who read today and a count of readers. A missing mark is silence. Never answers, Not today, Huh?, or the book. Members never see notes unless you choose to share one. No plan means everyone reads their own book |
+| Group plan | One active plan per group, set by the owner. Pace is verses, one chapter, or two chapters. Reading days skip off days. Join where the group is, or start at day 1. Today shows the plan drip only for a joined reader on a reading day. Plan reads count for that group’s read-today. Ending or replacing the plan clears follows |
+| Shared note | One note per author per day. Recipients are the groups and partners picked for that note. Read access requires current membership or an active partnership. The author can unshare or delete it |
+| Drop | One per sender per recipient per local day, to a partner or a group member, including a drop on a shared note. Optional canned line from the three v1.5a notes, or none. Shows on Today, on that person’s group row, and in a small inbox. No push |
 | Friends | Someone you share a group or a partnership with. Not a follower graph |
 | Reset | Settings can clear local commitments, track, and notes (confirm) |
 | Delete account | `delete-account` removes the auth user. The snapshot, partner rows, and push rows go with that user. Reading on this device stays |
@@ -391,7 +419,7 @@ SHARE (optional, after Yes or Done)
 ```text
 ReadingTrack            (one active in v1)
   id
-  type           book            (plan → v1.5c)
+  type           book | group_plan   (church-wide plan stays later)
   book           e.g. "Mark"
   bookmark       { chapter, verse }   next unread position
   chunk          verses | chapter | 2chapters
@@ -422,7 +450,8 @@ UserPrefs
   askTime                default "06:30"
   notificationsEnabled
   onboardingComplete
-  readingMode            book | follow_plan
+  readingMode            book | plan
+  groupPlan?             the one group plan Today follows, or empty for personal reading
   bibleProvider          youversion | biblegateway | esvorg | custom
   translation            e.g. "ESV"
   customUrlTemplate?
@@ -513,7 +542,7 @@ PushSubscription             public.push_subscriptions
 
 - ~~Exact outbound Bible site / URL pattern~~ → YouVersion default, configurable (§8)  
 - ~~Whether “Huh?” is a toggle, note field, or both~~ → flag on the Reflection  
-- ~~Real day-by-day passage schedule~~ → moved to v1.5c church / group plan  
+- ~~Real day-by-day passage schedule~~ → a group plan in this slice uses the drip size on a weekday mask. Church-wide custom schedules stay later  
 
 **Resolved in r3**
 
@@ -527,7 +556,13 @@ PushSubscription             public.push_subscriptions
 - ~~Group size cap~~ → **20** members  
 - ~~Partner cap~~ → **5** active partners. v1.5a rows stay one partnership and keep working  
 - ~~Drop rate limit~~ → **one drop per sender per recipient per local day**  
-- ~~Current book visibility~~ → **no.** Partners and group members do not see the book, answers, Not today, notes, or Huh?  
+- ~~Current book visibility~~ → **no.** Partners and group members do not see the book, answers, Not today, or Huh?. Members never see notes unless you choose to share one  
+
+**Chosen for group plans and shared notes**
+
+- ~~Plan pace~~ → the existing drip size: a few verses, 1 chapter, or 2 chapters  
+- ~~Plan and personal reading~~ → Today shows the joined plan’s drip on a reading day. Off days, and readers who have not joined, stay on the personal book. The bookmark does not move for plan days  
+- ~~Note sharing~~ → off until that note is shared with chosen groups or partners. Answers, Not today, and Huh? are never shared. A drop on a note uses the existing one-per-pair-per-day drop  
 
 **Still open**
 

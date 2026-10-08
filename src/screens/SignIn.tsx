@@ -145,7 +145,7 @@ export function SignIn({ onSkip, preview }: { onSkip: () => void; preview?: Sign
       </p>
       <header className="auth-copy">
         <h1>Keep your drips, on every device.</h1>
-        <p>Optional. Sign in to sync, join a group, or read a church plan together. Your notes stay private.</p>
+        <p>Optional. Sign in to sync, join a group, or read a plan together. Your notes stay private unless you share one.</p>
       </header>
       {socialSignInVisible ? (
         <>

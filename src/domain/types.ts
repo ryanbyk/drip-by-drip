@@ -49,6 +49,21 @@ export type DailyCommitment = {
   detour: boolean;
 };
 
+/** A group plan this reader is following. Personal book place stays in `places`. */
+export type GroupPlanFollow = {
+  planId: string;
+  groupId: string;
+  groupName: string;
+  bookId: string;
+  startChapter: number;
+  endChapter: number;
+  pace: DripSize;
+  readingDays: number;
+  startDate: string;
+  mode: "group" | "start";
+  startedOn: string;
+};
+
 export type UserPrefs = {
   askTime: string;
   notificationsEnabled: boolean;
@@ -76,6 +91,8 @@ export type UserPrefs = {
   showInAppEsv: boolean;
   /** IANA zone last seen on this device. Empty until the app has read one. */
   timeZone: string;
+  /** The group plan Today follows. Null keeps personal reading, or the older placeholder plan. */
+  groupPlan: GroupPlanFollow | null;
 };
 
 export type Snapshot = {

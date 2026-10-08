@@ -3,11 +3,16 @@ import { getBook } from "../../domain/books";
 import { addDays, formatClock } from "../../domain/dates";
 import { activePlace } from "../../domain/resolve";
 import { isPlaceFinished } from "../../domain/drip";
+import { SHARE_NOTE_PROMISE, buildNoteShare } from "../../domain/sharedNote";
 import { currentStreak, longestStreak, powerOfFour } from "../../domain/streaks";
 import { suggestedNext } from "../../domain/suggestions";
 import { useApp } from "../../state/AppState";
+import { useAuth } from "../../state/auth-context";
+import { useGroups } from "../../state/group-context";
+import { usePartner } from "../../state/partner-context";
 import { Bookmark, Check, NotebookPen } from "../../components/Icons";
 import { BookPicker, Button, Sheet } from "../../components/ui";
+import { ShareNoteSheet } from "../ShareNote";
 
 export function DoneView() {
   const app = useApp();
@@ -118,35 +123,103 @@ export function DoneView() {
 }
 
 function NoteSummary() {
-  const { snapshot, today, dispatch } = useApp();
+  const { snapshot, today, dispatch, showToast } = useApp();
+  const auth = useAuth();
+  const groups = useGroups();
+  const partner = usePartner();
   const day = snapshot.days[today];
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(day?.reflection ?? "");
   const [huh, setHuh] = useState(Boolean(day?.huh));
+  const [sharing, setSharing] = useState(false);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const shared = groups.notes.find((note) => note.authorId === auth.user?.id && note.day === today) ?? null;
+  const canShare = auth.status === "signed-in" && Boolean(day?.reflection?.trim());
 
   if (!editing) {
     return (
-      <button type="button" className="note-card" onClick={() => setEditing(true)}>
-        <span className="note-head">
-          <span className="note-icon" aria-hidden="true">
-            <NotebookPen size={14} />
+      <>
+        <button type="button" className="note-card" onClick={() => setEditing(true)}>
+          <span className="note-head">
+            <span className="note-icon" aria-hidden="true">
+              <NotebookPen size={14} />
+            </span>
+            <strong>{day?.reflection ? "Your note" : "Add a note"}</strong>
+            {day?.huh ? <span className="huh">Huh?</span> : null}
+            {day?.reflection ? <span className="note-edit-link">Edit</span> : null}
           </span>
-          <strong>{day?.reflection ? "Your note" : "Add a note"}</strong>
-          {day?.huh ? <span className="huh">Huh?</span> : null}
-          {day?.reflection ? <span className="note-edit-link">Edit</span> : null}
-        </span>
-        <p className="note-snippet">{day?.reflection ?? "Huh? is welcome. A short note is optional."}</p>
-        {day?.verseTags && day.verseTags.length > 0 ? (
-          <span className="note-tags">
-            {day.verseTags.map((tag) => (
-              <span key={tag} className="verse-tag">
-                <Bookmark size={11} aria-hidden="true" />
-                {tag}
-              </span>
-            ))}
-          </span>
+          <p className="note-snippet">{day?.reflection ?? "Huh? is welcome. A short note is optional."}</p>
+          {day?.verseTags && day.verseTags.length > 0 ? (
+            <span className="note-tags">
+              {day.verseTags.map((tag) => (
+                <span key={tag} className="verse-tag">
+                  <Bookmark size={11} aria-hidden="true" />
+                  {tag}
+                </span>
+              ))}
+            </span>
+          ) : null}
+        </button>
+        {canShare ? (
+          <button type="button" className="note-share" onClick={() => setSharing(true)}>
+            <span>{shared ? "This note is shared" : "Share this note"}</span>
+            <span>{SHARE_NOTE_PROMISE}</span>
+          </button>
         ) : null}
-      </button>
+        {sharing ? (
+          <ShareNoteSheet
+            groups={groups.groups.map((group) => ({ id: group.id, name: group.name }))}
+            partners={partner.partners.filter((person) => person.id).map((person) => ({ id: person.id, name: person.displayName }))}
+            shared={shared}
+            busy={shareBusy}
+            error={shareError}
+            onClose={() => {
+              setShareError(null);
+              setSharing(false);
+            }}
+            onShare={(groupIds, partnerIds) => {
+              const draft = buildNoteShare({
+                day: today,
+                reflection: day?.reflection,
+                groupIds,
+                partnerIds,
+                allowedGroupIds: new Set(groups.groups.map((group) => group.id)),
+                allowedPartnerIds: new Set(partner.partners.map((person) => person.id)),
+              });
+              if (!draft) {
+                setShareError("Write a note, then pick who sees it.");
+                return;
+              }
+              setShareBusy(true);
+              setShareError(null);
+              void groups.shareNote(draft.day, draft.body, draft.groupIds, draft.partnerIds).then((failure) => {
+                setShareBusy(false);
+                if (failure) {
+                  setShareError(failure);
+                  return;
+                }
+                setSharing(false);
+                showToast("Shared. Only the people you picked can see it.");
+              });
+            }}
+            onStop={() => {
+              if (!shared) return;
+              setShareBusy(true);
+              setShareError(null);
+              void groups.deleteNote(shared.id).then((failure) => {
+                setShareBusy(false);
+                if (failure) {
+                  setShareError(failure);
+                  return;
+                }
+                setSharing(false);
+                showToast("That note is private again.");
+              });
+            }}
+          />
+        ) : null}
+      </>
     );
   }
 
