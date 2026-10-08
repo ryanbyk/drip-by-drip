@@ -121,8 +121,11 @@ export function partnerReadLabel(readToday: boolean): "Read today" | null {
   return null;
 }
 
-export function partnerSettingsValue(input: { partnerName: string | null; inviteOpen: boolean }): string {
-  if (input.partnerName) return input.partnerName;
+export function partnerSettingsValue(input: { partnerName: string | null; inviteOpen: boolean; extra?: number }): string {
+  if (input.partnerName) {
+    if (input.extra && input.extra > 0) return `${input.partnerName} + ${input.extra}`;
+    return input.partnerName;
+  }
   if (input.inviteOpen) return "Invite ready";
   return "Invite";
 }

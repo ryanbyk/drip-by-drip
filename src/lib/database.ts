@@ -118,6 +118,7 @@ export type Database = {
           status: string;
           expires_at: string;
           accepted_by: string | null;
+          invitee_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -127,6 +128,7 @@ export type Database = {
           status?: string;
           expires_at: string;
           accepted_by?: string | null;
+          invitee_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -136,6 +138,7 @@ export type Database = {
           status?: string;
           expires_at?: string;
           accepted_by?: string | null;
+          invitee_id?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -167,6 +170,111 @@ export type Database = {
           sender_id?: string;
           recipient_id?: string;
           body?: string;
+          day?: string;
+          created_at?: string;
+          seen_at?: string | null;
+        };
+        Relationships: [];
+      };
+      groups: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          owner_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string | null;
+          owner_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string | null;
+          owner_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      group_members: {
+        Row: {
+          group_id: string;
+          user_id: string;
+          role: string;
+          joined_at: string;
+        };
+        Insert: {
+          group_id: string;
+          user_id: string;
+          role?: string;
+          joined_at?: string;
+        };
+        Update: {
+          group_id?: string;
+          user_id?: string;
+          role?: string;
+          joined_at?: string;
+        };
+        Relationships: [];
+      };
+      group_invites: {
+        Row: {
+          id: string;
+          group_id: string;
+          created_by: string;
+          code: string;
+          status: string;
+          expires_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          group_id: string;
+          created_by: string;
+          code: string;
+          status?: string;
+          expires_at: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          group_id?: string;
+          created_by?: string;
+          code?: string;
+          status?: string;
+          expires_at?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      drops: {
+        Row: {
+          id: string;
+          sender_id: string;
+          recipient_id: string;
+          body: string | null;
+          day: string;
+          created_at: string;
+          seen_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          sender_id: string;
+          recipient_id: string;
+          body?: string | null;
+          day: string;
+          created_at?: string;
+          seen_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          sender_id?: string;
+          recipient_id?: string;
+          body?: string | null;
           day?: string;
           created_at?: string;
           seen_at?: string | null;
@@ -227,6 +335,50 @@ export type Database = {
       };
       set_partner_read_day: {
         Args: { local_day: string; did_read: boolean };
+        Returns: Json;
+      };
+      create_group: {
+        Args: { group_name: string; group_description: string };
+        Returns: Json;
+      };
+      rename_group: {
+        Args: { target_group: string; group_name: string };
+        Returns: Json;
+      };
+      leave_group: {
+        Args: { target_group: string };
+        Returns: Json;
+      };
+      remove_group_member: {
+        Args: { target_group: string; member_user: string };
+        Returns: Json;
+      };
+      create_group_invite: {
+        Args: { target_group: string };
+        Returns: Json;
+      };
+      lookup_group_invite: {
+        Args: { invite_code: string };
+        Returns: Json;
+      };
+      join_group: {
+        Args: { invite_code: string };
+        Returns: Json;
+      };
+      invite_reading_partner: {
+        Args: { invitee: string };
+        Returns: Json;
+      };
+      unlink_one_partner: {
+        Args: { partner_user: string };
+        Returns: Json;
+      };
+      send_drop: {
+        Args: { recipient: string; message: string; local_day: string };
+        Returns: Json;
+      };
+      see_drop: {
+        Args: { drop_id: string };
         Returns: Json;
       };
     };

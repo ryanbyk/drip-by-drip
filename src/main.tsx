@@ -12,6 +12,7 @@ import "@fontsource/roboto/latin-500.css";
 import { App } from "./App";
 import { AppProvider } from "./state/AppState";
 import { AuthProvider } from "./state/AuthState";
+import { GroupProvider } from "./state/GroupState";
 import { PartnerProvider } from "./state/PartnerState";
 import "./index.css";
 
@@ -57,7 +58,9 @@ createRoot(root).render(
     <AuthProvider>
       <AppProvider>
         <PartnerProvider>
-          <App />
+          <GroupProvider>
+            <App />
+          </GroupProvider>
         </PartnerProvider>
       </AppProvider>
     </AuthProvider>
