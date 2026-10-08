@@ -34,6 +34,8 @@ type AppValue = {
   share: (ref?: string) => Promise<void>;
   promptInstall: () => Promise<void>;
   dismissInstall: () => void;
+  /** User id whose cloud snapshot has been applied. Null until that sync finishes. */
+  syncedUserId: string | null;
 };
 
 const AppContext = createContext<AppValue | null>(null);
@@ -67,6 +69,7 @@ export function AppProvider({
   const snapshotRef = useRef(snapshot);
   const bootedRef = useRef(Boolean(initialSnapshot));
   const syncFailedRef = useRef(false);
+  const [syncedUserId, setSyncedUserId] = useState<string | null>(null);
   snapshotRef.current = snapshot;
 
   const reportSync = useCallback((result: AccountSyncResult) => {
@@ -96,6 +99,8 @@ export function AppProvider({
       if (cancelled) return;
       bootedRef.current = true;
       if (session.enabled) reportSync(result);
+      if (!session.userId) setSyncedUserId(null);
+      else if (session.enabled) setSyncedUserId(session.userId);
       setSnapshot((current) => {
         if (current && current !== result.snapshot && result.snapshot.updatedAt < current.updatedAt) return current;
         return current === result.snapshot ? current : result.snapshot;
@@ -299,6 +304,7 @@ export function AppProvider({
       share,
       promptInstall,
       dismissInstall,
+      syncedUserId,
     };
   }, [
     snapshot,
@@ -313,6 +319,7 @@ export function AppProvider({
     share,
     promptInstall,
     dismissInstall,
+    syncedUserId,
   ]);
 
   if (!value) {

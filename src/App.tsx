@@ -7,6 +7,7 @@ import { useAuth } from "./state/auth-context";
 import { usePartner } from "./state/partner-context";
 import { History } from "./screens/History";
 import { Onboarding } from "./screens/Onboarding";
+import { onboardingShell } from "./screens/onboardingAccount";
 import { Settings } from "./screens/Settings";
 import { SignIn } from "./screens/SignIn";
 import { Today } from "./screens/today/Today";
@@ -14,14 +15,22 @@ import { Today } from "./screens/today/Today";
 type Tab = "today" | "history" | "settings";
 
 export function App() {
-  const { snapshot } = useApp();
+  const { snapshot, syncedUserId } = useApp();
   const auth = useAuth();
   const partner = usePartner();
   const [tab, setTab] = useState<Tab>(authCallback.present ? "settings" : "today");
   const [accountOpen, setAccountOpen] = useState(false);
   const [partnerOpen, setPartnerOpen] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
+  const [onboardingSignIn, setOnboardingSignIn] = useState(false);
   const openedInvite = useRef(false);
+  const shell = onboardingShell({
+    onboardingComplete: snapshot.prefs.onboardingComplete,
+    requestingSignIn: onboardingSignIn,
+    authStatus: auth.status,
+    syncedUserId,
+    userId: auth.user?.id ?? null,
+  });
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -58,7 +67,13 @@ export function App() {
   }, [auth.landing, auth.acknowledgeLanding, partner.pendingInvite, snapshot.prefs.onboardingComplete]);
 
   useEffect(() => {
-    if (!signingIn || auth.status !== "signed-in") return;
+    if (!onboardingSignIn || shell === "sign-in") return;
+    setOnboardingSignIn(false);
+    if (shell === "today") setTab("today");
+  }, [onboardingSignIn, shell]);
+
+  useEffect(() => {
+    if (!signingIn || auth.status !== "signed-in" || shell !== "today") return;
     setSigningIn(false);
     setTab("settings");
     if (partner.pendingInvite) {
@@ -67,7 +82,7 @@ export function App() {
     } else {
       setAccountOpen(true);
     }
-  }, [signingIn, auth.status, partner.pendingInvite]);
+  }, [signingIn, auth.status, partner.pendingInvite, shell]);
 
   useEffect(() => {
     if (openedInvite.current || !partner.pendingInvite || auth.status === "loading") return;
@@ -92,10 +107,18 @@ export function App() {
     }
   }
 
-  if (!snapshot.prefs.onboardingComplete) {
+  if (shell === "sign-in") {
     return (
       <PhoneShell>
-        <Onboarding />
+        <SignIn onSkip={() => setOnboardingSignIn(false)} />
+      </PhoneShell>
+    );
+  }
+
+  if (shell === "onboarding") {
+    return (
+      <PhoneShell>
+        <Onboarding onSignIn={() => setOnboardingSignIn(true)} />
       </PhoneShell>
     );
   }

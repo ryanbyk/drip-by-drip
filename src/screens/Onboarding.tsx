@@ -20,21 +20,25 @@ import {
 } from "../components/Icons";
 import { StartingChapterSheet, type StartSelection } from "../components/StartingChapter";
 import { AskTimePicker, BookPicker, Button, PacePicker } from "../components/ui";
+import { SignIn } from "./SignIn";
 
-export function Onboarding() {
+export function Onboarding({ onSignIn }: { onSignIn?: () => void }) {
   const app = useApp();
   const { prefs } = app.snapshot;
   const step = prefs.onboardingStep;
+  const [signingIn, setSigningIn] = useState(false);
+  const openSignIn = onSignIn ?? (() => setSigningIn(true));
 
+  if (!onSignIn && signingIn) return <SignIn onSkip={() => setSigningIn(false)} />;
   if (step === "time") return <AskTimeStep />;
   if (step === "notify") return <NotifyStep />;
   if (step === "reading") return <ReadingStep />;
   if (step === "book") return <PickBookStep />;
   if (step === "plan") return <PlanStep />;
-  return <FramingStep />;
+  return <FramingStep onSignIn={openSignIn} />;
 }
 
-function FramingStep() {
+function FramingStep({ onSignIn }: { onSignIn: () => void }) {
   const { setPrefs } = useApp();
   return (
     <section className="screen screen-frame">
@@ -63,6 +67,9 @@ function FramingStep() {
       <div className="footer">
         <ProgressDots active={0} />
         <Button onClick={() => setPrefs({ onboardingStep: "time" })}>Start</Button>
+        <Button variant="quiet" onClick={onSignIn}>
+          I already have an account
+        </Button>
       </div>
     </section>
   );
