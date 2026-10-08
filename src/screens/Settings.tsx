@@ -405,7 +405,7 @@ export function Settings({
             : "Stored only on this device · no account needed"}
         </p>
       </section>
-      {editingBook ? <ChangeBookSheet when="track" onClose={() => setEditingBook(false)} /> : null}
+      {editingBook ? <ChangeBookSheet onClose={() => setEditingBook(false)} /> : null}
       {about ? (
         <Sheet title="About Drip by drip" onClose={() => setAbout(false)}>
           <p>

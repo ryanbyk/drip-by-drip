@@ -66,6 +66,8 @@ export type UserPrefs = {
   lastNotifiedDate: string;
   queuedBookId: string;
   queuedBookDate: string;
+  /** Chapter kept when a queued book begins. 0 starts that book at chapter 1. */
+  queuedChapter: number;
   draftStartChapter: number;
   bibleSource: BibleSourceId;
   bibleTranslation: BibleTranslationId;

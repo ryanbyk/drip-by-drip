@@ -1,7 +1,17 @@
 import { useState } from "react";
 import { chapterCount, getBook, verseCount } from "../../domain/books";
+import { startAtLabel } from "../../domain/chapters";
 import { addDays } from "../../domain/dates";
 import { dripFromPlace, isPlaceFinished, makeRange, placeAfter, verseInRange } from "../../domain/drip";
+import {
+  defaultSwitchStart,
+  resolveSwitchPlace,
+  switchConfirmCopy,
+  switchTargetLabel,
+  switchTiming,
+  switchTimingNote,
+  type SwitchTiming,
+} from "../../domain/switchBook";
 import { bibleSourceLabel, normalizeBiblePrefs } from "../../domain/bibleSource";
 import { formatRef, parsePassage } from "../../domain/refs";
 import type { Range } from "../../domain/types";
@@ -23,7 +33,7 @@ import {
   Share,
 } from "../../components/Icons";
 import { OpenPassageLink } from "../../components/OpenPassageLink";
-import { StartingChapterSheet, type StartSelection } from "../../components/StartingChapter";
+import { StartingChapterSheet } from "../../components/StartingChapter";
 import { BookPicker, Button, PacePicker, Sheet } from "../../components/ui";
 import { SomethingElse } from "./SomethingElse";
 
@@ -642,60 +652,137 @@ export function StopSheet({
   );
 }
 
-export function ChangeBookSheet({ onClose, when }: { onClose: () => void; when: "today" | "track" }) {
+export function ChangeBookSheet({ onClose }: { onClose: () => void }) {
   const { snapshot, today, dispatch } = useApp();
   const [bookId, setBookId] = useState(snapshot.prefs.bookId);
   const [dripSize, setDripSize] = useState(snapshot.prefs.dripSize);
+  const [start, setStart] = useState(() => defaultSwitchStart(snapshot.places, snapshot.prefs.bookId));
+  const [countEarlier, setCountEarlier] = useState<boolean | undefined>(undefined);
   const [picking, setPicking] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const book = getBook(bookId);
+  const fromName = getBook(snapshot.prefs.bookId)?.name ?? "this book";
+  const toName = book?.name ?? "this book";
+  const sameBook = bookId === snapshot.prefs.bookId;
+  const startLabel = startAtLabel(bookId, start.chapter, start.verse);
+  const atBeginning = start.chapter === 1 && start.verse === 1;
 
-  function begin(selection?: StartSelection) {
-    if (when === "today") {
-      dispatch({
-        type: "queueBook",
-        bookId,
-        when: "today",
-        today,
-        tomorrow: today,
-        ...(selection
-          ? { startChapter: selection.chapter, startVerse: selection.verse, countEarlier: selection.countEarlier }
-          : {}),
-      });
-    } else {
-      dispatch({
-        type: "reading",
-        today,
-        bookId,
-        dripSize,
-        mode: "book",
-        startChapter: selection?.chapter ?? 1,
-        startVerse: selection?.verse ?? 1,
-        ...(selection ? { countEarlier: selection.countEarlier } : {}),
-      });
+  function selectBook(id: string) {
+    setBookId(id);
+    setStart(defaultSwitchStart(snapshot.places, id));
+    setCountEarlier(undefined);
+  }
+
+  function proceed() {
+    const next = resolveSwitchPlace(snapshot.places, bookId, start.chapter, start.verse, countEarlier);
+    const saved = snapshot.places[bookId];
+    const placeChanged =
+      !saved ||
+      saved.chapter !== next.chapter ||
+      saved.verse !== next.verse ||
+      saved.countedThrough !== next.countedThrough;
+    if (sameBook && !placeChanged) {
+      if (dripSize !== snapshot.prefs.dripSize) dispatch({ type: "reading", today, dripSize });
+      onClose();
+      return;
     }
+    setConfirming(true);
+  }
+
+  function commit() {
+    dispatch({
+      type: "switchBook",
+      bookId,
+      today,
+      tomorrow: addDays(today, 1),
+      startChapter: start.chapter,
+      startVerse: start.verse,
+      ...(countEarlier !== undefined ? { countEarlier } : {}),
+      dripSize,
+    });
     onClose();
   }
 
   return (
-    <Sheet title="What you’re reading" onClose={onClose}>
-      <BookPicker
-        selectedId={bookId}
-        onSelect={(id) => {
-          setBookId(id);
-          setPicking(false);
-        }}
-      />
+    <Sheet title="What you’re reading" description={startLabel} onClose={onClose}>
+      <BookPicker selectedId={bookId} onSelect={selectBook} />
       <p className="kicker">Daily drip size</p>
       <PacePicker value={dripSize} onChange={setDripSize} />
       <button type="button" className="partway-link" onClick={() => setPicking(true)}>
-        Already partway in? Set a starting chapter
+        {atBeginning ? "Already partway in? Set a starting chapter" : startLabel}
       </button>
       <div className="footer">
-        <Button onClick={() => begin()}>Read {book?.name ?? "this book"}</Button>
+        <Button onClick={proceed}>{sameBook ? startLabel : `Switch to ${toName}`}</Button>
       </div>
       {picking ? (
-        <StartingChapterSheet key={bookId} bookId={bookId} onClose={() => setPicking(false)} onConfirm={begin} />
+        <StartingChapterSheet
+          key={bookId}
+          bookId={bookId}
+          initialChapter={start.chapter}
+          initialVerse={start.verse}
+          onClose={() => setPicking(false)}
+          onConfirm={(selection) => {
+            setStart({ chapter: selection.chapter, verse: selection.verse });
+            setCountEarlier(selection.countEarlier);
+            setPicking(false);
+          }}
+        />
       ) : null}
+      {confirming ? (
+        <SwitchBookConfirm
+          fromName={fromName}
+          toName={toName}
+          sameBook={sameBook}
+          startLabel={startLabel}
+          detail={switchTargetLabel(toName, start.chapter, start.verse)}
+          timing={switchTiming(snapshot, today, bookId)}
+          plan={snapshot.prefs.readingMode === "plan"}
+          todayDone={snapshot.days[today]?.readDone === true}
+          onClose={() => setConfirming(false)}
+          onConfirm={commit}
+        />
+      ) : null}
+    </Sheet>
+  );
+}
+
+export function SwitchBookConfirm({
+  fromName,
+  toName,
+  sameBook,
+  startLabel,
+  detail,
+  timing,
+  plan,
+  todayDone,
+  onClose,
+  onConfirm,
+}: {
+  fromName: string;
+  toName: string;
+  sameBook: boolean;
+  startLabel: string;
+  detail: string;
+  timing: SwitchTiming;
+  plan: boolean;
+  todayDone: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const message = sameBook
+    ? `${startLabel}? Days you’ve already read stay as they are.`
+    : switchConfirmCopy(fromName, toName);
+  const actionLabel = sameBook ? startLabel : timing === "tomorrow" ? `Start ${toName} tomorrow` : `Switch to ${toName}`;
+  return (
+    <Sheet title={sameBook ? "Start here?" : "Switch book?"} onClose={onClose}>
+      <p>{message}</p>
+      <p className="soft">{switchTimingNote({ timing, detail, plan, sameBook, todayDone })}</p>
+      <div className="footer">
+        <Button onClick={onConfirm}>{actionLabel}</Button>
+        <Button variant="quiet" onClick={onClose}>
+          Cancel
+        </Button>
+      </div>
     </Sheet>
   );
 }
