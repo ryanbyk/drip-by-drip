@@ -948,6 +948,10 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
   width: max-content;
   max-width: min(90vw, 420px);
 }
+/* The floating pill covers the 18px rest. Sit above it; --tab already includes the home-indicator inset. */
+:root:has(.tabbar-wrap) .toast {
+  bottom: calc(var(--tab) + var(--space-12));
+}
 .sr-only {
   position: absolute;
   width: 1px;
