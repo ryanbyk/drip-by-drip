@@ -9,8 +9,8 @@ const config: StorybookConfig = {
     options: {},
   },
   async viteFinal(config) {
-    // The app is served from /drip-by-drip/ and registers a service worker.
-    // Storybook needs a root base and should not build that worker.
+    // Storybook is not the installed app. Drop the service worker and the
+    // legacy github.io redirect, and keep the preview at the site root.
     config.base = "/";
     config.plugins = await withoutVitePlugins(config.plugins, [
       "vite-plugin-pwa",
@@ -18,6 +18,7 @@ const config: StorybookConfig = {
       "vite-plugin-pwa:dev-sw",
       "vite-plugin-pwa:info",
       "vite-plugin-pwa:pwa-assets",
+      "legacy-host-redirect",
     ]);
     return config;
   },

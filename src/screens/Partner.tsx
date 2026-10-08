@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Check, ChevronLeft, Copy, EyeOff, HeartHandshake, Link2, X } from "../components/Icons";
 import { Button, Sheet } from "../components/ui";
+import { pageOriginForLinks } from "../lib/appUrl";
 import { initialsFor } from "../lib/auth";
 import {
   NUDGE_NOTES,
@@ -29,7 +30,13 @@ export function Partner({ onBack }: { onBack: () => void }) {
   const person = partner.partner;
   const incoming = partner.incoming;
   const invite = partner.invite;
-  const inviteUrl = invite ? partnerInviteUrl(window.location.origin, import.meta.env.BASE_URL, invite.code) : "";
+  const inviteUrl = invite
+    ? partnerInviteUrl(
+        pageOriginForLinks(window.location.origin, import.meta.env.VITE_APP_URL),
+        import.meta.env.BASE_URL,
+        invite.code,
+      )
+    : "";
   const readLabel = person ? partnerReadLabel(person.readToday) : null;
   const canSend = person ? canSendNudge(partner.nudges, today) : false;
   const heading = incoming ? `${incoming.inviterName} invited you` : person ? person.displayName : "Choose a partner";

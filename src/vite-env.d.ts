@@ -2,6 +2,8 @@
 /// <reference types="vite-plugin-pwa/client" />
 
 interface ImportMetaEnv {
+  /** App origin. Defaults to https://app.drip-by-drip.com. Not the apex domain. */
+  readonly VITE_APP_URL?: string;
   readonly VITE_SUPABASE_URL?: string;
   readonly VITE_SUPABASE_ANON_KEY?: string;
   /** Optional override. Otherwise the client asks the vapid-public-key Edge Function. */

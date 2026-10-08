@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Then open the URL Vite prints (`http://localhost:5173/drip-by-drip/`) on a phone-sized window. `npm run build` produces the installable PWA in `dist/`, and `npm run preview` serves that build. `npm test` runs the reading, streak, and persistence checks. `npm run audit:spacing` checks that padding, margin, gap, and inset use the `--space-*` steps from `drip-by-drip.pen` (defined in `src/index.css`) instead of raw pixel lengths.
+Then open the URL Vite prints (`http://localhost:5173/`) on a phone-sized window. `npm run build` produces the installable PWA in `dist/`, and `npm run preview` serves that build. `npm test` runs the reading, streak, and persistence checks. `npm run audit:spacing` checks that padding, margin, gap, and inset use the `--space-*` steps from `drip-by-drip.pen` (defined in `src/index.css`) instead of raw pixel lengths.
 
 ## Review components
 
@@ -21,11 +21,17 @@ npm run storybook
 
 Opens Storybook at `http://localhost:6006`. Stories load the same fonts and design tokens as the app (`src/index.css`), so buttons, sheets, the tab bar, pickers, icons, and shared cards match the product. The toolbar switches the Light and Dark token sets. `npm run build-storybook` writes a static build to `storybook-static/`.
 
-The hosted app is [https://ryanbyk.github.io/drip-by-drip/](https://ryanbyk.github.io/drip-by-drip/). A push to `main` builds `dist` and deploys it with GitHub Pages, once Pages is enabled for this repo.
+The hosted app is [https://app.drip-by-drip.com](https://app.drip-by-drip.com). A push to `main` builds `dist` and deploys it with GitHub Pages. The site is the root of that subdomain. `drip-by-drip.com` is reserved for a future marketing site and is not the app URL.
+
+The app origin defaults to `https://app.drip-by-drip.com` (`DEFAULT_APP_URL` in `supabase/functions/send-ask-push/appUrl.ts`, re-exported from `src/lib/appUrl.ts`). A build can override it with the repository variable `VITE_APP_URL`. Auth returns and partner invite links use the page you are on, except on `ryanbyk.github.io`, where they use that app origin. Vite `base` is `/`.
+
+This repo publishes with a custom GitHub Actions workflow. For that publishing source GitHub ignores a `CNAME` file, so the custom domain is set in the repository Pages settings. There is no `CNAME` in this repo.
+
+People who installed the app from `https://ryanbyk.github.io/drip-by-drip/` keep that origin’s storage, push subscription, and home-screen icon. Sign in and sync there before switching, then install again from `https://app.drip-by-drip.com` and turn reminders on again. Once the custom domain is saved, GitHub 301s the github.io project URL to the custom domain, strips the `/drip-by-drip/` prefix, and keeps the query string (`?partner=`). A small page at `/drip-by-drip/` on the new origin does the same if a request still has that path. An installed service worker on the old origin does not follow the 301.
 
 Answers, bookmarks, and notes stay on this device. Today’s passage is read in the app as the ESV. Open passage still uses the Bible source you choose (YouVersion by default, with Bible Gateway, ESV.org, or a custom link). ESV text is loaded through a server proxy, so the Crossway API key is not stored on this device. If in-app ESV is turned off, you are offline, or the request fails, Open passage uses your external source. The app does not bundle a Bible edition. Daily reminders use the browser Notification API when it is available, and otherwise the question is waiting in the app. A signed-in reader can also receive that reminder as a Web Push when the app is closed, where the browser supports it. Guests stay on the local schedule. iPhone delivers Web Push only to the Home Screen app, and iOS may still hold the notification.
 
-`npm run build` works without extra env. The public Supabase URL and legacy anon key have defaults in `src/lib/supabaseConfig.ts`. GitHub Pages can override them with repository **Variables** (not secrets) named `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. Use the legacy anon JWT (`role` `anon`), not an `sb_publishable_…` key. Do not set `VITE_ESV_API_KEY` or put the Crossway key in the client, the repo, or Actions secrets — that key stays in the Edge Function secret `ESV_API_KEY`.
+`npm run build` works without extra env. The app origin defaults as above. The public Supabase URL and legacy anon key have defaults in `src/lib/supabaseConfig.ts`. GitHub Pages can override them with repository **Variables** (not secrets) named `VITE_APP_URL`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_ANON_KEY`. Leave `VITE_APP_URL` empty to keep `https://app.drip-by-drip.com`. Use the legacy anon JWT (`role` `anon`), not an `sb_publishable_…` key. Do not set `VITE_ESV_API_KEY` or put the Crossway key in the client, the repo, or Actions secrets — that key stays in the Edge Function secret `ESV_API_KEY`.
 
 To try that notification without waiting for ask time, open Settings and tap **Send test reminder**. The control stays on that screen during `npm run dev`, on the hosted app, and in the installed home-screen app. The test asks for notification permission if needed, then uses the same title, question, icon, and service-worker path as the daily reminder. It does not turn the daily reminder on, and it does not mark today as already notified.
 
@@ -57,13 +63,15 @@ Project `gfacmaaehvlhbskrajyj` (`https://gfacmaaehvlhbskrajyj.supabase.co`).
 
 **Authentication → URL configuration**
 
-- Site URL: `https://ryanbyk.github.io/drip-by-drip/`
+- Site URL: `https://app.drip-by-drip.com`
 - Redirect URLs:
-  - `https://ryanbyk.github.io/drip-by-drip/`
-  - `http://localhost:5173/drip-by-drip/`
+  - `https://app.drip-by-drip.com/`
+  - `https://app.drip-by-drip.com`
+  - `https://ryanbyk.github.io/drip-by-drip/` (keep during the move)
   - `http://localhost:5173/`
+  - `http://localhost:5173/drip-by-drip/` (older dev builds)
 
-The app sends people back to the current origin plus the Vite base (`/drip-by-drip/`).
+The app sends people back to the current origin at the site root. On `ryanbyk.github.io` it sends them to `https://app.drip-by-drip.com/`. The magic-link template below uses `{{ .ConfirmationURL }}` and does not name a host. No template edit is required when the dashboard matches that. If a template contains a literal `https://ryanbyk.github.io/drip-by-drip/` link, replace that link with `{{ .ConfirmationURL }}`.
 
 **Authentication → Email Templates → Magic link**
 
@@ -116,7 +124,9 @@ supabase secrets set --project-ref gfacmaaehvlhbskrajyj \
   PUSH_CRON_SECRET="<long random string>"
 ```
 
-`VAPID_SUBJECT` is optional. It defaults to `mailto:drip@ryanbyk.github.io`. The private key and cron secret never go in the client or the repo. The public key is not a secret. The signed-in app reads it from the `vapid-public-key` function. A build can override that with the GitHub Pages variable `VITE_VAPID_PUBLIC_KEY`.
+`VAPID_SUBJECT` is optional. It defaults to `mailto:drip@ryanbyk.github.io` when the secret is unset. That value is a contact URI, not the app URL. Leave an existing `VAPID_SUBJECT` secret as it is, and do not rotate the VAPID keys for this move. Subscriptions already stored belong to the origin that created them. The private key and cron secret never go in the client or the repo. The public key is not a secret. The signed-in app reads it from the `vapid-public-key` function. A build can override that with the GitHub Pages variable `VITE_VAPID_PUBLIC_KEY`.
+
+A notification click opens the service worker scope (the app root on the origin that subscribed). The push payload also includes `url`, from the Edge Function env `APP_URL` when set, otherwise `https://app.drip-by-drip.com/`. The worker opens that URL only when it is the same origin as the subscription. No Edge Function secret has to change for the move. Set `APP_URL` only if you want to override that default.
 
 The minute job `send-ask-push` calls `private.invoke_send_ask_push()`. That function does nothing until Vault has three secrets (names only — create them in the SQL editor, not in a migration):
 

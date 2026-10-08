@@ -1,4 +1,5 @@
 import { FunctionsHttpError } from "@supabase/supabase-js";
+import { pageOriginForLinks } from "./appUrl";
 import {
   authRedirectUrl,
   emailOtpType,
@@ -9,7 +10,10 @@ import {
 import { supabase } from "./supabaseClient";
 
 export function currentRedirect(): string {
-  return authRedirectUrl(window.location.origin, import.meta.env.BASE_URL);
+  return authRedirectUrl(
+    pageOriginForLinks(window.location.origin, import.meta.env.VITE_APP_URL),
+    import.meta.env.BASE_URL,
+  );
 }
 
 /**

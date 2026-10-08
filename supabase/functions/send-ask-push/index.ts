@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import webpushModule from "npm:web-push@3.6.7";
+import { appRoot } from "./appUrl.ts";
 import {
   askPushDue,
   askPushMessage,
@@ -106,11 +107,12 @@ async function deliver(
   webpush: WebPush,
   row: SubscriptionRow,
   message: { title: string; body: string; tag: string },
+  url: string,
 ): Promise<"sent" | "removed" | "failed"> {
   try {
     await webpush.sendNotification(
       { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
-      JSON.stringify(message),
+      JSON.stringify({ ...message, url }),
     );
     return "sent";
   } catch (error) {
@@ -125,6 +127,7 @@ async function sendDue(
   input: { userId: string | null; test: boolean; now: Date },
 ): Promise<SendCounts> {
   const counts: SendCounts = { sent: 0, skipped: 0, removed: 0, failed: 0 };
+  const url = appRoot(Deno.env.get("APP_URL"));
   const subscriptions = await loadSubscriptions(admin, input.userId);
   if (subscriptions.length === 0) return counts;
 
@@ -153,7 +156,7 @@ async function sendDue(
       sentOn = decision.localDate;
     }
 
-    const result = await deliver(webpush, row, message);
+    const result = await deliver(webpush, row, message, url);
     if (result === "removed") {
       await admin.from("push_subscriptions").delete().eq("id", row.id);
       counts.removed += 1;

@@ -24,8 +24,8 @@ describe("partner invites", () => {
     expect(normalizeInviteCode(" 4k7q-xm2p ")).toBe("4K7QXM2P");
     expect(formatInviteCode("4k7qxm2p")).toBe("4K7Q-XM2P");
     expect(partnerCodeFromLocation("?partner=4K7Q-XM2P&code=auth")).toBe("4K7QXM2P");
-    const url = partnerInviteUrl("https://ryanbyk.github.io", "/drip-by-drip/", "4K7QXM2P");
-    expect(url).toBe("https://ryanbyk.github.io/drip-by-drip/?partner=4K7QXM2P");
+    const url = partnerInviteUrl("https://app.drip-by-drip.com", "/", "4K7QXM2P");
+    expect(url).toBe("https://app.drip-by-drip.com/?partner=4K7QXM2P");
     expect(partnerInviteShareText(url)).toContain("never answers or notes");
     expect(partnerInviteShareText(url)).not.toMatch(/not today/i);
   });
