@@ -18,7 +18,10 @@ function fitStatusGlassPhone(phone: HTMLElement) {
   phone.style.height = "min(100dvh, 844px)";
 }
 
-/** Place the page title across the status strip so the frost is visible on the word. */
+/**
+ * Park the title a few pixels into the strip. The frost fades in over the
+ * first 16px of travel, so a higher target would still be mid-fade.
+ */
 function scrollTitleIntoStatusStrip(phone: HTMLElement) {
   const scroller = phone.querySelector<HTMLElement>(".screen");
   const title = scroller?.querySelector("h1");
@@ -26,7 +29,7 @@ function scrollTitleIntoStatusStrip(phone: HTMLElement) {
   if (!scroller || !title || !band) return;
   const bandRect = band.getBoundingClientRect();
   const titleRect = title.getBoundingClientRect();
-  const targetTop = bandRect.top + bandRect.height * 0.25;
+  const targetTop = bandRect.top + 4;
   scroller.scrollTop += titleRect.top - targetTop;
 }
 

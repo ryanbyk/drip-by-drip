@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
-import { statusGlassActive } from "../lib/statusGlass";
+import { statusGlassOpacity } from "../lib/statusGlass";
 
 export function PhoneShell({
   children,
@@ -22,20 +22,25 @@ export function PhoneShell({
       const band = root.querySelector<HTMLElement>(".status-glass");
       if (!scroller || !band) {
         root.classList.remove("is-scrolled");
+        root.style.setProperty("--status-glass", "0");
         return;
       }
       const bandHeight = band.getBoundingClientRect().height;
       const paddingTop = Number.parseFloat(getComputedStyle(scroller).paddingTop) || 0;
-      root.classList.toggle("is-scrolled", statusGlassActive(scroller.scrollTop, paddingTop, bandHeight));
+      const amount = statusGlassOpacity(scroller.scrollTop, paddingTop, bandHeight);
+      root.style.setProperty("--status-glass", amount.toFixed(3));
+      root.classList.toggle("is-scrolled", amount > 0);
     };
     root.addEventListener("scroll", sync, true);
     root.addEventListener("scrollend", sync, true);
+    window.addEventListener("resize", sync);
     const observer = new MutationObserver(sync);
     observer.observe(root, { childList: true });
     sync();
     return () => {
       root.removeEventListener("scroll", sync, true);
       root.removeEventListener("scrollend", sync, true);
+      window.removeEventListener("resize", sync);
       observer.disconnect();
     };
   }, []);

@@ -60,7 +60,8 @@
   --on-accent: #fffdf8;
   --apple-bg: #000000;
   --apple-fg: #ffffff;
-  --tab: calc(64px + env(safe-area-inset-bottom));
+  /* Pill (60px) plus the 12px rest under it, then the iOS home-indicator inset. */
+  --tab: calc(60px + var(--space-12) + env(safe-area-inset-bottom));
   --radius: 18px;
   /* Pen screens start 8px below the 62px Status Bar frame. That frame is the
      status chrome, so this is only the real inset — not a 62px floor. A floor
@@ -219,6 +220,7 @@ a { color: var(--accent); }
 }
 .phone.is-scrolled .status-glass {
   z-index: 5;
+  opacity: var(--status-glass, 0);
   background: linear-gradient(to bottom, var(--glass), transparent);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -235,6 +237,14 @@ a { color: var(--accent); }
   padding: calc(var(--space-8) + var(--safe-top)) var(--space-24) var(--space-28);
 }
 .screen-tabbed { padding-bottom: var(--space-24); }
+/* The nav floats over the page, so the scroller needs room to clear the pill and the home indicator. */
+.phone:has(.tabbar-wrap) .screen {
+  padding-bottom: calc(var(--tab) + var(--space-16));
+}
+/* The in-app reader pins its action bar under the passage. Sit that bar on the pill; verses scroll inside the body. */
+.phone:has(.tabbar-wrap) .screen-reader {
+  padding-bottom: var(--tab);
+}
 .screen-frame {
   gap: var(--space-24);
   padding: calc(var(--space-8) + var(--safe-top)) var(--space-24) var(--space-28);
@@ -621,8 +631,13 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
 .note-filled p { margin-top: var(--space-8); }
 
 .tabbar-wrap {
-  flex: none;
+  position: absolute;
+  z-index: 6;
+  left: 0;
+  right: 0;
+  bottom: 0;
   padding: 0 var(--space-16) calc(var(--space-12) + env(safe-area-inset-bottom));
+  pointer-events: none;
 }
 .tabbar {
   display: grid;
@@ -635,6 +650,8 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
   border-radius: 30px;
   box-shadow: var(--shadow);
   backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  pointer-events: auto;
 }
 .tab {
   border: 0;
@@ -930,6 +947,10 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
   z-index: 40;
   width: max-content;
   max-width: min(90vw, 420px);
+}
+/* The floating pill covers the 18px rest. Sit above it; --tab already includes the home-indicator inset. */
+:root:has(.tabbar-wrap) .toast {
+  bottom: calc(var(--tab) + var(--space-12));
 }
 .sr-only {
   position: absolute;
