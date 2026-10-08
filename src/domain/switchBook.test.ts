@@ -3,11 +3,15 @@ import { sanitizeSnapshot } from "../lib/storage/document";
 import { createSnapshot, reducer } from "../state/reducer";
 import { dripFromPlace } from "./drip";
 import { startOfWeek } from "./dates";
+import { bookRecap } from "./recap";
 import { currentStreak } from "./streaks";
 import type { DailyCommitment, Snapshot } from "./types";
 import {
   defaultSwitchStart,
+  pickUpLabel,
   resolveSwitchPlace,
+  savedSwitchPlace,
+  startOverConfirmCopy,
   switchConfirmCopy,
   switchTiming,
   switchTimingNote,
@@ -74,6 +78,11 @@ describe("switch book", () => {
       chapter: 1,
       verse: 1,
     });
+    expect(savedSwitchPlace(places, "james")).toEqual(places.james);
+    expect(savedSwitchPlace({ james: { bookId: "james", chapter: 1, verse: 1 } }, "james")).toBeNull();
+    expect(savedSwitchPlace({ mark: { bookId: "mark", chapter: 20, verse: 1 } }, "mark")).toBeNull();
+    expect(pickUpLabel("James", 3, 1)).toBe("Pick up at James 3");
+    expect(pickUpLabel("James", 3, 8)).toBe("Pick up at James 3:8");
   });
 
   it("asks before leaving the current book and says that place is saved", () => {
@@ -98,6 +107,32 @@ describe("switch book", () => {
     expect(next.days[today]?.range).toEqual(dripFromPlace({ bookId: "james", chapter: 3, verse: 8 }, "chapter"));
     expect(currentStreak(next.days, today, next.prefs.planStartDate)).toBe(streak);
     expect(next.updatedAt).toBeGreaterThan(0);
+  });
+
+  it("starts one book over at chapter 1 and leaves history, streak, and the other place", () => {
+    const state = readingMark();
+    const streak = currentStreak(state.days, today, state.prefs.planStartDate);
+    const next = reducer(state, {
+      type: "switchBook",
+      bookId: "james",
+      today,
+      tomorrow,
+      startChapter: 1,
+      startVerse: 1,
+      countEarlier: false,
+    });
+
+    expect(next.places.james).toEqual({ bookId: "james", chapter: 1, verse: 1, countedThrough: 0 });
+    expect(next.places.mark).toEqual(state.places.mark);
+    expect(next.days["2026-10-07"]).toEqual(state.days["2026-10-07"]);
+    expect(next.days[today]?.readDone).toBe(false);
+    expect(next.days[today]?.range?.startChapter).toBe(1);
+    expect(next.days[today]?.range?.bookId).toBe("james");
+    expect(currentStreak(next.days, today, next.prefs.planStartDate)).toBe(streak);
+    expect(bookRecap(next, today).sittings.slice(0, 2)).toEqual(["unread", "unread"]);
+    expect(startOverConfirmCopy("James")).toBe(
+      "Start James over from chapter 1? Your past reading days still count.",
+    );
   });
 
   it("keeps a saved verse when the chosen chapter matches, and replaces it when the chapter changes", () => {

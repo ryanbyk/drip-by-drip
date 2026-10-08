@@ -5,6 +5,22 @@ import type { Place, Snapshot } from "./types";
 
 export type SwitchTiming = "now" | "tomorrow";
 
+/**
+ * A place worth asking about: inside the book, and not already a fresh start.
+ * A finished place (past the last chapter) is not a chapter to pick up.
+ */
+export function savedSwitchPlace(places: Record<string, Place>, bookId: string): Place | null {
+  const saved = places[bookId];
+  const total = chapterCount(bookId);
+  if (!saved || saved.chapter < 1 || saved.chapter > total) return null;
+  const maxVerse = verseCount(bookId, saved.chapter);
+  if (saved.verse < 1 || saved.verse > maxVerse) return null;
+  const fresh =
+    saved.chapter === 1 && saved.verse === 1 && (saved.countedThrough === undefined || saved.countedThrough === 0);
+  if (fresh) return null;
+  return saved;
+}
+
 /** A book with a place inside its chapters resumes there. Anything else starts at chapter 1. */
 export function defaultSwitchStart(
   places: Record<string, Place>,
@@ -58,6 +74,29 @@ export function switchTiming(state: Snapshot, today: string, nextBookId: string)
 
 export function switchConfirmCopy(fromName: string, toName: string): string {
   return `Switch from ${fromName} to ${toName}? Your place in ${fromName} is saved, so you can come back to it.`;
+}
+
+export function pickUpLabel(bookName: string, chapter: number, verse: number): string {
+  return `Pick up at ${switchTargetLabel(bookName, chapter, verse)}`;
+}
+
+export function startOverConfirmCopy(bookName: string): string {
+  return `Start ${bookName} over from chapter 1? Your past reading days still count.`;
+}
+
+export function startOverNote(input: {
+  timing: SwitchTiming;
+  detail: string;
+  plan: boolean;
+  sameBook: boolean;
+  fromName: string;
+}): string {
+  if (input.plan) return `This changes your book to ${input.detail}. The plan stays as it is.`;
+  if (input.timing === "tomorrow") {
+    return `${input.detail} starts tomorrow. Today’s reading is already done.`;
+  }
+  if (!input.sameBook) return `Your place in ${input.fromName} is saved, so you can come back to it.`;
+  return "Today’s drip starts at chapter 1.";
 }
 
 export function switchTargetLabel(bookName: string, chapter: number, verse: number): string {

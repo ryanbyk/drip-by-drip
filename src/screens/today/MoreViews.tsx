@@ -5,7 +5,11 @@ import { addDays } from "../../domain/dates";
 import { dripFromPlace, isPlaceFinished, makeRange, placeAfter, verseInRange } from "../../domain/drip";
 import {
   defaultSwitchStart,
+  pickUpLabel,
   resolveSwitchPlace,
+  savedSwitchPlace,
+  startOverConfirmCopy,
+  startOverNote,
   switchConfirmCopy,
   switchTargetLabel,
   switchTiming,
@@ -22,6 +26,7 @@ import {
   BookCheck,
   Bookmark,
   Check,
+  RotateCcw,
   ChevronDown,
   ChevronLeft,
   CircleQuestionMark,
@@ -652,11 +657,55 @@ export function StopSheet({
   );
 }
 
+type StartChoice = "resume" | "restart" | "custom";
+
+export function SwitchStartChoices({
+  pickUp,
+  mode,
+  onResume,
+  onRestart,
+}: {
+  pickUp: string;
+  mode: StartChoice;
+  onResume: () => void;
+  onRestart: () => void;
+}) {
+  return (
+    <div className="choice-list" role="group" aria-label="Where to start">
+      <button
+        type="button"
+        className={mode === "resume" ? "choice choice-row is-active" : "choice choice-row"}
+        aria-pressed={mode === "resume"}
+        onClick={onResume}
+      >
+        <Bookmark size={18} aria-hidden="true" />
+        <span>
+          <strong>{pickUp}</strong>
+          <span>Where you left off</span>
+        </span>
+      </button>
+      <button
+        type="button"
+        className={mode === "restart" ? "choice choice-row is-active" : "choice choice-row"}
+        aria-pressed={mode === "restart"}
+        onClick={onRestart}
+      >
+        <RotateCcw size={18} aria-hidden="true" />
+        <span>
+          <strong>Start over from chapter 1</strong>
+          <span>This book’s place goes back to the beginning</span>
+        </span>
+      </button>
+    </div>
+  );
+}
+
 export function ChangeBookSheet({ onClose }: { onClose: () => void }) {
   const { snapshot, today, dispatch } = useApp();
   const [bookId, setBookId] = useState(snapshot.prefs.bookId);
   const [dripSize, setDripSize] = useState(snapshot.prefs.dripSize);
-  const [start, setStart] = useState(() => defaultSwitchStart(snapshot.places, snapshot.prefs.bookId));
+  const [choice, setChoice] = useState<StartChoice>("resume");
+  const [custom, setCustom] = useState<{ chapter: number; verse: number } | null>(null);
   const [countEarlier, setCountEarlier] = useState<boolean | undefined>(undefined);
   const [picking, setPicking] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -664,23 +713,36 @@ export function ChangeBookSheet({ onClose }: { onClose: () => void }) {
   const fromName = getBook(snapshot.prefs.bookId)?.name ?? "this book";
   const toName = book?.name ?? "this book";
   const sameBook = bookId === snapshot.prefs.bookId;
+  const saved = savedSwitchPlace(snapshot.places, bookId);
+  const resumed = saved
+    ? { chapter: saved.chapter, verse: saved.verse }
+    : defaultSwitchStart(snapshot.places, bookId);
+  const restarting = Boolean(saved) && choice === "restart";
+  const start = restarting ? { chapter: 1, verse: 1 } : choice === "custom" && custom ? custom : resumed;
+  const earlier = restarting ? false : countEarlier;
   const startLabel = startAtLabel(bookId, start.chapter, start.verse);
   const atBeginning = start.chapter === 1 && start.verse === 1;
+  const description = restarting
+    ? "Start over from chapter 1"
+    : saved && choice === "resume"
+      ? pickUpLabel(toName, saved.chapter, saved.verse)
+      : startLabel;
 
   function selectBook(id: string) {
     setBookId(id);
-    setStart(defaultSwitchStart(snapshot.places, id));
+    setChoice("resume");
+    setCustom(null);
     setCountEarlier(undefined);
   }
 
   function proceed() {
-    const next = resolveSwitchPlace(snapshot.places, bookId, start.chapter, start.verse, countEarlier);
-    const saved = snapshot.places[bookId];
+    const next = resolveSwitchPlace(snapshot.places, bookId, start.chapter, start.verse, earlier);
+    const current = snapshot.places[bookId];
     const placeChanged =
-      !saved ||
-      saved.chapter !== next.chapter ||
-      saved.verse !== next.verse ||
-      saved.countedThrough !== next.countedThrough;
+      !current ||
+      current.chapter !== next.chapter ||
+      current.verse !== next.verse ||
+      current.countedThrough !== next.countedThrough;
     if (sameBook && !placeChanged) {
       if (dripSize !== snapshot.prefs.dripSize) dispatch({ type: "reading", today, dripSize });
       onClose();
@@ -697,33 +759,74 @@ export function ChangeBookSheet({ onClose }: { onClose: () => void }) {
       tomorrow: addDays(today, 1),
       startChapter: start.chapter,
       startVerse: start.verse,
-      ...(countEarlier !== undefined ? { countEarlier } : {}),
+      ...(earlier !== undefined ? { countEarlier: earlier } : {}),
       dripSize,
     });
     onClose();
   }
 
   return (
-    <Sheet title="What you’re reading" description={startLabel} onClose={onClose}>
+    <Sheet title="What you’re reading" description={description} onClose={onClose}>
+      {saved ? (
+        <>
+          <SwitchStartChoices
+            pickUp={pickUpLabel(toName, saved.chapter, saved.verse)}
+            mode={choice}
+            onResume={() => {
+              setChoice("resume");
+              setCustom(null);
+              setCountEarlier(undefined);
+            }}
+            onRestart={() => {
+              setChoice("restart");
+              setCustom(null);
+              setCountEarlier(false);
+            }}
+          />
+          <button type="button" className="partway-link" onClick={() => setPicking(true)}>
+            {choice === "custom" ? startLabel : "Pick another chapter"}
+          </button>
+        </>
+      ) : null}
       <BookPicker selectedId={bookId} onSelect={selectBook} />
       <p className="kicker">Daily drip size</p>
       <PacePicker value={dripSize} onChange={setDripSize} />
-      <button type="button" className="partway-link" onClick={() => setPicking(true)}>
-        {atBeginning ? "Already partway in? Set a starting chapter" : startLabel}
-      </button>
+      {saved ? null : (
+        <button type="button" className="partway-link" onClick={() => setPicking(true)}>
+          {atBeginning ? "Already partway in? Set a starting chapter" : startLabel}
+        </button>
+      )}
       <div className="footer">
-        <Button onClick={proceed}>{sameBook ? startLabel : `Switch to ${toName}`}</Button>
+        <Button onClick={proceed}>{restarting ? "Start over" : sameBook ? startLabel : `Switch to ${toName}`}</Button>
       </div>
       {picking ? (
         <StartingChapterSheet
-          key={bookId}
+          key={`${bookId}-${start.chapter}-${start.verse}`}
           bookId={bookId}
           initialChapter={start.chapter}
           initialVerse={start.verse}
           onClose={() => setPicking(false)}
           onConfirm={(selection) => {
-            setStart({ chapter: selection.chapter, verse: selection.verse });
-            setCountEarlier(selection.countEarlier);
+            const resolved = resolveSwitchPlace(
+              snapshot.places,
+              bookId,
+              selection.chapter,
+              selection.verse,
+              selection.countEarlier,
+            );
+            if (saved && resolved === saved) {
+              setChoice("resume");
+              setCustom(null);
+              setCountEarlier(undefined);
+            } else if (saved && resolved.chapter === 1 && resolved.verse === 1 && resolved.countedThrough === 0) {
+              setChoice("restart");
+              setCustom(null);
+              setCountEarlier(false);
+            } else {
+              setChoice("custom");
+              setCustom({ chapter: resolved.chapter, verse: resolved.verse });
+              setCountEarlier(selection.countEarlier);
+            }
             setPicking(false);
           }}
         />
@@ -733,6 +836,7 @@ export function ChangeBookSheet({ onClose }: { onClose: () => void }) {
           fromName={fromName}
           toName={toName}
           sameBook={sameBook}
+          restarting={restarting}
           startLabel={startLabel}
           detail={switchTargetLabel(toName, start.chapter, start.verse)}
           timing={switchTiming(snapshot, today, bookId)}
@@ -750,6 +854,7 @@ export function SwitchBookConfirm({
   fromName,
   toName,
   sameBook,
+  restarting,
   startLabel,
   detail,
   timing,
@@ -761,6 +866,7 @@ export function SwitchBookConfirm({
   fromName: string;
   toName: string;
   sameBook: boolean;
+  restarting: boolean;
   startLabel: string;
   detail: string;
   timing: SwitchTiming;
@@ -769,14 +875,26 @@ export function SwitchBookConfirm({
   onClose: () => void;
   onConfirm: () => void;
 }) {
-  const message = sameBook
-    ? `${startLabel}? Days you’ve already read stay as they are.`
-    : switchConfirmCopy(fromName, toName);
-  const actionLabel = sameBook ? startLabel : timing === "tomorrow" ? `Start ${toName} tomorrow` : `Switch to ${toName}`;
+  const message = restarting
+    ? startOverConfirmCopy(toName)
+    : sameBook
+      ? `${startLabel}? Days you’ve already read stay as they are.`
+      : switchConfirmCopy(fromName, toName);
+  const note = restarting
+    ? startOverNote({ timing, detail, plan, sameBook, fromName })
+    : switchTimingNote({ timing, detail, plan, sameBook, todayDone });
+  const actionLabel = restarting
+    ? "Start over"
+    : sameBook
+      ? startLabel
+      : timing === "tomorrow"
+        ? `Start ${toName} tomorrow`
+        : `Switch to ${toName}`;
+  const title = restarting ? "Start over?" : sameBook ? "Start here?" : "Switch book?";
   return (
-    <Sheet title={sameBook ? "Start here?" : "Switch book?"} onClose={onClose}>
+    <Sheet title={title} onClose={onClose}>
       <p>{message}</p>
-      <p className="soft">{switchTimingNote({ timing, detail, plan, sameBook, todayDone })}</p>
+      <p className="soft">{note}</p>
       <div className="footer">
         <Button onClick={onConfirm}>{actionLabel}</Button>
         <Button variant="quiet" onClick={onClose}>
