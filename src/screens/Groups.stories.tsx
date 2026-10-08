@@ -8,7 +8,6 @@ import type { PartnerValue } from "../state/partner-context";
 import { settingsSnapshot } from "../storybook/fixtures";
 import { Phone, StoryApp, useFixture } from "../storybook/harness";
 import { Groups } from "./Groups";
-import { ShareNoteSheet } from "./ShareNote";
 
 const mens: GroupCard = {
   id: "mens",
@@ -182,27 +181,4 @@ export const Plan: Story = {
 export const Setup: Story = {
   name: "v1.5 · Plan setup",
   render: () => <GroupsScreen start="setup" value={{ ...group, groups: [{ ...mens, role: "owner" }, family] }} />,
-};
-
-export const ShareNote: Story = {
-  name: "Share a note",
-  render: () => {
-    const snapshot = useFixture(settingsSnapshot);
-    return (
-      <StoryApp snapshot={snapshot} authUser={user} partner={partner} group={group}>
-        <Phone tab="settings">
-          <ShareNoteSheet
-            groups={[{ id: "mens", name: "CrossWay Men’s Group" }, { id: "family", name: "Bykowski Family" }]}
-            partners={[{ id: "dan", name: "Dan K." }]}
-            shared={null}
-            busy={false}
-            error={null}
-            onClose={() => undefined}
-            onShare={() => undefined}
-            onStop={() => undefined}
-          />
-        </Phone>
-      </StoryApp>
-    );
-  },
 };
