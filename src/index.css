@@ -708,6 +708,10 @@ html.sheet-open .screen {
   display: flex;
   flex-direction: column;
   gap: var(--space-20);
+  position: relative;
+}
+.sheet:has(> .footer) {
+  padding-bottom: 0;
 }
 .sheet-body {
   flex: 1 1 auto;
@@ -723,8 +727,24 @@ html.sheet-open .screen {
 }
 /* Keep each block at its pen size so the body scrolls instead of squashing them. */
 .sheet-body > * { flex-shrink: 0; }
-.sheet > .footer { flex: none; }
+.sheet:has(> .footer) .sheet-body {
+  padding-bottom: var(--sheet-footer, 0px);
+}
 .sheet .footer { gap: var(--space-14); margin-top: 0; padding-top: 0; }
+/* Same frost as the tab bar, floating over the sheet body. Pen gap stays the padding above the action. */
+.sheet > .footer {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  flex: none;
+  margin: 0;
+  padding: var(--space-20) var(--space-24) calc(var(--space-32) + env(safe-area-inset-bottom));
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
 .handle { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: var(--space-4) auto var(--space-8); }
 .sheet h2 { font-size: 26px; letter-spacing: -0.2px; margin: 0; font-weight: 400; }
 .sheet-ref { font-size: 1.8rem; margin: 0; }

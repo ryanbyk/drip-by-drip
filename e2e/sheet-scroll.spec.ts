@@ -4,7 +4,40 @@ import { bookPassageSnapshot } from "../src/storybook/fixtures";
 function readingSnapshot() {
   const snapshot = bookPassageSnapshot();
   snapshot.prefs.showInAppEsv = false;
+  snapshot.prefs.appearance = "light";
   return snapshot;
+}
+
+async function setTheme(page: Page, theme: "light" | "dark") {
+  await page.evaluate((next) => {
+    document.documentElement.dataset.theme = next;
+  }, theme);
+}
+
+async function expectFrostedFooter(sheet: Locator, theme: "light" | "dark") {
+  const frost = await sheet.locator(".footer").evaluate((el) => {
+    const style = getComputedStyle(el);
+    const css = [...document.querySelectorAll("style")].map((node) => node.textContent ?? "").join("\n");
+    const footer = el.getBoundingClientRect();
+    const under = [...(el.parentElement?.querySelectorAll(".sheet-body *") ?? [])].some((node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      const box = node.getBoundingClientRect();
+      return box.height > 12 && box.width > 12 && box.top < footer.bottom - 16 && box.bottom > footer.top + 8;
+    });
+    return {
+      position: style.position,
+      backdrop: style.backdropFilter,
+      background: style.backgroundColor,
+      declared: css.includes("backdrop-filter: blur(16px)") && css.includes("-webkit-backdrop-filter: blur(16px)"),
+      under,
+    };
+  });
+  expect(frost.position).toBe("absolute");
+  expect(frost.backdrop).toContain("blur(16px)");
+  expect(frost.declared).toBe(true);
+  expect(frost.under).toBe(true);
+  if (theme === "light") expect(frost.background).toMatch(/255,\s*253,\s*248/);
+  else expect(frost.background).toMatch(/26,\s*36,\s*39/);
 }
 
 async function openBookSheet(page: Page) {
@@ -86,8 +119,17 @@ test("the book sheet body touch-scrolls and the page behind stays put", async ({
   const switchButton = sheet.locator(".footer .btn-primary");
   await expect(switchButton).toBeVisible();
 
-  if (testInfo.project.name === "iphone-se") {
-    await page.screenshot({ path: "/opt/cursor/artifacts/sheet-iphone-se-top.png", fullPage: false });
+  const phone = testInfo.project.name === "iphone-se" || testInfo.project.name === "iphone-15" ? testInfo.project.name : null;
+  if (phone) {
+    await expectFrostedFooter(sheet, "light");
+    await page.screenshot({ path: `/opt/cursor/artifacts/${phone}-light-footer.png`, fullPage: false });
+    if (phone === "iphone-se") {
+      await page.screenshot({ path: "/opt/cursor/artifacts/sheet-iphone-se-top.png", fullPage: false });
+    }
+    await setTheme(page, "dark");
+    await expectFrostedFooter(sheet, "dark");
+    await page.screenshot({ path: `/opt/cursor/artifacts/${phone}-dark-footer.png`, fullPage: false });
+    await setTheme(page, "light");
   }
 
   const choices = sheet.getByRole("group", { name: "Where to start" });
@@ -101,11 +143,17 @@ test("the book sheet body touch-scrolls and the page behind stays put", async ({
   expect(scrolled).toBeGreaterThan(40);
 
   const drip = sheet.getByText("Daily drip size");
+  const chips = sheet.getByRole("group", { name: "Daily drip size" });
   await expect(drip).toBeInViewport();
   await expect(switchButton).toBeInViewport();
   const buttonBox = await switchButton.boundingBox();
+  const chipsBox = await chips.boundingBox();
+  const footerBox = await sheet.locator(".footer").boundingBox();
   expect(buttonBox).not.toBeNull();
+  expect(chipsBox).not.toBeNull();
+  expect(footerBox).not.toBeNull();
   expect((buttonBox?.y ?? 0) + (buttonBox?.height ?? 0)).toBeLessThanOrEqual((viewport?.height ?? 0) + 1);
+  expect((chipsBox?.y ?? 0) + (chipsBox?.height ?? 0)).toBeLessThanOrEqual((footerBox?.y ?? 0) + 2);
 
   expect(await screen.evaluate((el) => el.scrollTop)).toBe(screenBefore);
 

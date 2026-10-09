@@ -24,6 +24,10 @@ export default defineConfig({
     // Viewport, scale, and user agent still match the phone.
     { name: "iphone-13", use: { ...devices["iPhone 13"], isMobile: false } },
     {
+      name: "iphone-15",
+      use: { ...devices["iPhone 15"], isMobile: false },
+    },
+    {
       name: "iphone-se",
       use: {
         ...devices["iPhone SE"],

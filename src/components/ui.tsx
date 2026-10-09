@@ -1,4 +1,14 @@
-import { Children, isValidElement, useEffect, useId, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
+import {
+  Children,
+  isValidElement,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ButtonHTMLAttributes,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { APPEARANCES, appearanceLabel, type Appearance } from "../domain/appearance";
 import { BOOKS } from "../domain/books";
@@ -69,6 +79,29 @@ export function Sheet({
 }) {
   const generatedId = useId();
   const titleId = labelledBy ?? generatedId;
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const items = Children.toArray(children);
+  const footer = items.filter(isFooterChild);
+  const body = items.filter((child) => !isFooterChild(child));
+  const hasFooter = footer.length > 0;
+
+  useLayoutEffect(() => {
+    const root = sheetRef.current;
+    if (!root) return;
+    const footerEl = root.querySelector<HTMLElement>(":scope > .footer");
+    if (!footerEl) {
+      root.style.removeProperty("--sheet-footer");
+      return;
+    }
+    const sync = () => {
+      root.style.setProperty("--sheet-footer", `${footerEl.offsetHeight}px`);
+    };
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(footerEl);
+    return () => observer.disconnect();
+  }, [hasFooter]);
+
   useEffect(() => {
     sheetClosers.push(onClose);
     const releaseScrollLock = retainBackgroundScrollLock();
@@ -87,13 +120,11 @@ export function Sheet({
   }, [onClose]);
 
   const titled = Boolean(!hideTitle && (description || titleAside));
-  const items = Children.toArray(children);
-  const footer = items.filter(isFooterChild);
-  const body = items.filter((child) => !isFooterChild(child));
 
   const dialog = (
     <div className="scrim" role="presentation" onClick={onClose}>
       <div
+        ref={sheetRef}
         className={className ? `sheet ${className}` : "sheet"}
         role="dialog"
         aria-modal="true"
