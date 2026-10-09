@@ -5,6 +5,7 @@ import { placeAfter, verseInRange } from "../domain/drip";
 import { describePastRead } from "../domain/pastRead";
 import { formatRef } from "../domain/refs";
 import { lockPassage } from "../domain/resolve";
+import { resolveSwitchPlace, switchTiming } from "../domain/switchBook";
 import {
   DEFAULT_ASK_TIME,
   type DailyCommitment,
@@ -74,6 +75,16 @@ export type Action =
       countEarlier?: boolean;
     }
   | { type: "applyQueue"; today: string }
+  | {
+      type: "switchBook";
+      bookId: string;
+      today: string;
+      tomorrow: string;
+      startChapter: number;
+      startVerse?: number;
+      countEarlier?: boolean;
+      dripSize?: DripSize;
+    }
   | { type: "reset"; today: string }
   | { type: "notified"; today: string };
 
@@ -98,6 +109,7 @@ export function createSnapshot(): Snapshot {
       lastNotifiedDate: "",
       queuedBookId: "",
       queuedBookDate: "",
+      queuedChapter: 0,
       draftStartChapter: 1,
       bibleSource: "youversion",
       bibleTranslation: "ESV",
@@ -163,6 +175,7 @@ export function reducer(state: Snapshot, action: Action): Snapshot {
           draftStartChapter: place.chapter,
           queuedBookId: "",
           queuedBookDate: "",
+          queuedChapter: 0,
         },
         places: {
           ...state.places,
@@ -362,9 +375,21 @@ export function reducer(state: Snapshot, action: Action): Snapshot {
       const book = getBook(action.bookId);
       if (!book) return state;
       if (action.when === "tomorrow") {
+        const startChapter = action.startChapter ?? 0;
         return touch({
           ...state,
-          prefs: { ...state.prefs, queuedBookId: book.id, queuedBookDate: action.tomorrow },
+          prefs: {
+            ...state.prefs,
+            queuedBookId: book.id,
+            queuedBookDate: action.tomorrow,
+            queuedChapter: startChapter,
+          },
+          places: action.startChapter
+            ? {
+                ...state.places,
+                [book.id]: startPlace(book.id, action.startChapter, action.startVerse ?? 1, action.countEarlier),
+              }
+            : state.places,
         });
       }
       const place = action.startChapter
@@ -378,15 +403,21 @@ export function reducer(state: Snapshot, action: Action): Snapshot {
           readingMode: "book",
           queuedBookId: "",
           queuedBookDate: "",
+          queuedChapter: 0,
         },
         places: { ...state.places, [book.id]: place },
       };
       return touch(relockToday(next, action.today));
     }
     case "applyQueue": {
-      const { queuedBookId, queuedBookDate } = state.prefs;
+      const { queuedBookId, queuedBookDate, queuedChapter } = state.prefs;
       if (!queuedBookId || !queuedBookDate || queuedBookDate > action.today) return state;
       if (!getBook(queuedBookId)) return state;
+      const saved = state.places[queuedBookId];
+      const place =
+        queuedChapter > 0
+          ? saved ?? { bookId: queuedBookId, chapter: queuedChapter, verse: 1 }
+          : { bookId: queuedBookId, chapter: 1, verse: 1 };
       const next: Snapshot = {
         ...state,
         prefs: {
@@ -395,12 +426,54 @@ export function reducer(state: Snapshot, action: Action): Snapshot {
           readingMode: "book",
           queuedBookId: "",
           queuedBookDate: "",
+          queuedChapter: 0,
         },
         places: {
           ...state.places,
-          [queuedBookId]: { bookId: queuedBookId, chapter: 1, verse: 1 },
+          [queuedBookId]: place,
         },
       };
+      return touch(relockToday(next, action.today));
+    }
+    case "switchBook": {
+      const book = getBook(action.bookId);
+      if (!book) return state;
+      const place = resolveSwitchPlace(
+        state.places,
+        book.id,
+        action.startChapter,
+        action.startVerse,
+        action.countEarlier,
+      );
+      const places = { ...state.places, [book.id]: place };
+      const dripSize = action.dripSize ?? state.prefs.dripSize;
+      if (switchTiming(state, action.today, book.id) === "tomorrow") {
+        return touch({
+          ...state,
+          places,
+          prefs: {
+            ...state.prefs,
+            dripSize,
+            queuedBookId: book.id,
+            queuedBookDate: action.tomorrow,
+            queuedChapter: place.chapter,
+          },
+        });
+      }
+      const next: Snapshot = {
+        ...state,
+        places,
+        prefs: {
+          ...state.prefs,
+          bookId: book.id,
+          dripSize,
+          draftStartChapter: place.chapter,
+          queuedBookId: "",
+          queuedBookDate: "",
+          queuedChapter: 0,
+        },
+      };
+      if (next.prefs.readingMode === "plan") return touch(next);
       return touch(relockToday(next, action.today));
     }
     case "reset": {
@@ -414,6 +487,7 @@ export function reducer(state: Snapshot, action: Action): Snapshot {
           planStartDate: action.today,
           queuedBookId: "",
           queuedBookDate: "",
+          queuedChapter: 0,
           draftStartChapter: 1,
         },
       });

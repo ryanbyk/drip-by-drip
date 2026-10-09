@@ -45,7 +45,6 @@ export function Today({ onHistory }: { onHistory: () => void }) {
   const [intro, setIntro] = useState<Intro>(null);
   const [mode, setMode] = useState<Mode>("read");
   const [sheet, setSheet] = useState<SheetName>(null);
-  const [bookWhen, setBookWhen] = useState<"today" | "track">("track");
   const [readerFailed, setReaderFailed] = useState(false);
   const [readerClosed, setReaderClosed] = useState(false);
   const prefs = normalizeBiblePrefs(snapshot.prefs);
@@ -164,20 +163,14 @@ export function Today({ onHistory }: { onHistory: () => void }) {
         <FinishedView
           onDetour={() => setMode("detour")}
           onRecap={() => setMode("recap")}
-          onChoose={() => {
-            setBookWhen("today");
-            setSheet("books");
-          }}
+          onChoose={() => setSheet("books")}
         />
       ) : null}
       {phase === "passage" && intro !== "commit" && passage.kind !== "finished" && passage.kind !== "plan-finished" ? (
         <PassageView
           passage={passage}
           onAdjust={() => setSheet("adjust")}
-          onChangeBook={() => {
-            setBookWhen("track");
-            setSheet("books");
-          }}
+          onChangeBook={() => setSheet("books")}
           onDetour={() => setMode("detour")}
           onUseDetour={(ref) => dispatch({ type: "detour", today, ref })}
           onBackToBook={() => dispatch({ type: "clearDetour", today })}
@@ -200,7 +193,7 @@ export function Today({ onHistory }: { onHistory: () => void }) {
         />
       ) : null}
       {sheet === "stop" && passage.kind === "book" ? <StopSheet onClose={() => setSheet(null)} /> : null}
-      {sheet === "books" ? <ChangeBookSheet when={bookWhen} onClose={() => setSheet(null)} /> : null}
+      {sheet === "books" ? <ChangeBookSheet onClose={() => setSheet(null)} /> : null}
     </TodayFrame>
   );
 }
