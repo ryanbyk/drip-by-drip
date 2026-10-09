@@ -228,17 +228,19 @@ export function StartingChapterSheet({
           </button>
         </div>
       ) : null}
-      <Button
-        onClick={() =>
-          onConfirm({
-            chapter,
-            verse: mode === "grid" ? Math.min(Math.max(1, verse), maxVerse || 1) : 1,
-            countEarlier: chapter > 1 ? countEarlier : false,
-          })
-        }
-      >
-        {startAtLabel(bookId, chapter, mode === "grid" ? Math.min(Math.max(1, verse), maxVerse || 1) : 1)}
-      </Button>
+      <div className="footer">
+        <Button
+          onClick={() =>
+            onConfirm({
+              chapter,
+              verse: mode === "grid" ? Math.min(Math.max(1, verse), maxVerse || 1) : 1,
+              countEarlier: chapter > 1 ? countEarlier : false,
+            })
+          }
+        >
+          {startAtLabel(bookId, chapter, mode === "grid" ? Math.min(Math.max(1, verse), maxVerse || 1) : 1)}
+        </Button>
+      </div>
     </Sheet>
   );
 }

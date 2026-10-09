@@ -639,18 +639,21 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
   padding: 0 var(--space-16) calc(var(--space-12) + env(safe-area-inset-bottom));
   pointer-events: none;
 }
+/* Main's nav pill, shared with the sheet's primary action. */
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
 .tabbar {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   height: 60px;
   gap: var(--space-4);
   padding: var(--space-6);
-  background: var(--glass);
-  border: 1px solid var(--line);
   border-radius: 30px;
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   pointer-events: auto;
 }
 .tab {
@@ -670,6 +673,17 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
 }
 .tab.is-active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 
+/* Lock the page scroller while a sheet is open. Do not preventDefault on
+   touchmove: that also blocks the sheet body on iOS. */
+html.sheet-open,
+html.sheet-open body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+html.sheet-open .screen {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
 .scrim {
   position: fixed;
   inset: 0;
@@ -678,11 +692,18 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 .sheet {
   width: min(100%, 520px);
-  max-height: min(92dvh, 760px);
-  overflow: auto;
+  /* vh, then svh, then dvh. A line the engine does not understand is ignored.
+     Safe areas keep the sheet below the status bar and clear of the home indicator. */
+  max-height: min(92vh, 760px);
+  max-height: min(92svh, 760px);
+  max-height: min(92dvh, 760px, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)));
+  min-height: 0;
+  overflow: hidden;
   background: var(--surface);
   border-radius: 28px 28px 0 0;
   padding: var(--space-10) var(--space-24) calc(var(--space-32) + env(safe-area-inset-bottom));
@@ -690,8 +711,44 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
   display: flex;
   flex-direction: column;
   gap: var(--space-20);
+  position: relative;
+}
+.sheet:has(> .footer) {
+  padding-bottom: 0;
+}
+.sheet-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+}
+/* Keep each block at its pen size so the body scrolls instead of squashing them. */
+.sheet-body > * { flex-shrink: 0; }
+.sheet:has(> .footer) .sheet-body {
+  padding-bottom: var(--sheet-footer, 0px);
 }
 .sheet .footer { gap: var(--space-14); margin-top: 0; padding-top: 0; }
+/* The strip stays clear. The primary pill uses .glass, with teal type so it stays the action. */
+.sheet > .footer {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  flex: none;
+  margin: 0;
+  padding: var(--space-20) var(--space-24) calc(var(--space-32) + env(safe-area-inset-bottom));
+  background: transparent;
+  pointer-events: none;
+}
+.sheet > .footer > * { pointer-events: auto; }
+.sheet > .footer .btn-primary:not(.btn-caution) { color: var(--accent); }
 .handle { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: var(--space-4) auto var(--space-8); }
 .sheet h2 { font-size: 26px; letter-spacing: -0.2px; margin: 0; font-weight: 400; }
 .sheet-ref { font-size: 1.8rem; margin: 0; }
@@ -933,7 +990,15 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
 .switch.is-on span { transform: translateX(18px); }
 .switch:disabled { opacity: 0.45; cursor: default; }
 
-.book-picker { display: flex; flex-direction: column; gap: var(--space-14); max-height: 280px; overflow: auto; }
+.book-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-14);
+  max-height: 280px;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .book-group { display: flex; flex-direction: column; gap: var(--space-8); }
 .toast {
   position: fixed;

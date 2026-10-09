@@ -1,4 +1,16 @@
-import { useEffect, useId, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ButtonHTMLAttributes,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { APPEARANCES, appearanceLabel, type Appearance } from "../domain/appearance";
 import { BOOKS } from "../domain/books";
@@ -22,6 +34,65 @@ export function Button({
 /** Newest sheet is last, so Escape closes the one on top. */
 const sheetClosers: Array<() => void> = [];
 
+/**
+ * How many sheets are open. The page scroller is locked with overflow, not a
+ * document touchmove listener: preventDefault on touchmove also eats scrolling
+ * inside the sheet on iOS.
+ */
+let openSheetCount = 0;
+
+function retainBackgroundScrollLock(): () => void {
+  openSheetCount += 1;
+  document.documentElement.classList.add("sheet-open");
+  return () => {
+    openSheetCount -= 1;
+    if (openSheetCount <= 0) {
+      openSheetCount = 0;
+      document.documentElement.classList.remove("sheet-open");
+    }
+  };
+}
+
+function isFooterChild(child: ReactNode): boolean {
+  if (!isValidElement(child)) return false;
+  const className = (child.props as { className?: unknown }).className;
+  return typeof className === "string" && className.split(/\s+/).includes("footer");
+}
+
+type ButtonVariant = "primary" | "quiet" | "text";
+
+function skipsGlass(variant: ButtonVariant | undefined): boolean {
+  switch (variant) {
+    case "quiet":
+    case "text":
+      return true;
+    case "primary":
+    case undefined:
+      return false;
+    default: {
+      const exhaustive: never = variant;
+      return exhaustive;
+    }
+  }
+}
+
+/** Primary sheet actions wear the same frost as the tab bar. Quiet and caution actions do not. */
+function withGlassAction(node: ReactNode): ReactNode {
+  if (!isValidElement(node) || node.type !== Button) return node;
+  const props = node.props as { variant?: ButtonVariant; className?: string };
+  if (skipsGlass(props.variant)) return node;
+  const className = props.className ?? "";
+  const classes = className.split(/\s+/).filter(Boolean);
+  if (classes.includes("btn-caution") || classes.includes("glass")) return node;
+  return cloneElement(node as ReactElement<{ className?: string }>, { className: `${className} glass`.trim() });
+}
+
+function withFooterGlass(child: ReactNode): ReactNode {
+  if (!isValidElement(child)) return child;
+  const props = child.props as { children?: ReactNode };
+  return cloneElement(child as ReactElement<{ children?: ReactNode }>, undefined, Children.map(props.children, withGlassAction));
+}
+
 export function Sheet({
   title,
   onClose,
@@ -44,8 +115,32 @@ export function Sheet({
 }) {
   const generatedId = useId();
   const titleId = labelledBy ?? generatedId;
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const items = Children.toArray(children);
+  const footer = items.filter(isFooterChild);
+  const body = items.filter((child) => !isFooterChild(child));
+  const hasFooter = footer.length > 0;
+
+  useLayoutEffect(() => {
+    const root = sheetRef.current;
+    if (!root) return;
+    const footerEl = root.querySelector<HTMLElement>(":scope > .footer");
+    if (!footerEl) {
+      root.style.removeProperty("--sheet-footer");
+      return;
+    }
+    const sync = () => {
+      root.style.setProperty("--sheet-footer", `${footerEl.offsetHeight}px`);
+    };
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(footerEl);
+    return () => observer.disconnect();
+  }, [hasFooter]);
+
   useEffect(() => {
     sheetClosers.push(onClose);
+    const releaseScrollLock = retainBackgroundScrollLock();
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || sheetClosers.at(-1) !== onClose) return;
       event.preventDefault();
@@ -53,6 +148,7 @@ export function Sheet({
     };
     window.addEventListener("keydown", onKey);
     return () => {
+      releaseScrollLock();
       window.removeEventListener("keydown", onKey);
       const index = sheetClosers.lastIndexOf(onClose);
       if (index >= 0) sheetClosers.splice(index, 1);
@@ -61,9 +157,10 @@ export function Sheet({
 
   const titled = Boolean(!hideTitle && (description || titleAside));
 
-  return (
+  const dialog = (
     <div className="scrim" role="presentation" onClick={onClose}>
       <div
+        ref={sheetRef}
         className={className ? `sheet ${className}` : "sheet"}
         role="dialog"
         aria-modal="true"
@@ -84,10 +181,14 @@ export function Sheet({
             {title}
           </h2>
         )}
-        {children}
+        {body.length > 0 ? <div className="sheet-body">{body}</div> : null}
+        {footer.map(withFooterGlass)}
       </div>
     </div>
   );
+
+  if (typeof document === "undefined") return dialog;
+  return createPortal(dialog, document.body);
 }
 
 export function TabBar({
@@ -105,7 +206,7 @@ export function TabBar({
 
   return (
     <div className="tabbar-wrap">
-      <nav className="tabbar" aria-label="Primary">
+      <nav className="tabbar glass" aria-label="Primary">
         {items.map((item) => (
           <button
             key={item.id}
