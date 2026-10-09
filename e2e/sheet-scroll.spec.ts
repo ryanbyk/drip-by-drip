@@ -44,48 +44,61 @@ async function expectGlassButton(sheet: Locator, theme: "light" | "dark") {
     const style = getComputedStyle(button);
     const root = getComputedStyle(document.documentElement);
     const css = [...document.querySelectorAll("style")].map((node) => node.textContent ?? "").join("\n");
-    const box = button.getBoundingClientRect();
-    const mid = box.top + box.height / 2;
-    const behind = [...document.querySelectorAll(".book-row strong, .book-row span")].some((node) => {
-      const text = node.getBoundingClientRect();
-      return text.top < mid && text.bottom > mid && text.width > 40 && text.left < box.right - 8;
-    });
-    const rule = /\.sheet > \.footer \.btn-primary\s*\{[^}]*\}/.exec(css)?.[0] ?? "";
+    const nav = document.querySelector(".tabbar");
+    const navStyle = nav ? getComputedStyle(nav) : null;
     return {
       footerBackground: footerStyle?.backgroundColor ?? "",
       footerBackdrop: footerStyle?.backdropFilter ?? "",
       footerPointer: footerStyle?.pointerEvents ?? "",
       background: style.backgroundColor,
       color: style.color,
+      weight: style.fontWeight,
       borderWidth: style.borderTopWidth,
       borderStyle: style.borderTopStyle,
-      borderColor: style.borderTopColor,
       shadow: style.boxShadow,
       backdrop: style.backdropFilter,
+      radius: style.borderRadius,
+      navBackdrop: navStyle?.backdropFilter ?? "",
+      navBackground: navStyle?.backgroundColor ?? "",
+      navBorder: navStyle?.borderTopWidth ?? "",
       accent: root.getPropertyValue("--accent").trim(),
-      ink: root.getPropertyValue("--on-accent").trim(),
-      line: root.getPropertyValue("--line").trim(),
-      declared: rule.includes("backdrop-filter: blur(16px)") && rule.includes("-webkit-backdrop-filter: blur(16px)"),
-      behind,
+      glass: root.getPropertyValue("--glass").trim(),
+      navShadow: navStyle?.boxShadow ?? "",
+      glassRule: /\.glass\s*\{[^}]*\}/.exec(css)?.[0] ?? "",
+      tabRule: /\.tabbar\s*\{[^}]*\}/.exec(css)?.[0] ?? "",
     };
   });
   expect(glass.footerBackground).toBe("rgba(0, 0, 0, 0)");
   expect(glass.footerBackdrop).toBe("none");
   expect(glass.footerPointer).toBe("none");
   expect(glass.backdrop).toContain("blur(16px)");
-  expect(glass.declared).toBe(true);
+  expect(glass.navBackdrop).toBe(glass.backdrop);
+  expect(glass.navBackground).toBe(glass.background);
+  expect(glass.navBorder).toBe("1px");
+  expect(glass.navShadow).toBe(glass.shadow);
+  expect(glass.glassRule).toContain("background: var(--glass)");
+  expect(glass.glassRule).toContain("border: 1px solid var(--line)");
+  expect(glass.glassRule).toContain("box-shadow: var(--shadow)");
+  expect(glass.glassRule).toContain("backdrop-filter: blur(16px)");
+  expect(glass.glassRule).toContain("-webkit-backdrop-filter: blur(16px)");
+  expect(glass.tabRule).not.toContain("backdrop-filter");
   expect(glass.borderWidth).toBe("1px");
   expect(glass.borderStyle).toBe("solid");
   expect(glass.shadow).not.toBe("none");
-  expect(glass.behind).toBe(true);
+  expect(glass.weight).toBe("600");
+  expect(glass.radius).toBe("28px");
   const accent = glass.accent.replace("#", "");
-  const ink = glass.ink.replace("#", "");
-  const line = glass.line.replace("#", "");
-  if (theme === "light") expect(glass.background).toMatch(/46,\s*92,\s*97/);
-  else expect(glass.background).toMatch(/140,\s*195,\s*194/);
-  expect(glass.borderColor.replaceAll(" ", "")).toContain(channel(line, 0).toString());
-  for (const ground of ["ffffff", "000000"]) {
-    expect(contrast(ink, blend(accent, ground, 0.85))).toBeGreaterThanOrEqual(4.5);
+  const fill = glass.glass.replace("#", "").slice(0, 6);
+  if (theme === "light") {
+    expect(glass.background).toMatch(/255,\s*253,\s*248/);
+    expect(glass.color).toMatch(/46,\s*92,\s*97/);
+  } else {
+    expect(glass.background).toMatch(/26,\s*36,\s*39/);
+    expect(glass.color).toMatch(/140,\s*195,\s*194/);
+  }
+  const alpha = Number.parseInt(glass.glass.replace("#", "").slice(6, 8), 16) / 255;
+  for (const ground of ["ffffff", "000000", accent]) {
+    expect(contrast(accent, blend(fill, ground, alpha))).toBeGreaterThanOrEqual(4.5);
   }
 }
 
@@ -168,22 +181,22 @@ test("the book sheet body touch-scrolls and the page behind stays put", async ({
   const switchButton = sheet.locator(".footer .btn-primary");
   await expect(switchButton).toBeVisible();
 
+  await expectGlassButton(sheet, "light");
+
   const phone = testInfo.project.name === "iphone-se" || testInfo.project.name === "iphone-15" ? testInfo.project.name : null;
   if (phone) {
-    const choices = sheet.getByRole("group", { name: "Where to start" });
-    for (let attempt = 0; attempt < 8; attempt += 1) {
-      const behind = await sheet.locator(".footer .btn-primary").evaluate((button) => {
-        const box = button.getBoundingClientRect();
-        const mid = box.top + box.height / 2;
-        return [...document.querySelectorAll(".book-row strong, .book-row span")].some((node) => {
-          const text = node.getBoundingClientRect();
-          return text.top < mid && text.bottom > mid && text.width > 40 && text.left < box.right - 8;
-        });
-      });
-      if (behind) break;
-      await scrollByGesture(page, choices, 80, testInfo);
-    }
-    await expectGlassButton(sheet, "light");
+    const parked = await sheet.locator(".book-picker").evaluate((picker) => {
+      const button = picker.closest(".sheet")?.querySelector(".footer .btn-primary");
+      const card = [...picker.querySelectorAll(".book-row.is-active")].at(-1);
+      if (!button || !card) return false;
+      const delta = card.getBoundingClientRect().top - button.getBoundingClientRect().top - 6;
+      picker.scrollTop += delta;
+      const box = button.getBoundingClientRect();
+      const cell = card.getBoundingClientRect();
+      const overlap = Math.min(box.bottom, cell.bottom) - Math.max(box.top, cell.top);
+      return overlap > 24 && cell.left < box.right - 8 && cell.right > box.left + 8;
+    });
+    expect(parked).toBe(true);
     await page.screenshot({ path: `/opt/cursor/artifacts/${phone}-light-glass-button.png`, fullPage: false });
     await setTheme(page, "dark");
     await expectGlassButton(sheet, "dark");

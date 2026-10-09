@@ -1,5 +1,6 @@
 import {
   Children,
+  cloneElement,
   isValidElement,
   useEffect,
   useId,
@@ -7,6 +8,7 @@ import {
   useRef,
   useState,
   type ButtonHTMLAttributes,
+  type ReactElement,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
@@ -55,6 +57,40 @@ function isFooterChild(child: ReactNode): boolean {
   if (!isValidElement(child)) return false;
   const className = (child.props as { className?: unknown }).className;
   return typeof className === "string" && className.split(/\s+/).includes("footer");
+}
+
+type ButtonVariant = "primary" | "quiet" | "text";
+
+function skipsGlass(variant: ButtonVariant | undefined): boolean {
+  switch (variant) {
+    case "quiet":
+    case "text":
+      return true;
+    case "primary":
+    case undefined:
+      return false;
+    default: {
+      const exhaustive: never = variant;
+      return exhaustive;
+    }
+  }
+}
+
+/** Primary sheet actions wear the same frost as the tab bar. Quiet and caution actions do not. */
+function withGlassAction(node: ReactNode): ReactNode {
+  if (!isValidElement(node) || node.type !== Button) return node;
+  const props = node.props as { variant?: ButtonVariant; className?: string };
+  if (skipsGlass(props.variant)) return node;
+  const className = props.className ?? "";
+  const classes = className.split(/\s+/).filter(Boolean);
+  if (classes.includes("btn-caution") || classes.includes("glass")) return node;
+  return cloneElement(node as ReactElement<{ className?: string }>, { className: `${className} glass`.trim() });
+}
+
+function withFooterGlass(child: ReactNode): ReactNode {
+  if (!isValidElement(child)) return child;
+  const props = child.props as { children?: ReactNode };
+  return cloneElement(child as ReactElement<{ children?: ReactNode }>, undefined, Children.map(props.children, withGlassAction));
 }
 
 export function Sheet({
@@ -146,7 +182,7 @@ export function Sheet({
           </h2>
         )}
         {body.length > 0 ? <div className="sheet-body">{body}</div> : null}
-        {footer}
+        {footer.map(withFooterGlass)}
       </div>
     </div>
   );
@@ -170,7 +206,7 @@ export function TabBar({
 
   return (
     <div className="tabbar-wrap">
-      <nav className="tabbar" aria-label="Primary">
+      <nav className="tabbar glass" aria-label="Primary">
         {items.map((item) => (
           <button
             key={item.id}

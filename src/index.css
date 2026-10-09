@@ -50,8 +50,6 @@
   --caution: #9a6b4f;
   --scrim: #1e2a2d59;
   --glass: #fffdf8d9;
-  /* Same 85% alpha as $glass. No glass-button token in the pen; this keeps Button Primary's teal. */
-  --accent-glass: #2e5c61d9;
   --knob: #ffffff;
   --ripple-1: #7faeb026;
   --ripple-2: #7faeb040;
@@ -120,7 +118,6 @@
   --caution: #d9a283;
   --scrim: #000000a6;
   --glass: #1a2427d9;
-  --accent-glass: #8cc3c2d9;
   --knob: #ece6da;
   --on-accent: #0e1d1f;
   --apple-bg: #ffffff;
@@ -150,7 +147,6 @@
     --caution: #d9a283;
     --scrim: #000000a6;
     --glass: #1a2427d9;
-    --accent-glass: #8cc3c2d9;
     --knob: #ece6da;
     --on-accent: #0e1d1f;
     --apple-bg: #ffffff;
@@ -643,18 +639,21 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
   padding: 0 var(--space-16) calc(var(--space-12) + env(safe-area-inset-bottom));
   pointer-events: none;
 }
+/* Main's nav pill, shared with the sheet's primary action. */
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
 .tabbar {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   height: 60px;
   gap: var(--space-4);
   padding: var(--space-6);
-  background: var(--glass);
-  border: 1px solid var(--line);
   border-radius: 30px;
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   pointer-events: auto;
 }
 .tab {
@@ -735,7 +734,7 @@ html.sheet-open .screen {
   padding-bottom: var(--sheet-footer, 0px);
 }
 .sheet .footer { gap: var(--space-14); margin-top: 0; padding-top: 0; }
-/* The strip stays clear so the list shows around the action. The primary pill carries the frost. */
+/* The strip stays clear. The primary pill uses .glass, with teal type so it stays the action. */
 .sheet > .footer {
   position: absolute;
   z-index: 1;
@@ -749,14 +748,7 @@ html.sheet-open .screen {
   pointer-events: none;
 }
 .sheet > .footer > * { pointer-events: auto; }
-.sheet > .footer .btn-primary {
-  background: var(--accent-glass);
-  color: var(--on-accent);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-}
+.sheet > .footer .btn-primary:not(.btn-caution) { color: var(--accent); }
 .handle { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: var(--space-4) auto var(--space-8); }
 .sheet h2 { font-size: 26px; letter-spacing: -0.2px; margin: 0; font-weight: 400; }
 .sheet-ref { font-size: 1.8rem; margin: 0; }
