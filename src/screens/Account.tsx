@@ -156,7 +156,7 @@ export function Account({
             <ChevronRight className="chev" size={16} aria-hidden="true" />
           </button>
         </div>
-        <p className="soft">Unlink anytime. A partner or group never sees your answer or notes.</p>
+        <p className="soft">Unlink anytime. A partner or group never sees your answer. Members never see notes unless you choose to share one.</p>
       </section>
       <section className="settings-group">
         <p className="eyebrow">Data</p>

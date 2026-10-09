@@ -24,8 +24,10 @@ import {
   type VisibleDrop,
 } from "../domain/social";
 import { useApp } from "../state/AppState";
+import { useAuth } from "../state/auth-context";
 import { useGroups } from "../state/group-context";
 import { usePartner, type PartnerPerson, type PartnerValue } from "../state/partner-context";
+import { SharedNoteList } from "./ShareNote";
 
 function roster(partner: PartnerValue): PartnerPerson[] {
   if (partner.partners.length > 0) return partner.partners;
@@ -124,8 +126,8 @@ function PartnerList({ onBack, onOpen }: { onBack: () => void; onOpen: (id: stri
         <p className="partner-title">{heading}</p>
         <p>
           {people.length > 0
-            ? "Each person sees whether you read today — never your answers or notes."
-            : "One person who sees whether you read today — never your answers or notes."}
+            ? "Each person sees whether you read today — never your answers. A note stays private unless you share it."
+            : "One person who sees whether you read today — never your answers. A note stays private unless you share it."}
         </p>
       </header>
       {partner.status === "loading" && people.length === 0 && !invite && !incoming ? <p className="soft">Loading…</p> : null}
@@ -287,6 +289,8 @@ function PartnerList({ onBack, onOpen }: { onBack: () => void; onOpen: (id: stri
 
 function PartnerDetail({ person, onBack }: { person: PartnerPerson; onBack: () => void }) {
   const partner = usePartner();
+  const groups = useGroups();
+  const auth = useAuth();
   const { showToast, today } = useApp();
   const [note, setNote] = useState<NudgeNote | null>(NUDGE_NOTES[0]);
   const [busy, setBusy] = useState<"drop" | "unlink" | null>(null);
@@ -295,6 +299,13 @@ function PartnerDetail({ person, onBack }: { person: PartnerPerson; onBack: () =
   const readLabel = partnerReadLabel(person.readToday);
   const thread = partner.drops.filter((drop) => drop.senderId === person.id || drop.recipientId === person.id);
   const canSend = !thread.some((drop) => drop.fromSelf && drop.day === today);
+  const selfId = auth.user?.id ?? null;
+  const shared = groups.notes.filter((item) => {
+    if (item.day !== today || !person.id || !selfId) return false;
+    if (item.authorId === selfId && item.partnerIds.includes(person.id)) return true;
+    return item.authorId === person.id && item.partnerIds.includes(selfId);
+  });
+  const sentTo = new Set(partner.drops.filter((drop) => drop.fromSelf && drop.day === today).map((drop) => drop.recipientId));
 
   async function send() {
     if (busy || !canSend) return;
@@ -320,7 +331,7 @@ function PartnerDetail({ person, onBack }: { person: PartnerPerson; onBack: () =
       </div>
       <header className="partner-head">
         <p className="partner-title">{person.displayName}</p>
-        <p>They see whether you read today — never your answers or notes.</p>
+        <p>They see whether you read today — never your answers. A note stays private unless you share it.</p>
       </header>
       {formError ? (
         <p className="auth-error" role="alert">
@@ -359,6 +370,21 @@ function PartnerDetail({ person, onBack }: { person: PartnerPerson; onBack: () =
         </div>
         <p className="soft">{canSend ? "One drop for them today. It never says they missed." : "You sent a drop today. That’s enough."}</p>
       </section>
+      <SharedNoteList
+        notes={shared}
+        selfId={selfId}
+        sentTo={sentTo}
+        onDrop={(authorId) => {
+          if (busy) return;
+          setBusy("drop");
+          setFormError(null);
+          void partner.sendDrop(authorId, null).then((failure) => {
+            setBusy(null);
+            if (failure) setFormError(failure);
+            else showToast("Sent. A quiet drop is enough.");
+          });
+        }}
+      />
       {thread.length > 0 ? (
         <section className="settings-group">
           <p className="eyebrow">Drops</p>
@@ -429,7 +455,7 @@ function PrivacyCard({ name }: { name: string }) {
         </li>
         <li className="is-never">
           <EyeOff size={15} aria-hidden="true" />
-          Never: your notes and Huh? moments
+          Never: Huh?, or a note you didn’t share
         </li>
       </ul>
     </section>

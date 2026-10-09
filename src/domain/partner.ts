@@ -93,7 +93,7 @@ export function partnerInviteLabel(url: string): string {
 }
 
 export function partnerInviteShareText(url: string): string {
-  return `Would you read alongside me on Drip by drip? This invite is just for the two of us. We’ll only see a gentle note, and whether the other read today — never answers or notes. ${url}`;
+  return `Would you read alongside me on Drip by drip? This invite is just for the two of us. We’ll see whether the other read today — never answers. A note stays private unless someone shares it. ${url}`;
 }
 
 export function inviteExpiryLabel(expiresAt: string, now = new Date()): string {

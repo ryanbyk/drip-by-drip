@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { localDate } from "../domain/dates";
 import { NUDGE_NOTES } from "../domain/partner";
 import type { GroupValue } from "../state/group-context";
 import type { PartnerValue } from "../state/partner-context";
@@ -85,4 +86,27 @@ export const Incoming: Story = {
 export const Paired: Story = {
   name: "v1.5 · Reading partner",
   render: () => <PartnerScreen partner={paired} />,
+};
+
+export const Shared: Story = {
+  name: "Partner · shared note",
+  render: () => (
+    <PartnerScreen
+      partner={paired}
+      group={{
+        status: "ready",
+        notes: [
+          {
+            id: "note-dan",
+            authorId: "dan",
+            authorName: "Dan K.",
+            day: localDate(),
+            body: "The wind and the sea obey him.",
+            groupIds: [],
+            partnerIds: ["story-user"],
+          },
+        ],
+      }}
+    />
+  ),
 };

@@ -3,6 +3,7 @@ import { getBook } from "../domain/books";
 import { formatAskTime } from "../domain/dates";
 import { activePlace } from "../domain/resolve";
 import { isPlaceFinished } from "../domain/drip";
+import { planTitle } from "../domain/groupPlan";
 import { paceBlurb } from "../domain/suggestions";
 import { bibleSourceLabel, normalizeBiblePrefs } from "../domain/bibleSource";
 import { SOURCE_URL } from "../domain/types";
@@ -286,7 +287,7 @@ export function Settings({
             <ChevronRight className="chev" size={16} aria-hidden="true" />
           </button>
         </div>
-        <p className="soft">Groups and partners see who read today — never your answers or notes.</p>
+        <p className="soft">Groups and partners see who read today — never your answers. Members never see notes unless you choose to share one.</p>
       </section>
       <section className="settings-group">
         <p className="eyebrow">Daily ask</p>
@@ -367,8 +368,10 @@ export function Settings({
         <div className="settings-card">
           <button type="button" className="settings-row" onClick={() => setEditingBook(true)}>
             <BookOpen className="row-icon" size={18} aria-hidden="true" />
-            <span className="row-label">{snapshot.prefs.readingMode === "plan" ? "Plan, with backup" : "Reading through"}</span>
-            <strong className="row-value">{snapshot.prefs.readingMode === "plan" ? `Placeholder · ${placeLabel}` : placeLabel}</strong>
+            <span className="row-label">{snapshot.prefs.groupPlan ? "Group plan, with backup" : snapshot.prefs.readingMode === "plan" ? "Plan, with backup" : "Reading through"}</span>
+            <strong className="row-value">
+              {snapshot.prefs.groupPlan ? planTitle(snapshot.prefs.groupPlan) : snapshot.prefs.readingMode === "plan" ? `Placeholder · ${placeLabel}` : placeLabel}
+            </strong>
             <ChevronRight className="chev" size={16} aria-hidden="true" />
           </button>
           <button type="button" className="settings-row" onClick={() => setEditingSource(true)}>
@@ -380,7 +383,18 @@ export function Settings({
           <AppearanceField value={snapshot.prefs.appearance} onChange={(appearance) => setPrefs({ appearance })} />
         </div>
         <p className="soft">{paceBlurb(snapshot.prefs.bookId, snapshot.prefs.dripSize)}</p>
-        {snapshot.prefs.readingMode === "book" ? (
+        {snapshot.prefs.groupPlan ? (
+          <Button
+            variant="text"
+            onClick={() =>
+              void groups.leavePlan(snapshot.prefs.groupPlan?.groupId ?? "").then((failure) => {
+                showToast(failure ?? `Today is ${book?.name ?? "your book"} again.`);
+              })
+            }
+          >
+            Read {book?.name ?? "your book"} on your own
+          </Button>
+        ) : snapshot.prefs.readingMode === "book" ? (
           <Button variant="text" onClick={() => dispatch({ type: "reading", today, mode: "plan" })}>
             I already follow a plan
           </Button>

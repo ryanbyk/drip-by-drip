@@ -3,6 +3,7 @@ import { QrCode } from "../components/QrCode";
 import { Avatar, DropChip } from "../components/SocialBits";
 import { ChevronLeft, ChevronRight, Copy, Droplet, Link2, Plus, QrCode as QrIcon, UserMinus, Users } from "../components/Icons";
 import { Button, Sheet } from "../components/ui";
+import { planTitle, type StoredPlan } from "../domain/groupPlan";
 import { inviteExpiryLabel, partnerInviteLabel } from "../domain/partner";
 import {
   GROUP_CODE_LENGTH,
@@ -21,12 +22,15 @@ import {
 } from "../domain/social";
 import { pageOriginForLinks } from "../lib/appUrl";
 import type { GroupLookup } from "../lib/groupClient";
+import { GroupPlanCard, PlanDetail, PlanSetup } from "./GroupPlan";
+import { SharedNoteList } from "./ShareNote";
 import { useApp } from "../state/AppState";
+import { useAuth } from "../state/auth-context";
 import { useGroups } from "../state/group-context";
 import { usePartner } from "../state/partner-context";
 
-type View = { name: "list" } | { name: "create" } | { name: "home"; id: string };
-type Start = "list" | "create" | "join" | "home" | "invite";
+type View = { name: "list" } | { name: "create" } | { name: "home"; id: string } | { name: "plan"; id: string } | { name: "setup"; id: string };
+type Start = "list" | "create" | "join" | "home" | "invite" | "plan" | "setup";
 
 export function Groups({
   onBack,
@@ -46,6 +50,8 @@ export function Groups({
   const firstId = groups.groups[0]?.id ?? "";
   const [view, setView] = useState<View>(() => {
     if (start === "create") return { name: "create" };
+    if (start === "plan" && firstId) return { name: "plan", id: firstId };
+    if (start === "setup" && firstId) return { name: "setup", id: firstId };
     if ((start === "home" || start === "invite") && firstId) return { name: "home", id: firstId };
     return { name: "list" };
   });
@@ -69,6 +75,28 @@ export function Groups({
     );
   }
 
+  if (view.name === "setup") {
+    const existing = groups.groups.find((group) => group.id === view.id)?.plan;
+    return (
+      <PlanEditor
+        groupId={view.id}
+        onBack={() => setView(existing ? { name: "plan", id: view.id } : { name: "home", id: view.id })}
+        onSaved={() => setView({ name: "plan", id: view.id })}
+      />
+    );
+  }
+
+  if (view.name === "plan") {
+    return (
+      <PlanScreen
+        groupId={view.id}
+        onBack={() => setView({ name: "home", id: view.id })}
+        onEdit={() => setView({ name: "setup", id: view.id })}
+        onReadToday={onReadToday}
+      />
+    );
+  }
+
   if (view.name === "home") {
     return (
       <GroupHome
@@ -79,6 +107,8 @@ export function Groups({
           setView({ name: "list" });
         }}
         onReadToday={onReadToday}
+        onOpenPlan={() => setView({ name: "plan", id: view.id })}
+        onSetPlan={() => setView({ name: "setup", id: view.id })}
       />
     );
   }
@@ -111,7 +141,7 @@ export function Groups({
               <span className="social-card-head">
                 <span>
                   <strong>{group.name}</strong>
-                  <span>{memberCountLabel(group.memberCount)}</span>
+                  <span>{memberCountLabel(group.memberCount, group.plan ? planTitle(group.plan) : null)}</span>
                 </span>
                 <ChevronRight size={16} aria-hidden="true" />
               </span>
@@ -247,7 +277,7 @@ function CreateGroup({
       </div>
       <header className="partner-head">
         <p className="partner-title">Start a group</p>
-        <p>Read together, gently. Members see who read today — never answers or notes.</p>
+        <p>Read together, gently. Members see who read today — never answers. A note stays private unless you share it.</p>
       </header>
       <div className="social-form">
         <label className="social-field">
@@ -412,19 +442,183 @@ function CodeBoxes({ value, onChange }: { value: string; onChange: (value: strin
   );
 }
 
+function PlanScreen({
+  groupId,
+  onBack,
+  onEdit,
+  onReadToday,
+}: {
+  groupId: string;
+  onBack: () => void;
+  onEdit: () => void;
+  onReadToday: () => void;
+}) {
+  const groups = useGroups();
+  const { snapshot, today, dispatch, showToast } = useApp();
+  const group = groups.groups.find((item) => item.id === groupId);
+  const plan = group?.plan ?? null;
+  const members = groups.members[groupId] ?? [];
+  const leader = members.find((member) => member.role === "owner");
+  const following = snapshot.prefs.groupPlan?.planId === plan?.id ? snapshot.prefs.groupPlan : null;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!group || !plan) {
+    return (
+      <section className="screen screen-tabbed social">
+        <div className="account-nav">
+          <button type="button" className="icon-btn" aria-label="Back" onClick={onBack}>
+            <ChevronLeft size={18} />
+          </button>
+          <h1>Plan</h1>
+          <span className="account-nav-end" />
+        </div>
+        <p className="soft">This group is reading on its own.</p>
+      </section>
+    );
+  }
+
+  const activeGroup = group;
+  const activePlan = plan;
+
+  async function join(mode: "group" | "start") {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    const previous = snapshot.prefs.groupPlan;
+    const failure = await groups.followPlan(activeGroup.id, mode, today);
+    if (failure) {
+      setBusy(false);
+      setError(failure);
+      return;
+    }
+    if (previous && previous.groupId !== activeGroup.id) await groups.leavePlan(previous.groupId);
+    dispatch({
+      type: "followGroupPlan",
+      plan: {
+        planId: activePlan.id,
+        groupId: activeGroup.id,
+        groupName: activeGroup.name,
+        bookId: activePlan.bookId,
+        startChapter: activePlan.startChapter,
+        endChapter: activePlan.endChapter,
+        pace: activePlan.pace,
+        readingDays: activePlan.readingDays,
+        startDate: activePlan.startDate,
+        mode,
+        startedOn: today,
+      },
+    });
+    setBusy(false);
+    showToast(mode === "start" ? "Starting at day 1. Your place in your own book stays." : "Joined where the group is.");
+  }
+
+  return (
+    <PlanDetail
+      groupName={group.name}
+      leaderName={leader?.displayName ?? "the leader"}
+      plan={plan}
+      members={members}
+      owner={group.role === "owner"}
+      following={following}
+      busy={busy}
+      error={error}
+      onBack={onBack}
+      onJoin={(mode) => void join(mode)}
+      onLeave={() =>
+        void (async () => {
+          setBusy(true);
+          setError(null);
+          const failure = await groups.leavePlan(group.id);
+          setBusy(false);
+          if (failure) setError(failure);
+          else showToast("Your own book is back on Today.");
+        })()
+      }
+      onRead={onReadToday}
+      onEdit={onEdit}
+      onEnd={() =>
+        void (async () => {
+          setBusy(true);
+          setError(null);
+          const failure = await groups.endPlan(group.id);
+          setBusy(false);
+          if (failure) setError(failure);
+          else onBack();
+        })()
+      }
+    />
+  );
+}
+
+function PlanEditor({
+  groupId,
+  onBack,
+  onSaved,
+}: {
+  groupId: string;
+  onBack: () => void;
+  onSaved: () => void;
+}) {
+  const groups = useGroups();
+  const { showToast } = useApp();
+  const group = groups.groups.find((item) => item.id === groupId);
+  const plan = group?.plan ?? null;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const initial: StoredPlan | null = plan
+    ? {
+        bookId: plan.bookId,
+        startChapter: plan.startChapter,
+        endChapter: plan.endChapter,
+        pace: plan.pace,
+        readingDays: plan.readingDays,
+        startDate: plan.startDate,
+      }
+    : null;
+
+  return (
+    <PlanSetup
+      initial={initial}
+      busy={busy}
+      error={error}
+      onBack={onBack}
+      onSave={(draft) =>
+        void (async () => {
+          setBusy(true);
+          setError(null);
+          const result = await groups.setPlan(groupId, draft);
+          setBusy(false);
+          if ("error" in result) {
+            setError(result.error);
+            return;
+          }
+          showToast(initial ? "Plan replaced. Members choose again." : "Plan saved.");
+          onSaved();
+        })()
+      }
+    />
+  );
+}
+
 function GroupHome({
   groupId,
   inviteOnOpen,
   onBack,
   onReadToday,
+  onOpenPlan,
+  onSetPlan,
 }: {
   groupId: string;
   inviteOnOpen: boolean;
   onBack: () => void;
   onReadToday: () => void;
+  onOpenPlan: () => void;
+  onSetPlan: () => void;
 }) {
   const groups = useGroups();
   const partner = usePartner();
+  const auth = useAuth();
   const { showToast, today } = useApp();
   const group = groups.groups.find((item) => item.id === groupId);
   const members = groups.members[groupId] ?? [];
@@ -437,6 +631,10 @@ function GroupHome({
   const [error, setError] = useState<string | null>(null);
   const leader = members.find((member) => member.role === "owner");
   const read = groupHomeReadLabel(group?.readCount ?? members.filter((member) => member.readToday).length);
+  const selfId = auth.user?.id ?? members.find((member) => member.self)?.id ?? null;
+  const sentTo = new Set(
+    partner.drops.filter((drop) => drop.fromSelf && drop.day === today).map((drop) => drop.recipientId),
+  );
 
   async function run(work: () => Promise<string | null>, success?: string) {
     if (busy) return;
@@ -482,6 +680,11 @@ function GroupHome({
         <p>{leaderMeta(group.memberCount, leader?.displayName ?? "the leader")}</p>
         {group.description ? <p>{group.description}</p> : null}
       </header>
+      {group.plan ? (
+        <GroupPlanCard plan={group.plan} onOpen={onOpenPlan} />
+      ) : (
+        <p className="soft">Everyone reads their own book.</p>
+      )}
       {error ? (
         <p className="auth-error" role="alert">
           {error}
@@ -539,10 +742,21 @@ function GroupHome({
             );
           })}
         </div>
-        <p className="social-privacy">No one sees “Not today” or your notes.</p>
+        <SharedNoteList
+          notes={groups.notes.filter((note) => note.groupIds.includes(group.id) && note.day === today)}
+          selfId={selfId}
+          sentTo={sentTo}
+          onDrop={(authorId) => void run(() => partner.sendDrop(authorId, null), "Sent. A quiet drop is enough.")}
+        />
+        <p className="social-privacy">No one sees “Not today,” or a note you didn’t share.</p>
       </section>
       <div className="footer">
         <Button onClick={onReadToday}>Read today’s drip</Button>
+        {group.role === "owner" && !group.plan ? (
+          <Button variant="text" onClick={onSetPlan}>
+            Set a reading plan
+          </Button>
+        ) : null}
         {group.role === "owner" ? (
           <Button variant="text" onClick={() => setRenameOpen(true)}>
             Rename group
@@ -699,7 +913,7 @@ function InviteSheet({
   }
 
   return (
-    <Sheet title={`Invite to ${name}`} description="Anyone with the link or code can join. They’ll see who read today — never answers or notes." onClose={onClose}>
+    <Sheet title={`Invite to ${name}`} description="Anyone with the link or code can join. They’ll see who read today — never answers. A note stays private unless someone shares it." onClose={onClose}>
       {invite ? (
         <>
           <div className="partner-code-block">

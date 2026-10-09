@@ -296,6 +296,141 @@ export type Database = {
         };
         Relationships: [];
       };
+      group_plans: {
+        Row: {
+          id: string;
+          group_id: string;
+          book_id: string;
+          start_chapter: number;
+          end_chapter: number;
+          pace: string;
+          reading_days: number;
+          start_date: string;
+          created_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          group_id: string;
+          book_id: string;
+          start_chapter: number;
+          end_chapter: number;
+          pace: string;
+          reading_days: number;
+          start_date: string;
+          created_by: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          group_id?: string;
+          book_id?: string;
+          start_chapter?: number;
+          end_chapter?: number;
+          pace?: string;
+          reading_days?: number;
+          start_date?: string;
+          created_by?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      group_plan_follows: {
+        Row: {
+          plan_id: string;
+          user_id: string;
+          mode: string;
+          started_on: string;
+        };
+        Insert: {
+          plan_id: string;
+          user_id: string;
+          mode: string;
+          started_on: string;
+        };
+        Update: {
+          plan_id?: string;
+          user_id?: string;
+          mode?: string;
+          started_on?: string;
+        };
+        Relationships: [];
+      };
+      group_plan_reads: {
+        Row: {
+          plan_id: string;
+          user_id: string;
+          day: string;
+        };
+        Insert: {
+          plan_id: string;
+          user_id: string;
+          day: string;
+        };
+        Update: {
+          plan_id?: string;
+          user_id?: string;
+          day?: string;
+        };
+        Relationships: [];
+      };
+      shared_notes: {
+        Row: {
+          id: string;
+          author_id: string;
+          day: string;
+          body: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          author_id: string;
+          day: string;
+          body: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          author_id?: string;
+          day?: string;
+          body?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      shared_note_groups: {
+        Row: {
+          note_id: string;
+          group_id: string;
+        };
+        Insert: {
+          note_id: string;
+          group_id: string;
+        };
+        Update: {
+          note_id?: string;
+          group_id?: string;
+        };
+        Relationships: [];
+      };
+      shared_note_partners: {
+        Row: {
+          note_id: string;
+          recipient_id: string;
+        };
+        Insert: {
+          note_id: string;
+          recipient_id: string;
+        };
+        Update: {
+          note_id?: string;
+          recipient_id?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -379,6 +514,42 @@ export type Database = {
       };
       see_drop: {
         Args: { drop_id: string };
+        Returns: Json;
+      };
+      set_group_plan: {
+        Args: {
+          target_group: string;
+          book_id: string;
+          start_chapter: number;
+          end_chapter: number;
+          plan_pace: string;
+          reading_days: number;
+          start_on: string;
+        };
+        Returns: Json;
+      };
+      end_group_plan: {
+        Args: { target_group: string };
+        Returns: Json;
+      };
+      follow_group_plan: {
+        Args: { target_group: string; follow_mode: string; local_day: string };
+        Returns: Json;
+      };
+      leave_group_plan: {
+        Args: { target_group: string };
+        Returns: Json;
+      };
+      record_plan_read: {
+        Args: { target_group: string; local_day: string };
+        Returns: Json;
+      };
+      share_note: {
+        Args: { local_day: string; note_body: string; group_ids: string[]; partner_ids: string[] };
+        Returns: Json;
+      };
+      delete_shared_note: {
+        Args: { target: string };
         Returns: Json;
       };
     };
