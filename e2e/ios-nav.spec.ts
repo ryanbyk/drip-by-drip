@@ -118,6 +118,94 @@ for (const appearance of ["light", "dark"] as const) {
   });
 }
 
+test("keeps the nav fixed while the screen scrolls and the document does not", async ({ page }) => {
+  await page.addInitScript(preparePage, "light");
+  await page.goto("/");
+  await page.getByRole("button", { name: "History" }).tap();
+  const screen = page.locator(".screen");
+  const nav = page.locator(".tabbar-wrap");
+  await expect(screen).toBeVisible();
+  await expect(nav).toBeVisible();
+
+  const before = await boxOf(nav);
+  const viewport = page.viewportSize();
+  expect(viewport).not.toBeNull();
+  expect(before.y + before.height).toBeGreaterThanOrEqual((viewport?.height ?? 0) - 1);
+  expect(before.y + before.height).toBeLessThanOrEqual((viewport?.height ?? 0) + 1);
+
+  await screen.evaluate((el) => {
+    el.scrollTop = 220;
+  });
+  const screenBox = await boxOf(screen);
+  await page.mouse.move(screenBox.x + 30, screenBox.y + 80);
+  await page.mouse.wheel(0, 280);
+  await page.evaluate(() => {
+    window.scrollTo(0, 700);
+    const scrolling = document.scrollingElement;
+    if (scrolling) scrolling.scrollTop = 700;
+    document.documentElement.scrollTop = 700;
+    document.body.scrollTop = 700;
+  });
+
+  const after = await boxOf(nav);
+  expect(Math.abs(after.x - before.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(after.y - before.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(after.width - before.width)).toBeLessThanOrEqual(1);
+  expect(Math.abs(after.height - before.height)).toBeLessThanOrEqual(1);
+  expect(after.y + after.height).toBeGreaterThanOrEqual((viewport?.height ?? 0) - 1);
+  expect(after.y + after.height).toBeLessThanOrEqual((viewport?.height ?? 0) + 1);
+
+  const lock = await page.evaluate(() => {
+    const scrolling = document.scrollingElement;
+    const read = (el: Element) => {
+      const style = getComputedStyle(el);
+      return { overflow: style.overflow, overscroll: style.overscrollBehavior };
+    };
+    const phone = document.querySelector(".phone");
+    const screenEl = document.querySelector(".screen");
+    return {
+      scrollTop: scrolling?.scrollTop ?? -1,
+      scrollHeight: scrolling?.scrollHeight ?? 0,
+      clientHeight: scrolling?.clientHeight ?? 0,
+      screenTop: screenEl instanceof HTMLElement ? screenEl.scrollTop : -1,
+      html: read(document.documentElement),
+      body: read(document.body),
+      root: read(document.getElementById("root") ?? document.body),
+      navPosition: getComputedStyle(document.querySelector(".tabbar-wrap") ?? document.body).position,
+      phoneHeight: phone instanceof HTMLElement ? phone.getBoundingClientRect().height : 0,
+      innerHeight: window.innerHeight,
+    };
+  });
+  expect(lock.scrollTop).toBe(0);
+  expect(lock.screenTop).toBeGreaterThan(0);
+  expect(lock.scrollHeight).toBeLessThanOrEqual(lock.clientHeight + 1);
+  expect(lock.html.overflow).toBe("hidden");
+  expect(lock.body.overflow).toBe("hidden");
+  expect(lock.root.overflow).toBe("hidden");
+  expect(lock.html.overscroll).toBe("none");
+  expect(lock.body.overscroll).toBe("none");
+  expect(lock.root.overscroll).toBe("none");
+  expect(lock.navPosition).toBe("fixed");
+  expect(lock.phoneHeight).toBeLessThanOrEqual(lock.innerHeight + 1);
+
+  await page.setViewportSize({ width: 900, height: 800 });
+  const wide = await page.evaluate(() => {
+    const phone = document.querySelector(".phone")?.getBoundingClientRect();
+    const wrap = document.querySelector(".tabbar-wrap")?.getBoundingClientRect();
+    return {
+      phone,
+      wrap,
+      scrollTop: document.scrollingElement?.scrollTop ?? -1,
+    };
+  });
+  expect(wide.phone).toBeTruthy();
+  expect(wide.wrap).toBeTruthy();
+  expect(Math.abs((wide.phone?.x ?? 0) - (wide.wrap?.x ?? 0))).toBeLessThanOrEqual(1);
+  expect(Math.abs((wide.phone?.width ?? 0) - (wide.wrap?.width ?? 0))).toBeLessThanOrEqual(1);
+  expect(Math.abs((wide.wrap?.y ?? 0) + (wide.wrap?.height ?? 0) - 800)).toBeLessThanOrEqual(1);
+  expect(wide.scrollTop).toBe(0);
+});
+
 function preparePage(theme: "light" | "dark"): void {
   const paintSafeArea = () => {
     const root = document.documentElement;
