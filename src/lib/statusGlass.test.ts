@@ -18,6 +18,12 @@ describe("status glass", () => {
     expect(statusGlassActive(53, 67, 16)).toBe(true);
   });
 
+  it("stays off while the heading still sits below a status-bar inset", () => {
+    expect(statusGlassOpacity(8, 67, 59)).toBe(0);
+    expect(statusGlassOpacity(9, 67, 59)).toBe(0);
+    expect(statusGlassOpacity(10, 67, 59)).toBeGreaterThan(0);
+  });
+
   it("fades from nothing at rest to full once the line has crossed the strip", () => {
     expect(statusGlassOpacity(0, 8, 40)).toBe(0);
     expect(statusGlassOpacity(1, 8, 40)).toBe(0);

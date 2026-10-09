@@ -15,7 +15,39 @@ import { AuthProvider } from "./state/AuthState";
 import { PartnerProvider } from "./state/PartnerState";
 import "./index.css";
 
-registerSW({ immediate: true });
+installServiceWorker();
+
+function installServiceWorker(): void {
+  let reloaded = false;
+  const reloadForUpdate = () => {
+    if (reloaded) return;
+    reloaded = true;
+    window.location.reload();
+  };
+
+  if ("serviceWorker" in navigator) {
+    let hadController = Boolean(navigator.serviceWorker.controller);
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!hadController) {
+        hadController = true;
+        return;
+      }
+      reloadForUpdate();
+    });
+  }
+
+  registerSW({
+    immediate: true,
+    onNeedReload: reloadForUpdate,
+    onRegisteredSW(swUrl, registration) {
+      if (!swUrl || !registration) return;
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState !== "visible") return;
+        void registration.update();
+      });
+    },
+  });
+}
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Missing root");
