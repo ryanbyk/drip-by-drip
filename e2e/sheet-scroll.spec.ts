@@ -14,30 +14,79 @@ async function setTheme(page: Page, theme: "light" | "dark") {
   }, theme);
 }
 
-async function expectFrostedFooter(sheet: Locator, theme: "light" | "dark") {
-  const frost = await sheet.locator(".footer").evaluate((el) => {
-    const style = getComputedStyle(el);
+function channel(hex: string, index: number) {
+  return Number.parseInt(hex.slice(index, index + 2), 16);
+}
+
+function luminance(hex: string) {
+  const linear = (value: number) => {
+    const s = value / 255;
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * linear(channel(hex, 0)) + 0.7152 * linear(channel(hex, 2)) + 0.0722 * linear(channel(hex, 4));
+}
+
+function contrast(foreground: string, background: string) {
+  const lighter = Math.max(luminance(foreground), luminance(background));
+  const darker = Math.min(luminance(foreground), luminance(background));
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function blend(foreground: string, background: string, alpha: number) {
+  const mix = (index: number) => Math.round(channel(foreground, index) * alpha + channel(background, index) * (1 - alpha));
+  return [0, 2, 4].map((index) => mix(index).toString(16).padStart(2, "0")).join("");
+}
+
+async function expectGlassButton(sheet: Locator, theme: "light" | "dark") {
+  const glass = await sheet.locator(".footer .btn-primary").evaluate((button) => {
+    const footer = button.parentElement;
+    const footerStyle = footer ? getComputedStyle(footer) : null;
+    const style = getComputedStyle(button);
+    const root = getComputedStyle(document.documentElement);
     const css = [...document.querySelectorAll("style")].map((node) => node.textContent ?? "").join("\n");
-    const footer = el.getBoundingClientRect();
-    const under = [...(el.parentElement?.querySelectorAll(".sheet-body *") ?? [])].some((node) => {
-      if (!(node instanceof HTMLElement)) return false;
-      const box = node.getBoundingClientRect();
-      return box.height > 12 && box.width > 12 && box.top < footer.bottom - 16 && box.bottom > footer.top + 8;
+    const box = button.getBoundingClientRect();
+    const mid = box.top + box.height / 2;
+    const behind = [...document.querySelectorAll(".book-row strong, .book-row span")].some((node) => {
+      const text = node.getBoundingClientRect();
+      return text.top < mid && text.bottom > mid && text.width > 40 && text.left < box.right - 8;
     });
+    const rule = /\.sheet > \.footer \.btn-primary\s*\{[^}]*\}/.exec(css)?.[0] ?? "";
     return {
-      position: style.position,
-      backdrop: style.backdropFilter,
+      footerBackground: footerStyle?.backgroundColor ?? "",
+      footerBackdrop: footerStyle?.backdropFilter ?? "",
+      footerPointer: footerStyle?.pointerEvents ?? "",
       background: style.backgroundColor,
-      declared: css.includes("backdrop-filter: blur(16px)") && css.includes("-webkit-backdrop-filter: blur(16px)"),
-      under,
+      color: style.color,
+      borderWidth: style.borderTopWidth,
+      borderStyle: style.borderTopStyle,
+      borderColor: style.borderTopColor,
+      shadow: style.boxShadow,
+      backdrop: style.backdropFilter,
+      accent: root.getPropertyValue("--accent").trim(),
+      ink: root.getPropertyValue("--on-accent").trim(),
+      line: root.getPropertyValue("--line").trim(),
+      declared: rule.includes("backdrop-filter: blur(16px)") && rule.includes("-webkit-backdrop-filter: blur(16px)"),
+      behind,
     };
   });
-  expect(frost.position).toBe("absolute");
-  expect(frost.backdrop).toContain("blur(16px)");
-  expect(frost.declared).toBe(true);
-  expect(frost.under).toBe(true);
-  if (theme === "light") expect(frost.background).toMatch(/255,\s*253,\s*248/);
-  else expect(frost.background).toMatch(/26,\s*36,\s*39/);
+  expect(glass.footerBackground).toBe("rgba(0, 0, 0, 0)");
+  expect(glass.footerBackdrop).toBe("none");
+  expect(glass.footerPointer).toBe("none");
+  expect(glass.backdrop).toContain("blur(16px)");
+  expect(glass.declared).toBe(true);
+  expect(glass.borderWidth).toBe("1px");
+  expect(glass.borderStyle).toBe("solid");
+  expect(glass.shadow).not.toBe("none");
+  expect(glass.behind).toBe(true);
+  const accent = glass.accent.replace("#", "");
+  const ink = glass.ink.replace("#", "");
+  const line = glass.line.replace("#", "");
+  if (theme === "light") expect(glass.background).toMatch(/46,\s*92,\s*97/);
+  else expect(glass.background).toMatch(/140,\s*195,\s*194/);
+  expect(glass.borderColor.replaceAll(" ", "")).toContain(channel(line, 0).toString());
+  for (const ground of ["ffffff", "000000"]) {
+    expect(contrast(ink, blend(accent, ground, 0.85))).toBeGreaterThanOrEqual(4.5);
+  }
 }
 
 async function openBookSheet(page: Page) {
@@ -121,14 +170,24 @@ test("the book sheet body touch-scrolls and the page behind stays put", async ({
 
   const phone = testInfo.project.name === "iphone-se" || testInfo.project.name === "iphone-15" ? testInfo.project.name : null;
   if (phone) {
-    await expectFrostedFooter(sheet, "light");
-    await page.screenshot({ path: `/opt/cursor/artifacts/${phone}-light-footer.png`, fullPage: false });
-    if (phone === "iphone-se") {
-      await page.screenshot({ path: "/opt/cursor/artifacts/sheet-iphone-se-top.png", fullPage: false });
+    const choices = sheet.getByRole("group", { name: "Where to start" });
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const behind = await sheet.locator(".footer .btn-primary").evaluate((button) => {
+        const box = button.getBoundingClientRect();
+        const mid = box.top + box.height / 2;
+        return [...document.querySelectorAll(".book-row strong, .book-row span")].some((node) => {
+          const text = node.getBoundingClientRect();
+          return text.top < mid && text.bottom > mid && text.width > 40 && text.left < box.right - 8;
+        });
+      });
+      if (behind) break;
+      await scrollByGesture(page, choices, 80, testInfo);
     }
+    await expectGlassButton(sheet, "light");
+    await page.screenshot({ path: `/opt/cursor/artifacts/${phone}-light-glass-button.png`, fullPage: false });
     await setTheme(page, "dark");
-    await expectFrostedFooter(sheet, "dark");
-    await page.screenshot({ path: `/opt/cursor/artifacts/${phone}-dark-footer.png`, fullPage: false });
+    await expectGlassButton(sheet, "dark");
+    await page.screenshot({ path: `/opt/cursor/artifacts/${phone}-dark-glass-button.png`, fullPage: false });
     await setTheme(page, "light");
   }
 

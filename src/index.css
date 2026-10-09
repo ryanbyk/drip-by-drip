@@ -50,6 +50,8 @@
   --caution: #9a6b4f;
   --scrim: #1e2a2d59;
   --glass: #fffdf8d9;
+  /* Same 85% alpha as $glass. No glass-button token in the pen; this keeps Button Primary's teal. */
+  --accent-glass: #2e5c61d9;
   --knob: #ffffff;
   --ripple-1: #7faeb026;
   --ripple-2: #7faeb040;
@@ -118,6 +120,7 @@
   --caution: #d9a283;
   --scrim: #000000a6;
   --glass: #1a2427d9;
+  --accent-glass: #8cc3c2d9;
   --knob: #ece6da;
   --on-accent: #0e1d1f;
   --apple-bg: #ffffff;
@@ -147,6 +150,7 @@
     --caution: #d9a283;
     --scrim: #000000a6;
     --glass: #1a2427d9;
+    --accent-glass: #8cc3c2d9;
     --knob: #ece6da;
     --on-accent: #0e1d1f;
     --apple-bg: #ffffff;
@@ -731,7 +735,7 @@ html.sheet-open .screen {
   padding-bottom: var(--sheet-footer, 0px);
 }
 .sheet .footer { gap: var(--space-14); margin-top: 0; padding-top: 0; }
-/* Same frost as the tab bar, floating over the sheet body. Pen gap stays the padding above the action. */
+/* The strip stays clear so the list shows around the action. The primary pill carries the frost. */
 .sheet > .footer {
   position: absolute;
   z-index: 1;
@@ -741,7 +745,15 @@ html.sheet-open .screen {
   flex: none;
   margin: 0;
   padding: var(--space-20) var(--space-24) calc(var(--space-32) + env(safe-area-inset-bottom));
-  background: var(--glass);
+  background: transparent;
+  pointer-events: none;
+}
+.sheet > .footer > * { pointer-events: auto; }
+.sheet > .footer .btn-primary {
+  background: var(--accent-glass);
+  color: var(--on-accent);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
