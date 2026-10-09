@@ -20,7 +20,7 @@ import {
   StopSheet,
 } from "./MoreViews";
 import { EsvReader } from "./EsvReader";
-import { PartnerBanner } from "../Partner";
+import { DropInbox, PartnerBanner } from "../Partner";
 import { PassageView } from "./PassageView";
 import { RecapView } from "./RecapView";
 
@@ -199,10 +199,12 @@ export function Today({ onHistory }: { onHistory: () => void }) {
 }
 
 function TodayFrame({ children }: { children: ReactNode }) {
+  const [inbox, setInbox] = useState(false);
   return (
     <section className="screen screen-tabbed">
-      <PartnerBanner />
+      <PartnerBanner onOpenInbox={() => setInbox(true)} />
       {children}
+      {inbox ? <DropInbox onClose={() => setInbox(false)} /> : null}
     </section>
   );
 }
