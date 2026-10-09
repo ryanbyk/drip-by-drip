@@ -10,12 +10,13 @@ type StatusScreen = "history" | "settings";
 const REST =
   "At rest the glass stays behind the screen. Titles stay sharp; there is no frost.";
 const SCROLLED =
-  "Once the title scrolls into the strip, blur is only in that top 40px band. The rest of the title stays sharp.";
+  "Once the title scrolls into the strip, blur is only in the status-bar inset. The rest of the title stays sharp.";
 
 /** Keep the shell phone-tall so History and Settings can scroll the title into the strip. */
 function fitStatusGlassPhone(phone: HTMLElement) {
   phone.style.minHeight = "0";
   phone.style.height = "min(100dvh, 844px)";
+  phone.style.setProperty("--safe-top", "59px");
 }
 
 /**
@@ -70,7 +71,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Status glass is the short strip at the top of the phone. At rest it sits behind the screen, so titles stay sharp. After content scrolls into the strip, blur is only in that top 40px band.",
+          "Status glass is the status-bar inset at the top of the phone. At rest it stays clear, so titles stay sharp. After content scrolls into that inset, blur is only there.",
       },
     },
   },
