@@ -41,17 +41,22 @@
     <title>Drip by drip</title>
     <style>
       html,
-      body {
+      body,
+      #root {
         margin: 0;
+        height: 100%;
+        overflow: hidden;
         background: #f5f1e8;
       }
       html[data-theme="dark"],
-      html[data-theme="dark"] body {
+      html[data-theme="dark"] body,
+      html[data-theme="dark"] #root {
         background: #121a1c;
       }
       @media (prefers-color-scheme: dark) {
         html[data-theme="system"],
-        html[data-theme="system"] body {
+        html[data-theme="system"] body,
+        html[data-theme="system"] #root {
           background: #121a1c;
         }
       }

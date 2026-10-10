@@ -50,6 +50,11 @@
   --caution: #9a6b4f;
   --scrim: #1e2a2d59;
   --glass: #fffdf8d9;
+  --shell-width: 520px;
+  /* 16px on the pills, 10px on the status strip. The edge is a 2px refraction lip. */
+  --glass-blur: 16px;
+  --glass-blur-soft: 10px;
+  --glass-edge: var(--space-2);
   --knob: #ffffff;
   --ripple-1: #7faeb026;
   --ripple-2: #7faeb040;
@@ -165,7 +170,14 @@
 }
 
 * { box-sizing: border-box; }
-html, body, #root { min-height: 100%; }
+/* Lock the document. Percentage height is the viewport. On an installed iPhone
+   with a black-translucent status bar, 100vh/100dvh is taller than that by the
+   status-bar inset, and min-height let the shell grow so the nav scrolled away. */
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
 body {
   margin: 0;
   background: var(--bg);
@@ -196,11 +208,15 @@ h1.display-52 { font-size: 52px; line-height: 1; letter-spacing: -1px; }
 .page-head h1 { font-size: 34px; letter-spacing: -0.4px; line-height: 1.1; }
 a { color: var(--accent); }
 
-.app-shell { min-height: 100dvh; }
+.app-shell { height: 100%; }
 .phone {
-  width: min(100%, 520px);
-  min-height: 100dvh;
+  width: min(100%, var(--shell-width));
+  /* vh, then svh, then dvh. A line the engine does not understand is ignored.
+     max-height keeps that fallback from stretching the shell past the lock. */
+  height: 100vh;
+  height: 100svh;
   height: 100dvh;
+  max-height: 100%;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -211,7 +227,10 @@ a { color: var(--accent); }
 /* Frost only the status-bar inset. Headings start 8px below it, so at rest
    the strip does not cover them. Blur turns on after content travels into it. */
 .status-glass {
+  --glass-filter: blur(var(--glass-blur-soft));
+  --glass-mask: linear-gradient(to bottom, #000 0% 50%, transparent 50% 100%);
   position: absolute;
+  isolation: isolate;
   z-index: 5;
   top: 0;
   left: 0;
@@ -223,13 +242,13 @@ a { color: var(--accent); }
 .phone.is-scrolled .status-glass {
   opacity: var(--status-glass, 0);
   background: linear-gradient(to bottom, var(--glass), transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
 }
 .screen {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
@@ -270,7 +289,7 @@ a { color: var(--accent); }
 .grace .footer { gap: var(--space-14); }
 
 .splash {
-  min-height: 100dvh;
+  height: 100%;
   display: grid;
   place-items: center;
   color: var(--accent);
@@ -346,7 +365,8 @@ a { color: var(--accent); }
 .btn {
   appearance: none;
   border: 0;
-  border-radius: 28px;
+  --glass-radius: 28px;
+  border-radius: var(--glass-radius);
   min-height: 56px;
   padding: var(--space-14) var(--space-18);
   font-size: 16px;
@@ -362,7 +382,7 @@ a { color: var(--accent); }
 .btn-primary:disabled { opacity: 0.55; }
 .btn-caution { background: var(--caution); color: var(--on-accent); }
 .btn-caution:disabled { opacity: 0.55; }
-.btn-yes { min-height: 64px; border-radius: 32px; }
+.btn-yes { min-height: 64px; --glass-radius: 32px; border-radius: var(--glass-radius); }
 .btn-quiet { background: transparent; color: var(--ink); border: 1.5px solid var(--line); font-weight: 500; }
 .btn-open { color: var(--accent); font-weight: 600; }
 .btn-text { background: transparent; color: var(--accent); min-height: 44px; font-weight: 500; font-size: 14px; }
@@ -637,29 +657,118 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
 .note-filled p { margin-top: var(--space-8); }
 
 .tabbar-wrap {
-  position: absolute;
+  position: fixed;
   z-index: 6;
+  bottom: 0;
   left: 0;
   right: 0;
-  bottom: 0;
+  width: min(100%, var(--shell-width));
+  margin-inline: auto;
   padding: 0 var(--space-16) var(--nav-inset);
   pointer-events: none;
 }
-/* Main's nav pill, shared with the sheet's primary action. */
+/* Frosted glass for the nav pill and the sheet's primary button.
+   The blur sits on ::before so the label stays sharp. ::before is twice as
+   tall as the surface and masked back to it, so the blur samples color that
+   has not reached the bar yet. The pills extend upward; the status strip
+   extends downward. The mask is the pill's own radius, so the corners stay
+   round. Without backdrop-filter or mask-image, the tint, border, and shadow
+   still read. */
 .glass {
+  --glass-filter: blur(var(--glass-blur));
+  --glass-mask:
+    linear-gradient(#000, #000),
+    linear-gradient(#000, #000),
+    radial-gradient(circle var(--glass-radius) at bottom right, #000 99%, transparent 100%),
+    radial-gradient(circle var(--glass-radius) at bottom left, #000 99%, transparent 100%),
+    radial-gradient(circle var(--glass-radius) at top right, #000 99%, transparent 100%),
+    radial-gradient(circle var(--glass-radius) at top left, #000 99%, transparent 100%);
+  --glass-mask-size:
+    calc(100% - 2 * var(--glass-radius)) 50%,
+    100% calc(50% - 2 * var(--glass-radius)),
+    var(--glass-radius) var(--glass-radius),
+    var(--glass-radius) var(--glass-radius),
+    var(--glass-radius) var(--glass-radius),
+    var(--glass-radius) var(--glass-radius);
+  --glass-mask-position:
+    left var(--glass-radius) top 50%,
+    left 0 top calc(50% + var(--glass-radius)),
+    left 0 top 50%,
+    right 0 top 50%,
+    left 0 bottom 0,
+    right 0 bottom 0;
+  position: relative;
+  isolation: isolate;
   background: var(--glass);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass::before,
+  .status-glass::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    backdrop-filter: var(--glass-filter);
+    -webkit-backdrop-filter: var(--glass-filter);
+  }
+  .glass::after {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    left: var(--glass-radius);
+    right: var(--glass-radius);
+    top: calc(-1 * var(--glass-edge));
+    height: var(--glass-edge);
+    pointer-events: none;
+    background: hsl(0 0% 100% / 0.16);
+    backdrop-filter: blur(var(--glass-blur-soft)) brightness(1.12);
+    -webkit-backdrop-filter: blur(var(--glass-blur-soft)) brightness(1.12);
+  }
+}
+@supports ((mask-image: linear-gradient(#000, #000)) or (-webkit-mask-image: linear-gradient(#000, #000))) {
+  .glass::before,
+  .status-glass::before {
+    border-radius: 0;
+    height: 200%;
+    mask-image: var(--glass-mask);
+    -webkit-mask-image: var(--glass-mask);
+    mask-repeat: no-repeat;
+    -webkit-mask-repeat: no-repeat;
+  }
+  .glass::before {
+    top: auto;
+    bottom: 0;
+    mask-size: var(--glass-mask-size);
+    -webkit-mask-size: var(--glass-mask-size);
+    mask-position: var(--glass-mask-position);
+    -webkit-mask-position: var(--glass-mask-position);
+    mask-composite: add, add, add, add, add;
+    -webkit-mask-composite: source-over, source-over, source-over, source-over, source-over;
+  }
+  .status-glass::before {
+    top: 0;
+    bottom: auto;
+  }
+  .glass::after {
+    top: auto;
+    bottom: 100%;
+    height: 100%;
+    mask-image: linear-gradient(to top, #000 var(--glass-edge), transparent var(--glass-edge));
+    -webkit-mask-image: linear-gradient(to top, #000 var(--glass-edge), transparent var(--glass-edge));
+  }
 }
 .tabbar {
+  --glass-radius: 30px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   height: var(--nav-height);
   gap: var(--space-4);
   padding: var(--space-6);
-  border-radius: 30px;
+  border-radius: var(--glass-radius);
   pointer-events: auto;
 }
 .tab {
@@ -702,7 +811,7 @@ html.sheet-open .screen {
   overscroll-behavior: none;
 }
 .sheet {
-  width: min(100%, 520px);
+  width: min(100%, var(--shell-width));
   /* vh, then svh, then dvh. A line the engine does not understand is ignored.
      Safe areas keep the sheet below the status bar and clear of the home indicator. */
   max-height: min(92vh, 760px);

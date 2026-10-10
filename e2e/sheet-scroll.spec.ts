@@ -42,10 +42,12 @@ async function expectGlassButton(sheet: Locator, theme: "light" | "dark") {
     const footer = button.parentElement;
     const footerStyle = footer ? getComputedStyle(footer) : null;
     const style = getComputedStyle(button);
+    const before = getComputedStyle(button, "::before");
     const root = getComputedStyle(document.documentElement);
     const css = [...document.querySelectorAll("style")].map((node) => node.textContent ?? "").join("\n");
     const nav = document.querySelector(".tabbar");
     const navStyle = nav ? getComputedStyle(nav) : null;
+    const navBefore = nav ? getComputedStyle(nav, "::before") : null;
     return {
       footerBackground: footerStyle?.backgroundColor ?? "",
       footerBackdrop: footerStyle?.backdropFilter ?? "",
@@ -56,9 +58,14 @@ async function expectGlassButton(sheet: Locator, theme: "light" | "dark") {
       borderWidth: style.borderTopWidth,
       borderStyle: style.borderTopStyle,
       shadow: style.boxShadow,
-      backdrop: style.backdropFilter,
+      elementBackdrop: style.backdropFilter,
+      backdrop: before.backdropFilter,
+      beforePointer: before.pointerEvents,
+      beforeHeight: Number.parseFloat(before.height),
+      buttonHeight: button.offsetHeight,
+      mask: before.maskImage,
       radius: style.borderRadius,
-      navBackdrop: navStyle?.backdropFilter ?? "",
+      navBackdrop: navBefore?.backdropFilter ?? "",
       navBackground: navStyle?.backgroundColor ?? "",
       navBorder: navStyle?.borderTopWidth ?? "",
       accent: root.getPropertyValue("--accent").trim(),
@@ -66,12 +73,20 @@ async function expectGlassButton(sheet: Locator, theme: "light" | "dark") {
       navShadow: navStyle?.boxShadow ?? "",
       glassRule: /\.glass\s*\{[^}]*\}/.exec(css)?.[0] ?? "",
       tabRule: /\.tabbar\s*\{[^}]*\}/.exec(css)?.[0] ?? "",
+      blurToken: css.includes("--glass-blur: 16px") && css.includes("blur(var(--glass-blur))"),
+      softToken: css.includes("--glass-blur-soft: 10px"),
+      webkitBlur: css.includes("-webkit-backdrop-filter: var(--glass-filter)"),
+      webkitMask: css.includes("-webkit-mask-image:"),
     };
   });
   expect(glass.footerBackground).toBe("rgba(0, 0, 0, 0)");
   expect(glass.footerBackdrop).toBe("none");
   expect(glass.footerPointer).toBe("none");
+  expect(glass.elementBackdrop).toBe("none");
   expect(glass.backdrop).toContain("blur(16px)");
+  expect(glass.beforePointer).toBe("none");
+  expect(glass.beforeHeight).toBeGreaterThan(glass.buttonHeight * 1.5);
+  expect(glass.mask).not.toBe("none");
   expect(glass.navBackdrop).toBe(glass.backdrop);
   expect(glass.navBackground).toBe(glass.background);
   expect(glass.navBorder).toBe("1px");
@@ -79,8 +94,11 @@ async function expectGlassButton(sheet: Locator, theme: "light" | "dark") {
   expect(glass.glassRule).toContain("background: var(--glass)");
   expect(glass.glassRule).toContain("border: 1px solid var(--line)");
   expect(glass.glassRule).toContain("box-shadow: var(--shadow)");
-  expect(glass.glassRule).toContain("backdrop-filter: blur(16px)");
-  expect(glass.glassRule).toContain("-webkit-backdrop-filter: blur(16px)");
+  expect(glass.glassRule).not.toContain("backdrop-filter");
+  expect(glass.blurToken).toBe(true);
+  expect(glass.softToken).toBe(true);
+  expect(glass.webkitBlur).toBe(true);
+  expect(glass.webkitMask).toBe(true);
   expect(glass.tabRule).not.toContain("backdrop-filter");
   expect(glass.borderWidth).toBe("1px");
   expect(glass.borderStyle).toBe("solid");
