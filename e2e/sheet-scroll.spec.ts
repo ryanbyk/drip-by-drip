@@ -43,29 +43,37 @@ async function expectGlassButton(sheet: Locator, theme: "light" | "dark") {
     const footerStyle = footer ? getComputedStyle(footer) : null;
     const style = getComputedStyle(button);
     const before = getComputedStyle(button, "::before");
+    const after = getComputedStyle(button, "::after");
     const root = getComputedStyle(document.documentElement);
     const css = [...document.querySelectorAll("style")].map((node) => node.textContent ?? "").join("\n");
     const nav = document.querySelector(".tabbar");
     const navStyle = nav ? getComputedStyle(nav) : null;
     const navBefore = nav ? getComputedStyle(nav, "::before") : null;
+    const webkit = CSS.supports("-webkit-hyphens", "none");
     return {
+      webkit,
       footerBackground: footerStyle?.backgroundColor ?? "",
       footerBackdrop: footerStyle?.backdropFilter ?? "",
       footerPointer: footerStyle?.pointerEvents ?? "",
+      buttonPointer: style.pointerEvents,
       background: style.backgroundColor,
       color: style.color,
       weight: style.fontWeight,
       borderWidth: style.borderTopWidth,
       borderStyle: style.borderTopStyle,
       shadow: style.boxShadow,
+      overflow: style.overflow,
       elementBackdrop: style.backdropFilter,
+      beforeContent: before.content,
       backdrop: before.backdropFilter,
       beforePointer: before.pointerEvents,
       beforeHeight: Number.parseFloat(before.height),
+      afterContent: after.content,
       buttonHeight: button.offsetHeight,
-      mask: before.maskImage,
+      mask: [before.getPropertyValue("mask-image"), before.getPropertyValue("-webkit-mask-image")].find((value) => value && value !== "none") ?? "none",
       radius: style.borderRadius,
-      navBackdrop: navBefore?.backdropFilter ?? "",
+      navBackdrop: webkit ? (navStyle?.backdropFilter ?? "") : (navBefore?.backdropFilter ?? ""),
+      navOverflow: navStyle?.overflow ?? "",
       navBackground: navStyle?.backgroundColor ?? "",
       navBorder: navStyle?.borderTopWidth ?? "",
       accent: root.getPropertyValue("--accent").trim(),
@@ -82,12 +90,23 @@ async function expectGlassButton(sheet: Locator, theme: "light" | "dark") {
   expect(glass.footerBackground).toBe("rgba(0, 0, 0, 0)");
   expect(glass.footerBackdrop).toBe("none");
   expect(glass.footerPointer).toBe("none");
-  expect(glass.elementBackdrop).toBe("none");
-  expect(glass.backdrop).toContain("blur(16px)");
-  expect(glass.beforePointer).toBe("none");
-  expect(glass.beforeHeight).toBeGreaterThan(glass.buttonHeight * 1.5);
-  expect(glass.mask).not.toBe("none");
-  expect(glass.navBackdrop).toBe(glass.backdrop);
+  expect(glass.buttonPointer).toBe("auto");
+  expect(glass.afterContent).toBe("none");
+  if (glass.webkit) {
+    expect(glass.elementBackdrop).toContain("blur(16px)");
+    expect(glass.beforeContent).toBe("none");
+    expect(glass.overflow).toBe("hidden");
+    expect(glass.navOverflow).toBe("hidden");
+  } else {
+    expect(glass.elementBackdrop).toBe("none");
+    expect(glass.backdrop).toContain("blur(16px)");
+    expect(glass.beforePointer).toBe("none");
+    expect(glass.beforeContent).not.toBe("none");
+    expect(glass.beforeHeight).toBeGreaterThan(glass.buttonHeight * 1.5);
+    expect(glass.mask).not.toBe("none");
+    expect(glass.overflow).not.toBe("hidden");
+  }
+  expect(glass.navBackdrop).toContain("blur(16px)");
   expect(glass.navBackground).toBe(glass.background);
   expect(glass.navBorder).toBe("1px");
   expect(glass.navShadow).toBe(glass.shadow);
