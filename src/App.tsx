@@ -4,6 +4,7 @@ import { TabBar } from "./components/ui";
 import { authCallback } from "./lib/authCallback";
 import { useApp } from "./state/AppState";
 import { useAuth } from "./state/auth-context";
+import { useGroups } from "./state/group-context";
 import { usePartner } from "./state/partner-context";
 import { History } from "./screens/History";
 import { Onboarding } from "./screens/Onboarding";
@@ -18,12 +19,15 @@ export function App() {
   const { snapshot, syncedUserId } = useApp();
   const auth = useAuth();
   const partner = usePartner();
+  const groups = useGroups();
   const [tab, setTab] = useState<Tab>(authCallback.present ? "settings" : "today");
   const [accountOpen, setAccountOpen] = useState(false);
   const [partnerOpen, setPartnerOpen] = useState(false);
+  const [groupsOpen, setGroupsOpen] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
   const [onboardingSignIn, setOnboardingSignIn] = useState(false);
   const openedInvite = useRef(false);
+  const openedGroup = useRef(false);
   const shell = onboardingShell({
     onboardingComplete: snapshot.prefs.onboardingComplete,
     requestingSignIn: onboardingSignIn,
@@ -39,6 +43,7 @@ export function App() {
         setTab("today");
         setAccountOpen(false);
         setPartnerOpen(false);
+        setGroupsOpen(false);
         setSigningIn(false);
       }
     };
@@ -52,19 +57,26 @@ export function App() {
     if (auth.landing === "account") {
       if (partner.pendingInvite) {
         setPartnerOpen(true);
+        setGroupsOpen(false);
+        setAccountOpen(false);
+      } else if (groups.pendingCode) {
+        setGroupsOpen(true);
+        setPartnerOpen(false);
         setAccountOpen(false);
       } else {
         setAccountOpen(true);
         setPartnerOpen(false);
+        setGroupsOpen(false);
       }
       setSigningIn(false);
     } else {
       setAccountOpen(false);
       setPartnerOpen(false);
+      setGroupsOpen(false);
       setSigningIn(true);
     }
     auth.acknowledgeLanding();
-  }, [auth.landing, auth.acknowledgeLanding, partner.pendingInvite, snapshot.prefs.onboardingComplete]);
+  }, [auth.landing, auth.acknowledgeLanding, groups.pendingCode, partner.pendingInvite, snapshot.prefs.onboardingComplete]);
 
   useEffect(() => {
     if (!onboardingSignIn || shell === "sign-in") return;
@@ -78,11 +90,16 @@ export function App() {
     setTab("settings");
     if (partner.pendingInvite) {
       setPartnerOpen(true);
+      setGroupsOpen(false);
+      setAccountOpen(false);
+    } else if (groups.pendingCode) {
+      setGroupsOpen(true);
+      setPartnerOpen(false);
       setAccountOpen(false);
     } else {
       setAccountOpen(true);
     }
-  }, [signingIn, auth.status, partner.pendingInvite, shell]);
+  }, [signingIn, auth.status, groups.pendingCode, partner.pendingInvite, shell]);
 
   useEffect(() => {
     if (openedInvite.current || !partner.pendingInvite || auth.status === "loading") return;
@@ -95,14 +112,32 @@ export function App() {
     }
     setSigningIn(false);
     setPartnerOpen(true);
+    setGroupsOpen(false);
     setAccountOpen(false);
   }, [partner.pendingInvite, auth.status, snapshot.prefs.onboardingComplete]);
+
+  useEffect(() => {
+    if (openedGroup.current || !groups.pendingCode || auth.status === "loading") return;
+    if (!snapshot.prefs.onboardingComplete) return;
+    if (partner.pendingInvite) return;
+    openedGroup.current = true;
+    setTab("settings");
+    if (auth.status === "guest") {
+      setSigningIn(true);
+      return;
+    }
+    setSigningIn(false);
+    setGroupsOpen(true);
+    setPartnerOpen(false);
+    setAccountOpen(false);
+  }, [groups.pendingCode, partner.pendingInvite, auth.status, snapshot.prefs.onboardingComplete]);
 
   function selectTab(next: Tab) {
     setTab(next);
     if (next !== "settings") {
       setAccountOpen(false);
       setPartnerOpen(false);
+      setGroupsOpen(false);
       setSigningIn(false);
     }
   }
@@ -129,6 +164,7 @@ export function App() {
         <SignIn
           onSkip={() => {
             partner.dismissIncoming();
+            groups.dismissPending();
             setSigningIn(false);
           }}
         />
@@ -146,10 +182,14 @@ export function App() {
           onAccountOpen={setAccountOpen}
           partnerOpen={partnerOpen}
           onPartnerOpen={setPartnerOpen}
+          groupsOpen={groupsOpen}
+          onGroupsOpen={setGroupsOpen}
+          onReadToday={() => selectTab("today")}
           onSignIn={() => setSigningIn(true)}
           onSignedOut={() => {
             setAccountOpen(false);
             setPartnerOpen(false);
+            setGroupsOpen(false);
             setSigningIn(true);
           }}
         />

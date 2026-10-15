@@ -1,25 +1,30 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, ChevronLeft, ChevronRight, Cloud, Download, HeartHandshake, LogOut, Trash } from "../components/Icons";
+import { Camera, ChevronLeft, ChevronRight, Cloud, Download, HeartHandshake, LogOut, Trash, Users } from "../components/Icons";
 import { Button, Sheet } from "../components/ui";
 import { partnerSettingsValue } from "../domain/partner";
+import { groupsSettingsValue } from "../domain/social";
 import { accountLine, initialsFor, profileHeading } from "../lib/auth";
 import { downloadSnapshot } from "../lib/exportData";
 import { useApp } from "../state/AppState";
 import { useAuth } from "../state/auth-context";
+import { useGroups } from "../state/group-context";
 import { usePartner } from "../state/partner-context";
 
 export function Account({
   onBack,
   onOpenPartner,
+  onOpenGroups,
   onSignedOut,
 }: {
   onBack: () => void;
   onOpenPartner?: () => void;
+  onOpenGroups?: () => void;
   /** After a real sign-out, open sign-in again. Falls back to leaving Account. */
   onSignedOut?: () => void;
 }) {
   const auth = useAuth();
   const readingPartner = usePartner();
+  const groups = useGroups();
   const { snapshot, showToast, today } = useApp();
   const user = auth.user;
   const savedName = user?.displayName ?? "";
@@ -132,19 +137,26 @@ export function Account({
       <section className="settings-group">
         <p className="eyebrow">Together</p>
         <div className="settings-card">
+          <button type="button" className="settings-row" onClick={onOpenGroups}>
+            <Users className="row-icon" size={18} aria-hidden="true" />
+            <span className="row-label">Groups</span>
+            <strong className="row-value">{groupsSettingsValue(groups.groups.length)}</strong>
+            <ChevronRight className="chev" size={16} aria-hidden="true" />
+          </button>
           <button type="button" className="settings-row" onClick={onOpenPartner}>
             <HeartHandshake className="row-icon" size={18} aria-hidden="true" />
             <span className="row-label">Reading partner</span>
             <strong className="row-value">
               {partnerSettingsValue({
-                partnerName: readingPartner.partner?.displayName ?? null,
+                partnerName: (readingPartner.partners[0] ?? readingPartner.partner)?.displayName ?? null,
+                extra: Math.max(0, (readingPartner.partners.length || (readingPartner.partner ? 1 : 0)) - 1),
                 inviteOpen: Boolean(readingPartner.invite),
               })}
             </strong>
             <ChevronRight className="chev" size={16} aria-hidden="true" />
           </button>
         </div>
-        <p className="soft">Unlink anytime. A partner never sees your answer or notes.</p>
+        <p className="soft">Unlink anytime. A partner or group never sees your answer or notes.</p>
       </section>
       <section className="settings-group">
         <p className="eyebrow">Data</p>

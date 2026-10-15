@@ -1,15 +1,34 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { NUDGE_NOTES } from "../domain/partner";
+import type { GroupValue } from "../state/group-context";
 import type { PartnerValue } from "../state/partner-context";
 import { settingsSnapshot } from "../storybook/fixtures";
 import { Phone, StoryApp, useFixture } from "../storybook/harness";
 import { Partner } from "./Partner";
 
+const fromGroups: Partial<GroupValue> = {
+  status: "ready",
+  people: [
+    { id: "dan", displayName: "Dan K.", groupName: "CrossWay Men’s Group" },
+    { id: "jon", displayName: "Jon M.", groupName: "CrossWay Men’s Group" },
+    { id: "kate", displayName: "Kate B.", groupName: "Bykowski Family" },
+  ],
+};
+
 const paired: Partial<PartnerValue> = {
   status: "ready",
-  partner: { displayName: "Dan K.", readToday: true },
-  nudges: [
-    { id: "n1", body: NUDGE_NOTES[0], day: "2026-10-06", fromSelf: false, seen: true },
+  partner: { id: "dan", displayName: "Dan K.", readToday: true },
+  partners: [{ id: "dan", displayName: "Dan K.", readToday: true }],
+  drops: [
+    {
+      id: "n1",
+      senderId: "dan",
+      recipientId: "ryan",
+      body: NUDGE_NOTES[0],
+      day: "2026-10-06",
+      fromSelf: false,
+      seen: true,
+    },
   ],
 };
 
@@ -24,12 +43,17 @@ const incoming: Partial<PartnerValue> = {
   pendingInvite: true,
 };
 
-function PartnerScreen({ partner }: { partner?: Partial<PartnerValue> }) {
+function PartnerScreen({ partner, group }: { partner?: Partial<PartnerValue>; group?: Partial<GroupValue> }) {
   const snapshot = useFixture(settingsSnapshot);
   return (
-    <StoryApp snapshot={snapshot} authUser={{ id: "story-user", email: "ryan@example.com", provider: "apple", displayName: "Ryan Bykowski" }} partner={partner}>
+    <StoryApp
+      snapshot={snapshot}
+      authUser={{ id: "story-user", email: "ryan@example.com", provider: "apple", displayName: "Ryan Bykowski" }}
+      partner={partner}
+      group={group}
+    >
       <Phone tab="settings">
-        <Partner onBack={() => undefined} />
+        <Partner onBack={() => undefined} initialId={partner?.partners?.[0]?.id ?? null} />
       </Phone>
     </StoryApp>
   );
@@ -45,7 +69,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Choose: Story = {
   name: "v1.5 · 12 · Choose a partner",
-  render: () => <PartnerScreen partner={{ status: "ready" }} />,
+  render: () => <PartnerScreen partner={{ status: "ready" }} group={fromGroups} />,
 };
 
 export const Invite: Story = {

@@ -32,15 +32,19 @@ import {
   ExternalLink,
   HeartHandshake,
   RotateCcw,
+  Users,
   WaterDrop,
 } from "../components/Icons";
 import { AppearanceField, AskTimePicker, Button, Sheet } from "../components/ui";
 import { partnerSettingsValue } from "../domain/partner";
+import { groupsSettingsValue } from "../domain/social";
 import { initialsFor, profileHeading } from "../lib/auth";
 import { useAuth } from "../state/auth-context";
+import { useGroups } from "../state/group-context";
 import { usePartner } from "../state/partner-context";
 import { BibleSource } from "./BibleSource";
 import { Account } from "./Account";
+import { Groups } from "./Groups";
 import { Partner } from "./Partner";
 import { ChangeBookSheet } from "./today/MoreViews";
 
@@ -49,6 +53,9 @@ export function Settings({
   onAccountOpen = () => undefined,
   partnerOpen = false,
   onPartnerOpen = () => undefined,
+  groupsOpen = false,
+  onGroupsOpen = () => undefined,
+  onReadToday = () => undefined,
   onSignIn = () => undefined,
   onSignedOut,
 }: {
@@ -56,11 +63,15 @@ export function Settings({
   onAccountOpen?: (open: boolean) => void;
   partnerOpen?: boolean;
   onPartnerOpen?: (open: boolean) => void;
+  groupsOpen?: boolean;
+  onGroupsOpen?: (open: boolean) => void;
+  onReadToday?: () => void;
   onSignIn?: () => void;
   onSignedOut?: () => void;
 }) {
   const auth = useAuth();
   const readingPartner = usePartner();
+  const groups = useGroups();
   const app = useApp();
   const { snapshot, today, dispatch, setPrefs, showToast, canInstall, standalone, promptInstall } = app;
   const place = activePlace(snapshot);
@@ -197,6 +208,18 @@ export function Settings({
     : `${book?.name ?? "Book"} · ch. ${place.chapter}`;
 
   if (editingSource) return <BibleSource onBack={() => setEditingSource(false)} />;
+  if (groupsOpen && auth.status === "signed-in") {
+    return (
+      <Groups
+        onBack={() => onGroupsOpen(false)}
+        onOpenPartner={() => {
+          onGroupsOpen(false);
+          onPartnerOpen(true);
+        }}
+        onReadToday={onReadToday}
+      />
+    );
+  }
   if (partnerOpen && auth.status === "signed-in") return <Partner onBack={() => onPartnerOpen(false)} />;
   if (accountOpen && auth.status === "signed-in") {
     return (
@@ -204,14 +227,17 @@ export function Settings({
         onBack={() => onAccountOpen(false)}
         onSignedOut={onSignedOut}
         onOpenPartner={() => onPartnerOpen(true)}
+        onOpenGroups={() => onGroupsOpen(true)}
       />
     );
   }
 
   const signedIn = auth.status === "signed-in" && auth.user ? auth.user : null;
+  const partnerPeople = readingPartner.partners.length > 0 ? readingPartner.partners : readingPartner.partner ? [readingPartner.partner] : [];
   const partnerLabel = partnerSettingsValue({
-    partnerName: readingPartner.partner?.displayName ?? null,
-    inviteOpen: Boolean(readingPartner.invite),
+    partnerName: partnerPeople[0]?.displayName ?? null,
+    extra: Math.max(0, partnerPeople.length - 1),
+    inviteOpen: Boolean(readingPartner.invite) || readingPartner.requests.length > 0,
   });
 
   return (
@@ -244,20 +270,24 @@ export function Settings({
           <ChevronRight className="chev" size={16} aria-hidden="true" />
         </button>
       )}
-      {signedIn ? (
-        <section className="settings-group">
-          <p className="eyebrow">Together</p>
-          <div className="settings-card">
-            <button type="button" className="settings-row" onClick={() => onPartnerOpen(true)}>
-              <HeartHandshake className="row-icon" size={18} aria-hidden="true" />
-              <span className="row-label">Reading partner</span>
-              <strong className="row-value">{partnerLabel}</strong>
-              <ChevronRight className="chev" size={16} aria-hidden="true" />
-            </button>
-          </div>
-          <p className="soft">One person. A gentle note. Never your answer or notes.</p>
-        </section>
-      ) : null}
+      <section className="settings-group">
+        <p className="eyebrow">Together</p>
+        <div className="settings-card">
+          <button type="button" className="settings-row" onClick={() => (signedIn ? onGroupsOpen(true) : onSignIn())}>
+            <Users className="row-icon" size={18} aria-hidden="true" />
+            <span className="row-label">Groups</span>
+            <strong className="row-value">{signedIn ? groupsSettingsValue(groups.groups.length) : "Sign in"}</strong>
+            <ChevronRight className="chev" size={16} aria-hidden="true" />
+          </button>
+          <button type="button" className="settings-row" onClick={() => (signedIn ? onPartnerOpen(true) : onSignIn())}>
+            <HeartHandshake className="row-icon" size={18} aria-hidden="true" />
+            <span className="row-label">Reading partner</span>
+            <strong className="row-value">{signedIn ? partnerLabel : "Sign in"}</strong>
+            <ChevronRight className="chev" size={16} aria-hidden="true" />
+          </button>
+        </div>
+        <p className="soft">Groups and partners see who read today — never your answers or notes.</p>
+      </section>
       <section className="settings-group">
         <p className="eyebrow">Daily ask</p>
         <div className="settings-card">

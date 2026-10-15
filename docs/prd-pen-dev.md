@@ -74,7 +74,7 @@ Create a group, join with a code, and invite with a code or a link. Matches desi
 - **Join** (v1.5·6) takes the group’s code. The design shows a 6-character code.
 - **Group home** (v1.5·7) shows who has read today (display name + a read-done mark, and a count such as “5 have read”). Same privacy rule as a partner: never answers, Not today, notes, Huh?, or the book. A missing mark is silence, not a No. The plan card on that screen is **v1.5c**.
 - **Invite** (v1.5·8) shares a code or a link.
-- Group size cap is an open item (§11).
+- Group size cap for v1.5b is **20** members (§11).
 
 #### More than one partner
 
@@ -82,7 +82,7 @@ v1.5a allows **exactly one** active partner. The database keeps a single active 
 
 v1.5b lets a reader keep **more than one** partner if they want. Each partnership is still an invite (code or link), an accept or decline, and an unlink. Each one keeps the v1.5a privacy rule: read-done days and display name only.
 
-The partner cap is an open item (§11). v1.5·12 is the picker (search, and people from your groups). “Which book you’re in” on that screen stays **off**. Shipped data has no book, and that stays the default.
+The partner cap for v1.5b is **5** (§11). v1.5·12 is the picker (search, and people from your groups). “Which book you’re in” on that screen stays **off**. Shipped data has no book, and that stays the default.
 
 #### Drops
 
@@ -94,7 +94,7 @@ The activity feed (v1.5·13, later) already shows a **Drop** thank-you on a read
 | --- | --- |
 | Who can send to whom | A signed-in reader, to a partner or to a member of a group they share. That set is **friends** (below). Not to anyone outside it |
 | When | When that person has a read-done day showing, or as encouragement while you share a partnership or a group |
-| Rate limit | Default: **one drop per sender per recipient per local day**. The number is an open item (§11). v1.5a’s note is stricter in one way: one canned note per sender per day, because there is only one partner |
+| Rate limit | **One drop per sender per recipient per local day** (§11). v1.5a’s note was one canned note per sender per day, because there was only one partner |
 | Message along for the ride | Yes, optional, and **canned**. A short grace line from a small list (the three v1.5a notes are the start). No free text |
 | Where a received drop shows | A quiet line on **Today**, the person’s row on **group home**, and a **small inbox**. The full activity feed is later |
 | Push | In-app in v1.5b. Web Push for drops may come later, from the preferences on v1.5·16. That delivery is an open item (§11) |
@@ -123,8 +123,9 @@ The activity feed (v1.5·13, later) already shows a **Drop** thank-you on a read
 | Ask time | User-chosen. **6:30 AM** if they skip |
 | Accounts | **Optional.** Email sign-in is a magic link plus a 6–8 digit code in the same email. In the installed iPhone PWA the **code is the primary path**; the link stays available (on iPhone it may open Safari, which does not share the Home Screen app’s storage). In a browser tab the link is primary and “Email me a code” stays on the screen. Apple and Google are built and **hidden** for v1. Settings → Sign in, and the screen after Sign out, use this same path |
 | Sync | One row in `user_snapshots` per account. Newest snapshot `updatedAt` wins. **No merge screen.** Sync defaults on. Guests never write that table |
-| Partner | **Optional, exactly one** in v1.5a. Invite by code or link; accept, decline, or unlink. Sees read-done days and display name only. One canned note per sender per day, in the app |
-| Groups · many partners · drops | **v1.5b** |
+| Partner | **Optional.** v1.5a shipped exactly one. v1.5b allows up to **5**. Invite by code or link; accept, decline, or unlink. Sees read-done days and display name only |
+| Groups | **v1.5b.** Up to **20** members. Everyone reads their own book. Members see who read today |
+| Drops | **v1.5b.** One drop per sender per recipient per local day, with an optional canned line. In the app |
 | Church / group plan | **v1.5c** |
 
 ---
@@ -199,7 +200,7 @@ Reminders **are** the QBE question (not “Don’t forget to read!” guilt).
 ### In — v1.5b (next)
 
 - Groups: create, join with a code, invite by code or link, group home of who read today (§3)  
-- More than one partner, same privacy rule, cap still open  
+- More than one partner, same privacy rule, cap **5**  
 - Drops to a partner or group member (§3)  
 - Friends = people you share a group or a partnership with  
 
@@ -376,7 +377,10 @@ SHARE (optional, after Yes or Done)
 | Offline | Can answer QBE, see suggestion, write notes, mark done. Link-out needs network; in-app ESV needs network unless today’s passage was pre-cached. Sync waits for a connection |
 | Accounts | Optional. The code verifies in this window and stores the session here, including after sign-out. A new account and a returning account both use it |
 | Sync | While Sync is on, sign-in keeps whichever snapshot has the newer `updatedAt`. A device that has never saved adopts the account row. Later edits push this device. Equal timestamps keep the local copy. A device that last synced as someone else adopts that account’s row when one exists, and does not upload the previous account’s reading. Turning Sync off stops reads and writes and leaves the account row as it was |
-| Partner | Exactly one active partner. Invite code or `?partner=` link; the other person accepts or declines; either person can unlink. Shared presence is read-done days plus display name. The screen shows **Read today** or nothing. Never the QBE answer, Not today, notes, Huh?, or the book. One canned note per sender per local day, in the app |
+| Partner | Up to **5** active partners (v1.5a was exactly one; existing single partnerships stay valid). Invite code or `?partner=` link; the other person accepts or declines; either person can unlink one partnership. Shared presence is read-done days plus display name. The screen shows **Read today** or nothing. Never the QBE answer, Not today, notes, Huh?, or the book. A drop may carry one canned line |
+| Group | Up to **20** members. Create, join with a 6-character code, invite by code or link, leave. The owner can rename and remove a member. Group home shows who read today and a count of readers. A missing mark is silence. Never answers, Not today, notes, Huh?, or the book. No shared plan in v1.5b |
+| Drop | One per sender per recipient per local day, to a partner or a group member. Optional canned line from the three v1.5a notes, or none. Shows on Today, on that person’s group row, and in a small inbox. No push |
+| Friends | Someone you share a group or a partnership with. Not a follower graph |
 | Reset | Settings can clear local commitments, track, and notes (confirm) |
 | Delete account | `delete-account` removes the auth user. The snapshot, partner rows, and push rows go with that user. Reading on this device stays |
 
@@ -478,7 +482,7 @@ PushSubscription             public.push_subscriptions
 
 **Content:** Book metadata (66 books, chapter + verse counts) bundled. No bundled Bible text. **No proprietary sermon manuscripts.**
 
-**v1.5b (not built):** group, membership, group invite, and drop records. A drop points at a partner or a group member, carries an optional canned line, and is unique per sender, recipient, and local day unless §11 changes the cap. Friends are not a table. They are the people in your partnerships and groups.
+**v1.5b:** `groups`, `group_members`, `group_invites`, and `drops`. A drop points at a partner or a group member, carries an optional canned line, and is unique per sender, recipient, and local day. Caps: 20 members, 5 partners. Friends are not a table. They are the people in your partnerships and groups. `partner_read_days` is the read-today signal for both.
 
 ---
 
@@ -515,8 +519,15 @@ PushSubscription             public.push_subscriptions
 
 - ~~Default ask time if the reader skips~~ → **6:30 AM**  
 - ~~Where the ESV key lives, and whether in-app text is on~~ → on by default; key on the server; §4 and §8 agree  
-- ~~Partner visibility and the canned note~~ → read-done days + display name; one canned note per sender per day (§8)  
+- ~~Partner visibility and the canned note~~ → read-done days + display name; one canned note per sender per day (§8). v1.5b keeps those lines and limits a drop to one per recipient per day (§11)  
 - ~~Sync conflict UI~~ → newest `updatedAt` wins; no merge screen  
+
+**Chosen for v1.5b** (constants in `src/domain/social.ts` and `private.group_member_cap()` / `private.partner_cap()`)
+
+- ~~Group size cap~~ → **20** members  
+- ~~Partner cap~~ → **5** active partners. v1.5a rows stay one partnership and keep working  
+- ~~Drop rate limit~~ → **one drop per sender per recipient per local day**  
+- ~~Current book visibility~~ → **no.** Partners and group members do not see the book, answers, Not today, notes, or Huh?  
 
 **Still open**
 
@@ -524,10 +535,6 @@ PushSubscription             public.push_subscriptions
 - ESV API terms review (personal, non-commercial; display limits, attribution)  
 - Recap: keep “two sittings” chapter distinction or simplify  
 - Natural-section labels for long books (e.g. Isaiah 1–39 / 40–66) as tab sub-labels later?  
-- **Group size cap** (v1.5b)  
-- **Partner cap.** v1.5a is exactly one. v1.5b allows more than one; the maximum is unset  
-- **Drop rate limit.** Suggested default: one drop per sender per recipient per local day  
-- **Current book visibility.** Design screen v1.5·12 says a partner sees “Which book you’re in.” Shipped partner data does not include the book. **Default stays no** for partners and for group members, until this is explicitly changed  
 - **Drops via Web Push.** In-app first. The preferences screen (v1.5·16) already has a switch; sending those pushes is not committed  
 
 ---
