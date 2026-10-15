@@ -9,9 +9,9 @@ import { Phone, StoryApp, useFixture } from "../storybook/harness";
 const togetherGroup: Partial<GroupValue> = {
   status: "ready",
   groups: [
-    { id: "a", name: "One", description: null, ownerId: "x", role: "member", memberCount: 1, readCount: 0, preview: [] },
-    { id: "b", name: "Two", description: null, ownerId: "x", role: "member", memberCount: 1, readCount: 0, preview: [] },
-    { id: "c", name: "Three", description: null, ownerId: "x", role: "member", memberCount: 1, readCount: 0, preview: [] },
+    { id: "a", name: "One", description: null, ownerId: "x", role: "member", memberCount: 1, readCount: 0, preview: [], plan: null },
+    { id: "b", name: "Two", description: null, ownerId: "x", role: "member", memberCount: 1, readCount: 0, preview: [], plan: null },
+    { id: "c", name: "Three", description: null, ownerId: "x", role: "member", memberCount: 1, readCount: 0, preview: [], plan: null },
   ],
 };
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { DailyCommitment, Snapshot } from "../../domain/types";
+import type { DailyCommitment, GroupPlanFollow, Snapshot } from "../../domain/types";
 import { createSnapshot, reducer } from "../../state/reducer";
 import {
   SNAPSHOT_OWNER_KEY,
@@ -81,6 +81,31 @@ describe("chooseSnapshot", () => {
     expect(older).toEqual({ kind: "adopt", snapshot: remote });
     expect(newer.kind).toBe("push");
     expect(chosen(newer).prefs.askTime).toBe("05:00");
+  });
+
+  it("carries a followed group plan with the prefs that win the merge", () => {
+    const plan: GroupPlanFollow = {
+      planId: "plan-1",
+      groupId: "group-1",
+      groupName: "Men",
+      bookId: "MRK",
+      startChapter: 1,
+      endChapter: 16,
+      pace: "chapter",
+      readingDays: 62,
+      startDate: "2026-10-01",
+      mode: "group",
+      startedOn: "2026-10-08",
+    };
+    const local = snap(30);
+    local.prefs = { ...local.prefs, groupPlan: plan };
+    const kept = chooseSnapshot(local, snap(10), "user-a", "user-a");
+    expect(chosen(kept).prefs.groupPlan).toEqual(plan);
+
+    const account = snap(40);
+    account.prefs = { ...account.prefs, groupPlan: { ...plan, groupName: "Family" } };
+    const fresh = chooseSnapshot(snap(50), account, null, "user-a");
+    expect(chosen(fresh).prefs.groupPlan?.groupName).toBe("Family");
   });
 
   it("does not let a fresh device replace saved account preferences", () => {

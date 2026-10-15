@@ -1,5 +1,6 @@
 import { authRedirectUrl } from "../lib/auth";
 import { NUDGE_NOTES, isNudgeNote, normalizeInviteCode, otherPartnerId, type NudgeNote } from "./partner";
+import type { DripSize } from "./types";
 
 /**
  * v1.5b defaults. Change them here and in
@@ -88,9 +89,10 @@ export function partnerReadLine(name: string, readToday: boolean): string | null
   return `${first} read today`;
 }
 
-export function memberCountLabel(count: number): string {
+export function memberCountLabel(count: number, planTitle?: string | null): string {
   const noun = count === 1 ? "member" : "members";
-  return `${count} ${noun} · Everyone reads their own book`;
+  const trail = planTitle?.trim() || "Everyone reads their own book";
+  return `${count} ${noun} · ${trail}`;
 }
 
 export function leaderMeta(memberCount: number, leaderName: string): string {
@@ -153,7 +155,7 @@ export function groupInviteUrl(origin: string, base: string, code: string): stri
 }
 
 export function groupInviteShareText(url: string): string {
-  return `Would you read with us on Drip by drip? You’ll see who read today — never answers or notes. ${url}`;
+  return `Would you read with us on Drip by drip? You’ll see who read today — never answers. A note stays private unless someone shares it. ${url}`;
 }
 
 export function optionalDropNote(value: string | null | undefined): NudgeNote | null {
@@ -292,6 +294,17 @@ export function assemblePartners(input: {
   return people.sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
+export type GroupPlanSnapshot = {
+  id: string;
+  bookId: string;
+  startChapter: number;
+  endChapter: number;
+  pace: DripSize;
+  readingDays: number;
+  startDate: string;
+  followerIds: string[];
+};
+
 export type GroupCard = {
   id: string;
   name: string;
@@ -301,6 +314,7 @@ export type GroupCard = {
   memberCount: number;
   readCount: number;
   preview: PersonSignal[];
+  plan: GroupPlanSnapshot | null;
 };
 
 export function assembleGroups(input: {
@@ -332,6 +346,7 @@ export function assembleGroups(input: {
         memberCount: members.length,
         readCount: signals.filter((person) => person.readToday).length,
         preview: signals.slice(0, 4),
+        plan: null,
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name));

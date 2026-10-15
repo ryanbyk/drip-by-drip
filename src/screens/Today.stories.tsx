@@ -17,7 +17,10 @@ import {
   somethingElseSnapshot,
   welcomeSnapshot,
 } from "../storybook/fixtures";
+import type { GroupValue } from "../state/group-context";
+import type { PartnerValue } from "../state/partner-context";
 import { Phone, StoryApp, useFixture } from "../storybook/harness";
+import { ShareNoteSheet } from "./ShareNote";
 import { AskView } from "./today/AskView";
 import { DogView } from "./today/DogView";
 import { DoneView } from "./today/DoneView";
@@ -135,6 +138,74 @@ export const Done: Story = {
       <DoneView />
     </TodayScreen>
   ),
+};
+
+const shareGroups: Partial<GroupValue> = {
+  status: "ready",
+  groups: [
+    {
+      id: "mens",
+      name: "CrossWay Men’s Group",
+      description: null,
+      ownerId: "mike",
+      role: "member",
+      memberCount: 8,
+      readCount: 5,
+      preview: [],
+      plan: null,
+    },
+    {
+      id: "family",
+      name: "Bykowski Family",
+      description: null,
+      ownerId: "kate",
+      role: "member",
+      memberCount: 4,
+      readCount: 2,
+      preview: [],
+      plan: null,
+    },
+  ],
+};
+
+const sharePartner: Partial<PartnerValue> = {
+  status: "ready",
+  partner: { id: "dan", displayName: "Dan K.", readToday: true },
+  partners: [{ id: "dan", displayName: "Dan K.", readToday: true }],
+};
+
+export const ShareNote: Story = {
+  name: "Share a note",
+  render: () => {
+    const snapshot = useFixture(doneSnapshot);
+    return (
+      <StoryApp
+        snapshot={snapshot}
+        authUser={{ id: "story-user", email: "ryan@example.com", provider: "apple", displayName: "Ryan Bykowski" }}
+        partner={sharePartner}
+        group={shareGroups}
+      >
+        <Phone tab="today">
+          <section className="screen screen-tabbed">
+            <DoneView />
+            <ShareNoteSheet
+              groups={[
+                { id: "mens", name: "CrossWay Men’s Group" },
+                { id: "family", name: "Bykowski Family" },
+              ]}
+              partners={[{ id: "dan", name: "Dan K." }]}
+              shared={null}
+              busy={false}
+              error={null}
+              onClose={() => undefined}
+              onShare={() => undefined}
+              onStop={() => undefined}
+            />
+          </section>
+        </Phone>
+      </StoryApp>
+    );
+  },
 };
 
 export const NotToday: Story = {

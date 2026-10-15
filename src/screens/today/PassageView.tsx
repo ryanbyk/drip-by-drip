@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getBook } from "../../domain/books";
 import { parseLocalDate } from "../../domain/dates";
+import { planRestLine } from "../../domain/groupPlan";
 import { passageLink } from "../../domain/bibleSource";
 import type { ResolvedPassage } from "../../domain/resolve";
 import { activePlace } from "../../domain/resolve";
@@ -66,6 +67,7 @@ export function PassageView({
     passage.kind === "book" &&
     showWelcomeBack(snapshot.days, today, snapshot.prefs.planStartDate) &&
     !yesterdayDetour(snapshot.days, today);
+  const rest = passage.kind === "book" ? planRestLine(snapshot.prefs.groupPlan, today) : null;
   const passageClass = passage.kind === "plan" ? "passage passage-plan" : welcome ? "passage passage-welcome" : "passage";
   const note = snapshot.days[today]?.note?.trim();
 
@@ -88,6 +90,7 @@ export function PassageView({
       {passage.kind === "book" ? (
         <BookPassage
           passage={passage}
+          rest={rest}
           bookName={bookName}
           placeVerse={place.verse}
           online={online}
@@ -118,6 +121,7 @@ export function PassageView({
 
 function BookPassage({
   passage,
+  rest,
   bookName,
   placeVerse,
   online,
@@ -132,6 +136,7 @@ function BookPassage({
   onReadInApp,
 }: {
   passage: Extract<ResolvedPassage, { kind: "book" }>;
+  rest: string | null;
   bookName: string;
   placeVerse: number;
   online: boolean;
@@ -160,6 +165,7 @@ function BookPassage({
 
   return (
     <>
+      {rest ? <p className="plan-rest">{rest}</p> : null}
       {greeting ? (
         <div className="greeting">
           <h1>Good to see you.</h1>
@@ -261,17 +267,19 @@ function PlanBody({
             </div>
           </div>
         ) : null}
-        <label className="field">
-          <span>Or enter the reading you already follow</span>
-          <input
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onBlur={() => {
-              const next = draft.trim();
-              if (next && next !== passage.ref) onPlanRef(next);
-            }}
-          />
-        </label>
+        {snapshot.prefs.groupPlan ? null : (
+          <label className="field">
+            <span>Or enter the reading you already follow</span>
+            <input
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onBlur={() => {
+                const next = draft.trim();
+                if (next && next !== passage.ref) onPlanRef(next);
+              }}
+            />
+          </label>
+        )}
         <p className="soft">{passage.backupLabel}</p>
       </div>
       <button type="button" className="reflect-row" onClick={onReflect}>

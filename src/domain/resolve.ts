@@ -3,6 +3,7 @@ import { PLAN_LENGTH, planDay } from "../data/placeholderPlan";
 import { getBook } from "./books";
 import { diffDays } from "./dates";
 import { dripFromPlace, isPlaceFinished } from "./drip";
+import { followView, planTitle } from "./groupPlan";
 import { chapterProgressLabel, formatRef, formatVerseSpan } from "./refs";
 import type { Place, Range, Snapshot } from "./types";
 
@@ -63,7 +64,22 @@ function fromRange(range: Range): Extract<ResolvedPassage, { kind: "book" }> {
 }
 
 export function livePassage(state: Snapshot, today: string): ResolvedPassage {
-  if (state.prefs.readingMode === "plan") {
+  const followed = state.prefs.groupPlan;
+  if (followed) {
+    const view = followView(followed, today);
+    if (view.status === "reading" && view.today) {
+      return {
+        kind: "plan",
+        ref: formatRef(view.today.range),
+        title: planTitle(followed),
+        dayIndex: view.today.index,
+        planLength: view.total,
+        backupLabel: backupLabel(state),
+        custom: false,
+      };
+    }
+  }
+  if (state.prefs.readingMode === "plan" && !followed) {
     if (!state.prefs.planStartDate) {
       return { kind: "plan-finished", backupLabel: backupLabel(state) };
     }
@@ -96,7 +112,7 @@ export function resolvePassage(state: Snapshot, today: string): ResolvedPassage 
   if (day?.range && state.prefs.readingMode === "book" && !day.detour) {
     return fromRange(day.range);
   }
-  if (day?.passageRef && state.prefs.readingMode === "plan" && day.answer === "yes" && !day.detour) {
+  if (day?.passageRef && state.prefs.readingMode === "plan" && !state.prefs.groupPlan && day.answer === "yes" && !day.detour) {
     const live = livePassage(state, today);
     const same = live.kind === "plan" && live.ref === day.passageRef;
     return {

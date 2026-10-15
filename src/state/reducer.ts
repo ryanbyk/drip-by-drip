@@ -1,4 +1,5 @@
 import { normalizeBiblePrefs } from "../domain/bibleSource";
+import type { GroupPlanFollow } from "../domain/groupPlan";
 import { getBook } from "../domain/books";
 import { startPlace } from "../domain/chapters";
 import { placeAfter, verseInRange } from "../domain/drip";
@@ -86,7 +87,10 @@ export type Action =
       dripSize?: DripSize;
     }
   | { type: "reset"; today: string }
-  | { type: "notified"; today: string };
+  | { type: "notified"; today: string }
+  | { type: "followGroupPlan"; plan: GroupPlanFollow }
+  | { type: "leaveGroupPlan" }
+  | { type: "syncGroupPlan"; plan: GroupPlanFollow };
 
 export function createSnapshot(): Snapshot {
   return {
@@ -116,6 +120,7 @@ export function createSnapshot(): Snapshot {
       bibleCustomPattern: "",
       showInAppEsv: true,
       timeZone: "",
+      groupPlan: null,
     },
     places: { mark: { bookId: "mark", chapter: 1, verse: 1 } },
     days: {},
@@ -495,6 +500,37 @@ export function reducer(state: Snapshot, action: Action): Snapshot {
     case "notified":
       if (state.prefs.lastNotifiedDate === action.today) return state;
       return touch({ ...state, prefs: { ...state.prefs, lastNotifiedDate: action.today } });
+    case "followGroupPlan":
+      return touch({
+        ...state,
+        prefs: {
+          ...state.prefs,
+          groupPlan: action.plan,
+          readingMode: "plan",
+          planId: action.plan.planId,
+          planStartDate: action.plan.mode === "start" ? action.plan.startedOn : action.plan.startDate,
+        },
+      });
+    case "leaveGroupPlan":
+      if (!state.prefs.groupPlan) return state;
+      return touch({
+        ...state,
+        prefs: {
+          ...state.prefs,
+          groupPlan: null,
+          readingMode: "book",
+          planId: "placeholder",
+        },
+      });
+    case "syncGroupPlan":
+      if (!state.prefs.groupPlan || state.prefs.groupPlan.planId !== action.plan.planId) return state;
+      return touch({
+        ...state,
+        prefs: {
+          ...state.prefs,
+          groupPlan: { ...action.plan, mode: state.prefs.groupPlan.mode, startedOn: state.prefs.groupPlan.startedOn },
+        },
+      });
     default: {
       const exhaustive: never = action;
       return exhaustive;

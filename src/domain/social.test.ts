@@ -178,7 +178,9 @@ describe("friends and invites", () => {
     expect(groupInviteUrl(pageOriginForLinks("http://localhost:5173"), "/", "4K7QXM")).toBe(
       "http://localhost:5173/?group=4K7QXM",
     );
-    expect(groupInviteShareText(url)).toContain("never answers or notes");
+    expect(groupInviteShareText(url)).toContain("never answers");
+    expect(groupInviteShareText(url)).toContain("unless someone shares it");
+    expect(memberCountLabel(8, "Reading through Mark")).toBe("8 members · Reading through Mark");
     expect(groupInviteShareText(url)).not.toMatch(/not today/i);
     const saved = new Map<string, string>();
     const storage = {

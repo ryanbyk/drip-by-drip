@@ -1,5 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import type { GroupCard, HomeMember, PartnerCandidate } from "../domain/social";
+import { localDate } from "../domain/dates";
+import { MON_FRI } from "../domain/groupPlan";
+import type { GroupCard, GroupPlanSnapshot, HomeMember, PartnerCandidate } from "../domain/social";
+import type { SharedNote } from "../domain/sharedNote";
 import type { GroupValue } from "../state/group-context";
 import type { PartnerValue } from "../state/partner-context";
 import { settingsSnapshot } from "../storybook/fixtures";
@@ -20,6 +23,7 @@ const mens: GroupCard = {
     { id: "sam", displayName: "Sam P.", readToday: true },
     { id: "alex", displayName: "Alex L.", readToday: true },
   ],
+  plan: null,
 };
 
 const family: GroupCard = {
@@ -35,6 +39,7 @@ const family: GroupCard = {
     { id: "erin", displayName: "Erin B.", readToday: true },
     { id: "luke", displayName: "Luke B.", readToday: false },
   ],
+  plan: null,
 };
 
 const members: HomeMember[] = [
@@ -76,12 +81,37 @@ const partner: Partial<PartnerValue> = {
 
 const user = { id: "story-user", email: "ryan@example.com", provider: "apple" as const, displayName: "Ryan Bykowski" };
 
+const markPlan: GroupPlanSnapshot = {
+  id: "plan-mark",
+  bookId: "mark",
+  startChapter: 1,
+  endChapter: 16,
+  pace: "chapter",
+  readingDays: MON_FRI,
+  startDate: "2026-10-01",
+  followerIds: ["dan", "jon", "ryan", "sam"],
+};
+
+const withPlan: GroupCard = { ...mens, plan: markPlan, readCount: 4 };
+
+const sharedNotes: SharedNote[] = [
+  {
+    id: "note-dan",
+    authorId: "dan",
+    authorName: "Dan K.",
+    day: localDate(),
+    body: "The wind and the sea obey him.",
+    groupIds: ["mens"],
+    partnerIds: [],
+  },
+];
+
 function GroupsScreen({
   start,
   draft,
   value = group,
 }: {
-  start?: "list" | "create" | "join" | "home" | "invite";
+  start?: "list" | "create" | "join" | "home" | "invite" | "plan" | "setup";
   draft?: { name: string; description: string };
   value?: Partial<GroupValue>;
 }) {
@@ -131,4 +161,24 @@ export const Home: Story = {
 export const Invite: Story = {
   name: "v1.5 · 8 · Invite",
   render: () => <GroupsScreen start="invite" />,
+};
+
+export const PlanHome: Story = {
+  name: "v1.5 · 7 · Group home with plan",
+  render: () => (
+    <GroupsScreen
+      start="home"
+      value={{ ...group, groups: [withPlan, family], notes: sharedNotes }}
+    />
+  ),
+};
+
+export const Plan: Story = {
+  name: "v1.5 · 10 · Plan detail",
+  render: () => <GroupsScreen start="plan" value={{ ...group, groups: [withPlan, family] }} />,
+};
+
+export const Setup: Story = {
+  name: "v1.5 · Plan setup",
+  render: () => <GroupsScreen start="setup" value={{ ...group, groups: [{ ...mens, role: "owner" }, family] }} />,
 };

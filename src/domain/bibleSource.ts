@@ -1,4 +1,5 @@
 import { validTimeZone } from "./askPush";
+import { normalizeGroupPlan } from "./groupPlan";
 import { getBook, verseCount } from "./books";
 import { formatRef, parsePassage } from "./refs";
 import type { BibleSourceId, BibleTranslationId, Range, UserPrefs } from "./types";
@@ -138,6 +139,7 @@ export function normalizeBiblePrefs(prefs: UserPrefs): UserPrefs {
     bibleCustomPattern: typeof pattern === "string" ? pattern : "",
     showInAppEsv: showInApp === undefined ? true : showInApp === true,
     timeZone: validTimeZone(stored.timeZone),
+    groupPlan: normalizeGroupPlan(stored.groupPlan),
   };
 }
 
