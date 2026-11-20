@@ -100,6 +100,36 @@ describe("ESV HTML parser", () => {
       },
     ]);
   });
+
+  it("carries a verse across paragraph breaks so multi-paragraph verses highlight together", () => {
+    const markHtml = [
+      '<p><b class="verse-num" id="v41001002-1">2&nbsp;</b>As it is written in Isaiah the prophet,</p>',
+      '<p class="block-indent"><span class="line">“Behold, I send my messenger before your face,</span><br />',
+      '<span class="indent line">who will prepare your way,</span><br />',
+      '<span class="line"><b class="verse-num inline" id="v41001003-1">3&nbsp;</b>the voice of one crying in the wilderness.”</span></p>',
+    ].join("");
+
+    const passage = parseEsvHtml(markHtml, "Mark 1:2-3", "Mark 1:2-3");
+    expect(passage.blocks).toEqual([
+      {
+        kind: "paragraph",
+        runs: [{ kind: "verse", chapter: 1, verse: 2, text: "As it is written in Isaiah the prophet," }],
+      },
+      {
+        kind: "paragraph",
+        runs: [
+          {
+            kind: "verse",
+            chapter: 1,
+            verse: 2,
+            continued: true,
+            text: "“Behold, I send my messenger before your face, who will prepare your way,",
+          },
+          { kind: "verse", chapter: 1, verse: 3, text: "the voice of one crying in the wilderness.”" },
+        ],
+      },
+    ]);
+  });
 });
 
 describe("ESV fetch client", () => {

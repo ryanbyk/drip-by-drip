@@ -198,7 +198,7 @@ function RunText({
       const tag = `${run.chapter}:${run.verse}`;
       return (
         <button type="button" className="reader-verse" aria-pressed={tagged.has(tag)} onClick={() => onToggle(tag)}>
-          <sup>{run.verse}</sup>
+          {run.continued ? null : <sup>{run.verse}</sup>}
           {run.text}
         </button>
       );

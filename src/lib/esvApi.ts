@@ -16,6 +16,8 @@ export type EsvVerse = {
   chapter: number;
   verse: number;
   text: string;
+  /** True when a verse continues into a new paragraph or stanza without repeating its verse number. */
+  continued?: boolean;
 };
 
 export type EsvText = {
@@ -96,6 +98,7 @@ export function parseEsvHtml(html: string, canonical: string, query: string): Es
   const cleaned = html.replace(/<small\b[^>]*>[\s\S]*?<\/small>/gi, "");
   const blocks: EsvBlock[] = [];
   let notice = "";
+  let activeVerse: { chapter: number; verse: number } | null = null;
   const blockRe = /<(h[2-4]|p)\b([^>]*)>([\s\S]*?)<\/\1>/gi;
   for (const match of cleaned.matchAll(blockRe)) {
     const tag = match[1].toLowerCase();
@@ -116,8 +119,9 @@ export function parseEsvHtml(html: string, canonical: string, query: string): Es
       /<span\b[^>]*\bclass\s*=\s*(?:"[^"]*\b(?:begin|end)-line-group\b[^"]*"|'[^']*\b(?:begin|end)-line-group\b[^']*')[^>]*>\s*<\/span>/gi;
     const segments = stanzaRe.test(inner) ? inner.split(stanzaRe) : [inner];
     for (const segment of segments) {
-      const runs = parseRuns(segment);
-      if (runs.length > 0) blocks.push({ kind: "paragraph", runs });
+      const parsed = parseRuns(segment, activeVerse);
+      activeVerse = parsed.lastVerse;
+      if (parsed.runs.length > 0) blocks.push({ kind: "paragraph", runs: parsed.runs });
     }
   }
   return {
@@ -183,9 +187,13 @@ async function esvRequest(
   }
 }
 
-function parseRuns(inner: string): EsvRun[] {
+function parseRuns(
+  inner: string,
+  inheritedVerse: { chapter: number; verse: number } | null,
+): { runs: EsvRun[]; lastVerse: { chapter: number; verse: number } | null } {
   const runs: EsvRun[] = [];
   let current: EsvRun | null = null;
+  let lastVerse = inheritedVerse;
   const tokenRe =
     /<(b|span)\b([^>]*\bclass\s*=\s*(?:"[^"]*\b(?:verse-num|chapter-num)\b[^"]*"|'[^']*\b(?:verse-num|chapter-num)\b[^']*')[^>]*)>[\s\S]*?<\/\1>|<br\s*\/?>|<!--[\s\S]*?-->|<[^>]+>|([^<]+)/gi;
 
@@ -193,7 +201,9 @@ function parseRuns(inner: string): EsvRun[] {
     const text = decodeEntities(raw).replace(/\s+/g, " ");
     if (!text) return;
     if (!current) {
-      current = { kind: "text", text };
+      current = lastVerse
+        ? { kind: "verse", chapter: lastVerse.chapter, verse: lastVerse.verse, text, continued: true }
+        : { kind: "text", text };
       runs.push(current);
       return;
     }
@@ -205,6 +215,7 @@ function parseRuns(inner: string): EsvRun[] {
       const attrs = match[2] ?? "";
       const located = verseFromId(attr(attrs, "id"));
       if (located) {
+        lastVerse = located;
         current = { kind: "verse", chapter: located.chapter, verse: located.verse, text: "" };
         runs.push(current);
       }
@@ -217,9 +228,12 @@ function parseRuns(inner: string): EsvRun[] {
     if (match[3]) addText(match[3]);
   }
 
-  return runs
-    .map((run) => ({ ...run, text: run.text.replace(/\s+/g, " ").trim() }))
-    .filter((run) => run.text.length > 0);
+  return {
+    runs: runs
+      .map((run) => ({ ...run, text: run.text.replace(/\s+/g, " ").trim() }))
+      .filter((run) => run.text.length > 0),
+    lastVerse,
+  };
 }
 
 function verseFromId(id: string): { chapter: number; verse: number } | null {
