@@ -27,6 +27,7 @@ export type EsvRun = EsvVerse | EsvText;
 
 export type EsvBlock =
   | { kind: "heading"; text: string }
+  | { kind: "subtitle"; text: string }
   | { kind: "paragraph"; runs: EsvRun[] };
 
 export type EsvPassage = {
@@ -108,11 +109,16 @@ export function parseEsvHtml(html: string, canonical: string, query: string): Es
     }
     if (tag !== "p") {
       if (/\bextra_text\b/.test(cls) || !text) continue;
-      blocks.push({ kind: "heading", text });
+      blocks.push({ kind: /\bpsalm-title\b/.test(cls) ? "subtitle" : "heading", text });
       continue;
     }
-    const runs = parseRuns(inner);
-    if (runs.length > 0) blocks.push({ kind: "paragraph", runs });
+    const stanzaRe =
+      /<span\b[^>]*\bclass\s*=\s*(?:"[^"]*\b(?:begin|end)-line-group\b[^"]*"|'[^']*\b(?:begin|end)-line-group\b[^']*')[^>]*>\s*<\/span>/gi;
+    const segments = stanzaRe.test(inner) ? inner.split(stanzaRe) : [inner];
+    for (const segment of segments) {
+      const runs = parseRuns(segment);
+      if (runs.length > 0) blocks.push({ kind: "paragraph", runs });
+    }
   }
   return {
     query,
@@ -180,7 +186,8 @@ async function esvRequest(
 function parseRuns(inner: string): EsvRun[] {
   const runs: EsvRun[] = [];
   let current: EsvRun | null = null;
-  const tokenRe = /<([a-z0-9]+)\b([^>]*)>([\s\S]*?)<\/\1>|<br\s*\/?>|<!--[\s\S]*?-->|<[^>]+>|([^<]+)/gi;
+  const tokenRe =
+    /<(b|span)\b([^>]*\bclass\s*=\s*(?:"[^"]*\b(?:verse-num|chapter-num)\b[^"]*"|'[^']*\b(?:verse-num|chapter-num)\b[^']*')[^>]*)>[\s\S]*?<\/\1>|<br\s*\/?>|<!--[\s\S]*?-->|<[^>]+>|([^<]+)/gi;
 
   function addText(raw: string) {
     const text = decodeEntities(raw).replace(/\s+/g, " ");
@@ -194,26 +201,20 @@ function parseRuns(inner: string): EsvRun[] {
   }
 
   for (const match of inner.matchAll(tokenRe)) {
-    const tag = match[1];
-    if (tag) {
+    if (match[1]) {
       const attrs = match[2] ?? "";
-      const cls = attr(attrs, "class");
-      if (/\b(?:verse-num|chapter-num)\b/.test(cls)) {
-        const located = verseFromId(attr(attrs, "id"));
-        if (located) {
-          current = { kind: "verse", chapter: located.chapter, verse: located.verse, text: "" };
-          runs.push(current);
-          continue;
-        }
+      const located = verseFromId(attr(attrs, "id"));
+      if (located) {
+        current = { kind: "verse", chapter: located.chapter, verse: located.verse, text: "" };
+        runs.push(current);
       }
-      addText(visibleText(match[3] ?? ""));
       continue;
     }
     if (match[0].startsWith("<br")) {
       addText(" ");
       continue;
     }
-    if (match[4]) addText(match[4]);
+    if (match[3]) addText(match[3]);
   }
 
   return runs

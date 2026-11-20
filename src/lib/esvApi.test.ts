@@ -68,6 +68,38 @@ describe("ESV HTML parser", () => {
       { kind: "paragraph", runs: [{ kind: "text", text: "Sample line." }] },
     ]);
   });
+
+  it("parses verse numbers nested inside poetry line spans and splits stanzas", () => {
+    const psalmHtml = [
+      '<h3 id="p19008001_01-1">How Majestic Is Your Name</h3>',
+      '<h4 id="p19008001_06-1" class="psalm-title">To the choirmaster. A Psalm of David.</h4>',
+      '<p class="block-indent"><span class="begin-line-group"></span>',
+      '<span class="line"><b class="chapter-num" id="v19008001-1">8:1&nbsp;</b>&nbsp;&nbsp;O <span class="small-caps">Lord</span>, our Lord,</span><br />',
+      '<span class="indent line">&nbsp;&nbsp;&nbsp;&nbsp;how majestic is your name!</span><br />',
+      '<span class="indent line"><b class="verse-num inline" id="v19008002-1">2&nbsp;</b>&nbsp;&nbsp;Out of the mouth of babies,</span><br />',
+      '<span class="end-line-group"></span>',
+      '<span class="begin-line-group"></span>',
+      '<span class="line"><b class="verse-num inline" id="v19008003-1">3&nbsp;</b>&nbsp;&nbsp;When I look at your heavens,</span><br />',
+      '<span class="end-line-group"></span></p>',
+    ].join("");
+
+    const passage = parseEsvHtml(psalmHtml, "Psalm 8", "Psalm 8");
+    expect(passage.blocks).toEqual([
+      { kind: "heading", text: "How Majestic Is Your Name" },
+      { kind: "subtitle", text: "To the choirmaster. A Psalm of David." },
+      {
+        kind: "paragraph",
+        runs: [
+          { kind: "verse", chapter: 8, verse: 1, text: "O Lord, our Lord, how majestic is your name!" },
+          { kind: "verse", chapter: 8, verse: 2, text: "Out of the mouth of babies," },
+        ],
+      },
+      {
+        kind: "paragraph",
+        runs: [{ kind: "verse", chapter: 8, verse: 3, text: "When I look at your heavens," }],
+      },
+    ]);
+  });
 });
 
 describe("ESV fetch client", () => {

@@ -158,6 +158,8 @@ function BlockView({
   switch (block.kind) {
     case "heading":
       return <h2>{block.text}</h2>;
+    case "subtitle":
+      return <p className="reader-subtitle">{block.text}</p>;
     case "paragraph":
       return (
         <>
