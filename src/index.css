@@ -50,6 +50,12 @@
   --caution: #9a6b4f;
   --scrim: #1e2a2d59;
   --glass: #fffdf8d9;
+  --glass-tint-top: #ffffffb8;
+  --glass-tint-bottom: #fffdf88f;
+  --glass-edge: #ffffffd9;
+  --glass-highlight: #fffffff0;
+  --glass-ring: #1e2a2d18;
+  --glass-quiet: #fffdf8b3;
   --shell-width: 520px;
   /* 16px on the pills, 10px on the status strip. */
   --glass-blur: 16px;
@@ -128,6 +134,12 @@
   --caution: #d9a283;
   --scrim: #000000a6;
   --glass: #1a2427d9;
+  --glass-tint-top: #2a3a3eb3;
+  --glass-tint-bottom: #1a24278c;
+  --glass-edge: #ece6da29;
+  --glass-highlight: #ffffff26;
+  --glass-ring: #00000059;
+  --glass-quiet: #1a2427a6;
   --knob: #ece6da;
   --on-accent: #0e1d1f;
   --apple-bg: #ffffff;
@@ -157,6 +169,12 @@
     --caution: #d9a283;
     --scrim: #000000a6;
     --glass: #1a2427d9;
+  --glass-tint-top: #2a3a3eb3;
+  --glass-tint-bottom: #1a24278c;
+  --glass-edge: #ece6da29;
+  --glass-highlight: #ffffff26;
+  --glass-ring: #00000059;
+  --glass-quiet: #1a2427a6;
     --knob: #ece6da;
     --on-accent: #0e1d1f;
     --apple-bg: #ffffff;
@@ -226,10 +244,10 @@ a { color: var(--accent); }
 /* Frost only the status-bar inset. Headings start 8px below it, so at rest
    the strip does not cover them. Blur turns on after content travels into it. */
 .status-glass {
-  --glass-filter: blur(var(--glass-blur-soft));
-  --glass-mask: linear-gradient(to bottom, #000 0% 50%, transparent 50% 100%);
+  --glass-filter: blur(var(--glass-blur-soft)) saturate(150%);
   position: absolute;
   isolation: isolate;
+  overflow: hidden;
   z-index: 5;
   top: 0;
   left: 0;
@@ -241,6 +259,8 @@ a { color: var(--accent); }
 .phone.is-scrolled .status-glass {
   opacity: var(--status-glass, 0);
   background: linear-gradient(to bottom, var(--glass), transparent);
+  mask-image: linear-gradient(to bottom, #000 62%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent 100%);
 }
 .screen {
   flex: 1;
@@ -279,9 +299,13 @@ a { color: var(--accent); }
 .screen-gap-22 { gap: var(--space-22); }
 .screen-gap-24 { gap: var(--space-24); }
 .screen-reader {
+  position: relative;
   gap: 0;
   padding: var(--content-top) 0 0;
   overflow: hidden;
+}
+.phone:has(.tabbar-wrap) .screen-reader::after {
+  display: none;
 }
 .footer { margin-top: auto; display: flex; flex-direction: column; gap: var(--space-12); padding-top: var(--space-8); }
 .screen-frame .footer { gap: var(--space-20); }
@@ -667,94 +691,33 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
   pointer-events: none;
 }
 /* Frosted glass for the nav pill and the sheet's primary button.
-   The tint, border, and shadow stay on the element, so the label stays sharp
-   and the shadow is not part of the clipped layer. Without backdrop-filter,
-   that tint still reads.
-   iOS Safari ignores mask-image on a backdrop-filter layer. A ::before that
-   is taller than the pill then paints a hard rectangle above it, and an edge
-   layer draws a line outside the radius. WebKit blurs the element itself and
-   clips descendants with overflow, which follows the pill's border-radius.
-   The element's own shadow is outside that clip. Elsewhere, where the mask
-   does trim the filter, ::before hangs past the surface and samples color
-   that has not reached it yet: pills upward, the status strip downward. */
+   Blur the element itself and clip descendants with overflow: hidden so the
+   frost follows the pill's border-radius on every browser (Safari, Chrome,
+   Firefox) without a 200% pseudo-element bleeding above the pill. The
+   element's own box-shadow and focus-visible outline stay outside the clip. */
 .glass {
-  --glass-filter: blur(var(--glass-blur));
-  --glass-mask:
-    linear-gradient(#000, #000),
-    linear-gradient(#000, #000),
-    radial-gradient(circle var(--glass-radius) at bottom right, #000 99%, transparent 100%),
-    radial-gradient(circle var(--glass-radius) at bottom left, #000 99%, transparent 100%),
-    radial-gradient(circle var(--glass-radius) at top right, #000 99%, transparent 100%),
-    radial-gradient(circle var(--glass-radius) at top left, #000 99%, transparent 100%);
-  --glass-mask-size:
-    calc(100% - 2 * var(--glass-radius)) 50%,
-    100% calc(50% - 2 * var(--glass-radius)),
-    var(--glass-radius) var(--glass-radius),
-    var(--glass-radius) var(--glass-radius),
-    var(--glass-radius) var(--glass-radius),
-    var(--glass-radius) var(--glass-radius);
-  --glass-mask-position:
-    left var(--glass-radius) top 50%,
-    left 0 top calc(50% + var(--glass-radius)),
-    left 0 top 50%,
-    right 0 top 50%,
-    left 0 bottom 0,
-    right 0 bottom 0;
+  --glass-filter: blur(var(--glass-blur)) saturate(180%);
   position: relative;
   isolation: isolate;
+  overflow: hidden;
   background: var(--glass);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
 }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass,
-  .phone.is-scrolled .status-glass {
+  .glass {
+    background: linear-gradient(180deg, var(--glass-tint-top), var(--glass-tint-bottom));
+    border-color: var(--glass-edge);
+    box-shadow:
+      inset 0 1px 0 var(--glass-highlight),
+      0 0 0 1px var(--glass-ring),
+      var(--shadow);
     backdrop-filter: var(--glass-filter);
     -webkit-backdrop-filter: var(--glass-filter);
   }
-}
-@supports (-webkit-hyphens: none) {
-  .glass,
-  .status-glass {
-    overflow: hidden;
-  }
-}
-@supports (backdrop-filter: blur(1px)) and (mask-image: linear-gradient(#000, #000)) and (not (-webkit-hyphens: none)) {
-  .glass,
   .phone.is-scrolled .status-glass {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-  .glass::before,
-  .status-glass::before {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    left: 0;
-    right: 0;
-    height: 200%;
-    pointer-events: none;
-    border-radius: 0;
     backdrop-filter: var(--glass-filter);
     -webkit-backdrop-filter: var(--glass-filter);
-    mask-image: var(--glass-mask);
-    -webkit-mask-image: var(--glass-mask);
-    mask-repeat: no-repeat;
-    -webkit-mask-repeat: no-repeat;
-  }
-  .glass::before {
-    top: auto;
-    bottom: 0;
-    mask-size: var(--glass-mask-size);
-    -webkit-mask-size: var(--glass-mask-size);
-    mask-position: var(--glass-mask-position);
-    -webkit-mask-position: var(--glass-mask-position);
-    mask-composite: add, add, add, add, add;
-    -webkit-mask-composite: source-over, source-over, source-over, source-over, source-over;
-  }
-  .status-glass::before {
-    top: 0;
-    bottom: auto;
   }
 }
 .tabbar {
@@ -860,6 +823,11 @@ html.sheet-open .screen {
 }
 .sheet > .footer > * { pointer-events: auto; }
 .sheet > .footer .btn-primary:not(.btn-caution) { color: var(--accent); }
+.sheet > .footer .btn-quiet {
+  background: var(--glass-quiet);
+  backdrop-filter: blur(var(--glass-blur-soft)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-soft)) saturate(140%);
+}
 .handle { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: var(--space-4) auto var(--space-8); }
 .sheet h2 { font-size: 26px; letter-spacing: -0.2px; margin: 0; font-weight: 400; }
 .sheet-ref { font-size: 1.8rem; margin: 0; }
@@ -1415,6 +1383,23 @@ html.sheet-open .screen {
 .reader-title { display: flex; flex-direction: column; align-items: center; gap: 1px; /* spacing-allow: pen reader title stack, smaller than the spacing scale */ }
 .reader-title strong { font-size: 14px; font-weight: 600; }
 .reader-title span { color: var(--faint); font-size: 11px; font-weight: 400; }
+.reader-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.reader-source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--accent);
+  font-weight: 500;
+  text-decoration: none;
+}
+.reader-source-link.is-disabled {
+  color: var(--faint);
+  pointer-events: none;
+}
 .reader-body {
   flex: 1;
   display: flex;
@@ -1428,6 +1413,7 @@ html.sheet-open .screen {
 .reader-body.is-compact { font-size: 17px; }
 .reader-body.is-large { font-size: 22px; }
 .reader-body h2 { margin: 0; font-family: var(--serif); font-size: 24px; font-weight: 600; letter-spacing: -0.2px; }
+.reader-subtitle { margin: 0; font-family: var(--serif); font-style: italic; font-size: 16px; color: var(--muted); line-height: 1.45; }
 .reader-prose,
 .reader-tagged {
   margin: 0;
@@ -1481,29 +1467,40 @@ html.sheet-open .screen {
 .reader-continues { margin: 0; color: var(--faint); font-size: 13px; font-style: italic; }
 .reader-copy { margin: 0; color: var(--faint); font-size: 11px; line-height: 1.45; }
 .reader-actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--space-16) + var(--safe-bottom));
+  z-index: 4;
   display: flex;
   align-items: center;
   gap: var(--space-10);
-  padding: var(--space-12) var(--space-24);
-  border-top: 1px solid var(--line);
-  background: var(--surface);
+  padding: 0 var(--space-16);
+  background: transparent;
+  pointer-events: none;
 }
+.phone:has(.tabbar-wrap) .reader-actions {
+  bottom: calc(var(--nav-height) + var(--nav-inset) + var(--space-10));
+}
+.phone:has(.tabbar-wrap) .reader-body {
+  padding-bottom: calc(var(--nav-clearance) + var(--space-40) + var(--space-28));
+}
+.reader-actions > * { pointer-events: auto; }
 .reader-reflect {
+  --glass-radius: 26px;
   display: inline-flex;
   align-items: center;
   gap: var(--space-8);
   height: 52px;
   padding: 0 var(--space-18);
-  border-radius: 26px;
-  border: 1px solid var(--line);
-  background: transparent;
+  border-radius: var(--glass-radius);
   color: var(--ink);
   font-size: 15px;
   font-weight: 600;
   flex: none;
 }
 .reader-reflect svg { color: var(--warm-ink); }
-.reader-actions .btn { flex: 1; min-height: 52px; }
+.reader-actions .btn { flex: 1; min-height: 52px; box-shadow: var(--shadow); }
 .next-list { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
 .next-choice {
   width: 100%;
@@ -2447,6 +2444,94 @@ input.range-box:focus { border-color: var(--accent); outline: none; }
   text-align: left;
 }
 .note-share span:last-child { color: var(--muted); font-size: 13px; font-weight: 400; }
+
+.sheet-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding-bottom: var(--space-12);
+}
+.sheet-form textarea {
+  resize: vertical;
+  min-height: 112px;
+}
+.field-hint,
+.field-count {
+  color: var(--faint);
+  font-size: 13px;
+}
+.field-count { text-align: right; }
+.disclosure {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg);
+  padding: var(--space-12) var(--space-14);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+.disclosure summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+.disclosure p { font-size: 13px; }
+.kv-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  font-size: 13px;
+}
+.kv-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+.kv-list dt { color: var(--faint); flex: none; }
+.kv-list dd {
+  margin: 0;
+  color: var(--ink);
+  text-align: right;
+  word-break: break-word;
+}
+.honeypot {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.sheet-confirm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-12);
+  padding: var(--space-12) 0 var(--space-20);
+}
+.confirm-badge {
+  width: 52px;
+  height: 52px;
+  border-radius: 26px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+}
+.badge-pill {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: var(--space-4) var(--space-12);
+}
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }

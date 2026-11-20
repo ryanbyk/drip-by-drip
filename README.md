@@ -140,6 +140,26 @@ select vault.create_secret('<same value as PUSH_CRON_SECRET>', 'push_cron_secret
 
 Partner nudges are not sent as Web Push in this change.
 
+### Issue reporting
+
+Settings → **Report an issue** lets both guests and signed-in readers send a bug report or suggestion directly into Linear (**Crossway-Milwaukee → Drip by drip**) through the `report-issue` Edge Function. Only basic device context is attached (page, Home Screen vs browser, appearance, signed-in/sync status, viewport, time zone, user agent) — never reading answers, notes, or book progress.
+
+**Secrets — do not commit the values.** Create a Linear personal API key and store it as an Edge Function secret on project `gfacmaaehvlhbskrajyj`:
+
+```bash
+supabase secrets set --project-ref gfacmaaehvlhbskrajyj \
+  LINEAR_API_KEY="lin_api_..."
+```
+
+Optional overrides (defaults already point at team `CW`, project `Drip by drip`, `Backlog` state, and the `Bug` / `Improvement` labels): `LINEAR_TEAM_ID`, `LINEAR_PROJECT_ID`, `LINEAR_STATE_ID`, `LINEAR_BUG_LABEL_ID`, `LINEAR_SUGGESTION_LABEL_ID`, `REPORT_RATE_LIMIT_SALT`.
+
+Deploy the function and push the server-only rate-limit migration (5 reports per 15 minutes per hashed IP or signed-in user):
+
+```bash
+supabase db push --project-ref gfacmaaehvlhbskrajyj
+supabase functions deploy report-issue --project-ref gfacmaaehvlhbskrajyj
+```
+
 ## Docs
 
 - [Product / app plan](docs/bible-reading-app-plan.md) — purpose, QBE mechanic, MVP scope, UX, tech

@@ -162,10 +162,6 @@ function expectClipped(rows: GlassClip[], debug: boolean, requireButton = true) 
       expect(pseudo.matchesHost, `${row.className} ${pseudo.pseudo} visible box`).toBe(true);
       expect(pseudo.extendsPast, `${row.className} ${pseudo.pseudo} layout`).toBe(true);
     }
-    if (!debug && !row.webkit) {
-      const before = row.pseudos.find((pseudo) => pseudo.pseudo === "::before");
-      expect(before?.paints, `${row.className} samples past the edge`).toBe(true);
-    }
     if (debug) {
       const before = row.pseudos.find((pseudo) => pseudo.pseudo === "::before");
       expect(before?.paints, `${row.className} ::before`).toBe(true);
@@ -174,12 +170,11 @@ function expectClipped(rows: GlassClip[], debug: boolean, requireButton = true) 
     }
     if (!row.isGlass) {
       expect(row.pointer).toBe("none");
-      if (row.webkit) expect(row.overflowHidden).toBe(true);
+      expect(row.overflowHidden).toBe(true);
       continue;
     }
     expect(row.shadow).not.toBe("none");
     expect(row.pointer).toBe("auto");
-    if (!row.webkit) continue;
     expect(row.overflowHidden).toBe(true);
     if (debug) continue;
     expect(row.backdrop).toContain("blur(16px)");
@@ -240,7 +235,6 @@ test("glass layers stay inside the pill", async ({ page }, testInfo) => {
 for (const theme of ["light", "dark"] as const) {
   test(`debug glass paint is clipped to the pill (${theme})`, async ({ page }, testInfo) => {
     test.setTimeout(60_000);
-    test.skip(testInfo.project.name.endsWith("-touch"), "WebKit clips the extended layer; Chromium masks it");
     test.skip(theme === "dark" && testInfo.project.name !== "iphone-15", "dark reference shot is iPhone 15");
     await openPassage(page, theme);
     const screen = page.locator(".screen");

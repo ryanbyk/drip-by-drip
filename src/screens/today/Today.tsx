@@ -39,7 +39,7 @@ function phaseOf(snapshot: Snapshot, today: string, passage: ResolvedPassage): P
 }
 
 export function Today({ onHistory }: { onHistory: () => void }) {
-  const { snapshot, today, dispatch, online } = useApp();
+  const { snapshot, today, dispatch, online, showToast } = useApp();
   const passage = resolvePassage(snapshot, today);
   const phase = phaseOf(snapshot, today, passage);
   const [intro, setIntro] = useState<Intro>(null);
@@ -47,6 +47,7 @@ export function Today({ onHistory }: { onHistory: () => void }) {
   const [sheet, setSheet] = useState<SheetName>(null);
   const [readerFailed, setReaderFailed] = useState(false);
   const [readerClosed, setReaderClosed] = useState(false);
+  const [detourReading, setDetourReading] = useState(false);
   const prefs = normalizeBiblePrefs(snapshot.prefs);
   const passageRef = "ref" in passage ? passage.ref : "";
 
@@ -54,6 +55,7 @@ export function Today({ onHistory }: { onHistory: () => void }) {
     setIntro(null);
     setMode("read");
     setSheet(null);
+    setDetourReading(false);
   }, [today]);
 
   useEffect(() => {
@@ -69,8 +71,25 @@ export function Today({ onHistory }: { onHistory: () => void }) {
     unavailable: esvUnavailable(),
   });
   const trackPassage = passage.kind === "book" || passage.kind === "plan";
-  const showReader =
+  const showTrackReader =
     intro !== "commit" && phase === "passage" && trackPassage && readMode.show === "in-app" && !readerClosed;
+  const showDetourReader =
+    intro !== "commit" &&
+    phase === "passage" &&
+    passage.kind === "detour" &&
+    Boolean(passage.ref) &&
+    detourReading &&
+    readMode.show === "in-app";
+  const canOpenDetourInApp = prefs.showInAppEsv && !esvUnavailable() && online;
+
+  function openDetourInApp(ref: string) {
+    const trimmed = ref.trim();
+    if (!trimmed) return;
+    dispatch({ type: "detour", today, ref: trimmed });
+    setMode("read");
+    setReaderFailed(false);
+    setDetourReading(true);
+  }
 
   function answerYes() {
     dispatch({ type: "answer", today, at: new Date().toISOString(), answer: "yes" });
@@ -90,6 +109,7 @@ export function Today({ onHistory }: { onHistory: () => void }) {
       return;
     }
     dispatch({ type: "finish", today, at: new Date().toISOString() });
+    setDetourReading(false);
     setMode("read");
   }
 
@@ -124,18 +144,38 @@ export function Today({ onHistory }: { onHistory: () => void }) {
         <DetourView
           onBack={() => {
             dispatch({ type: "clearDetour", today });
+            setDetourReading(false);
             setMode("read");
           }}
           onUse={(ref) => dispatch({ type: "detour", today, ref })}
           onReflect={() => setMode("reflect")}
           onRead={readIt}
+          onReadInApp={canOpenDetourInApp ? openDetourInApp : undefined}
           backup={backupLabel(snapshot)}
         />
       </TodayFrame>
     );
   }
 
-  if (showReader && (passage.kind === "book" || passage.kind === "plan")) {
+  if (showDetourReader && passage.kind === "detour") {
+    return (
+      <section className="screen screen-reader">
+        <EsvReader
+          reference={passage.ref}
+          onBack={() => setDetourReading(false)}
+          onReflect={() => setMode("reflect")}
+          onRead={readIt}
+          onUnavailable={() => {
+            setDetourReading(false);
+            setReaderFailed(true);
+            showToast("Couldn’t load that passage in the app — you can still open it externally.");
+          }}
+        />
+      </section>
+    );
+  }
+
+  if (showTrackReader && (passage.kind === "book" || passage.kind === "plan")) {
     return (
       <section className="screen screen-reader">
         <EsvReader
@@ -173,13 +213,17 @@ export function Today({ onHistory }: { onHistory: () => void }) {
           onChangeBook={() => setSheet("books")}
           onDetour={() => setMode("detour")}
           onUseDetour={(ref) => dispatch({ type: "detour", today, ref })}
-          onBackToBook={() => dispatch({ type: "clearDetour", today })}
+          onBackToBook={() => {
+            dispatch({ type: "clearDetour", today });
+            setDetourReading(false);
+          }}
           onReflect={() => setMode("reflect")}
           onRead={readIt}
           onPlanRef={(ref) => dispatch({ type: "planRef", today, ref })}
           onReadInApp={
             readerClosed && readMode.show === "in-app" && trackPassage ? () => setReaderClosed(false) : undefined
           }
+          onReadDetourInApp={canOpenDetourInApp ? openDetourInApp : undefined}
         />
       ) : null}
       {intro === "commit" ? <CommitSheet onContinue={() => setIntro("dog")} /> : null}
