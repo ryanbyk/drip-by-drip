@@ -32,10 +32,12 @@ import {
   Droplet,
   ExternalLink,
   HeartHandshake,
+  MessageSquarePlus,
   RotateCcw,
   Users,
   WaterDrop,
 } from "../components/Icons";
+import { ReportIssueSheet } from "../components/ReportIssueSheet";
 import { AppearanceField, AskTimePicker, Button, Sheet } from "../components/ui";
 import { partnerSettingsValue } from "../domain/partner";
 import { groupsSettingsValue } from "../domain/social";
@@ -83,6 +85,7 @@ export function Settings({
   const [editingBook, setEditingBook] = useState(false);
   const [editingSource, setEditingSource] = useState(false);
   const [about, setAbout] = useState(false);
+  const [reportingIssue, setReportingIssue] = useState(false);
   const [developerAction, setDeveloperAction] = useState<"now" | "later" | "push" | null>(null);
   const [testNote, setTestNote] = useState<string | null>(null);
   const [delayPending, setDelayPending] = useState(false);
@@ -412,6 +415,11 @@ export function Settings({
             <span className="row-label">About Drip by drip</span>
             <ChevronRight className="chev" size={16} aria-hidden="true" />
           </button>
+          <button type="button" className="settings-row" onClick={() => setReportingIssue(true)}>
+            <MessageSquarePlus className="row-icon" size={18} aria-hidden="true" />
+            <span className="row-label">Report an issue</span>
+            <ChevronRight className="chev" size={16} aria-hidden="true" />
+          </button>
           <a className="settings-row" href={SOURCE_URL} target="_blank" rel="noopener noreferrer">
             <ExternalLink className="row-icon" size={18} aria-hidden="true" />
             <span className="row-label">Sermon notes — Drip by drip</span>
@@ -450,6 +458,14 @@ export function Settings({
         </p>
       </section>
       {editingBook ? <ChangeBookSheet onClose={() => setEditingBook(false)} /> : null}
+      {reportingIssue ? (
+        <ReportIssueSheet
+          onClose={() => setReportingIssue(false)}
+          onSubmitted={(identifier) =>
+            showToast(identifier ? `Report sent (${identifier}).` : "Report sent — thank you.")
+          }
+        />
+      ) : null}
       {about ? (
         <Sheet title="About Drip by drip" onClose={() => setAbout(false)}>
           <p>
