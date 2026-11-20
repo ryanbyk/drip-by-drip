@@ -125,7 +125,7 @@ export function EsvReader({
         )}
       </div>
       <div className="reader-actions">
-        <button type="button" className="reader-reflect" onClick={onReflect}>
+        <button type="button" className="reader-reflect glass" onClick={onReflect}>
           <NotebookPen size={18} aria-hidden="true" />
           Reflect
         </button>

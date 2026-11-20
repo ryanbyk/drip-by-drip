@@ -1,6 +1,6 @@
 import { useId, useMemo, useState } from "react";
 import { Check } from "./Icons";
-import { Button, Sheet } from "./ui";
+import { Button, DisclosureCard, KeyValueList, Sheet, SheetConfirm } from "./ui";
 import {
   collectIssueDiagnostics,
   diagnosticsSummaryRows,
@@ -99,13 +99,11 @@ export function ReportIssueSheet({
   if (sent) {
     return (
       <Sheet title="Report sent" onClose={onClose}>
-        <div className="report-done">
-          <span className="report-done-badge" aria-hidden="true">
-            <Check size={24} />
-          </span>
-          <p className="lede">Thanks for letting us know. Your note is in our queue and we’ll take a look.</p>
-          {sent.identifier ? <p className="report-ref">Reference {sent.identifier}</p> : null}
-        </div>
+        <SheetConfirm
+          icon={<Check size={24} />}
+          message="Thanks for letting us know. Your note is in our queue and we’ll take a look."
+          badge={sent.identifier ? `Reference ${sent.identifier}` : null}
+        />
         <div className="footer">
           <Button type="button" onClick={onClose}>
             Done
@@ -125,7 +123,7 @@ export function ReportIssueSheet({
     >
       <form
         id={formId}
-        className="report-form"
+        className="sheet-form"
         noValidate
         onSubmit={(event) => {
           event.preventDefault();
@@ -168,7 +166,7 @@ export function ReportIssueSheet({
             }}
           />
           {description.length > MAX_DESCRIPTION_LENGTH - 600 ? (
-            <span className="report-count">{remaining} characters left</span>
+            <span className="field-count">{remaining} characters left</span>
           ) : null}
         </label>
 
@@ -188,10 +186,10 @@ export function ReportIssueSheet({
               if (error) setError(null);
             }}
           />
-          <span className="report-hint">Only if you’d like a reply.</span>
+          <span className="field-hint">Only if you’d like a reply.</span>
         </label>
 
-        <label className="report-honeypot" aria-hidden="true">
+        <label className="honeypot" aria-hidden="true">
           <span>Website</span>
           <input
             type="text"
@@ -203,29 +201,12 @@ export function ReportIssueSheet({
           />
         </label>
 
-        <details
-          className="report-details"
-          onToggle={(event) => {
-            if (event.currentTarget.open) {
-              event.currentTarget.scrollIntoView({ block: "nearest", behavior: "smooth" });
-            }
-          }}
-        >
-          <summary>Basic device info is attached</summary>
+        <DisclosureCard summary="Basic device info is attached">
           <p className="soft">
             Helps us reproduce issues. Never includes your answers, reading notes, or book.
           </p>
-          {diagnosticRows.length > 0 ? (
-            <dl className="report-diag">
-              {diagnosticRows.map((row) => (
-                <div key={row.label}>
-                  <dt>{row.label}</dt>
-                  <dd>{row.value}</dd>
-                </div>
-              ))}
-            </dl>
-          ) : null}
-        </details>
+          <KeyValueList rows={diagnosticRows} />
+        </DisclosureCard>
 
         {error ? (
           <p className="auth-error" role="alert">

@@ -299,9 +299,13 @@ a { color: var(--accent); }
 .screen-gap-22 { gap: var(--space-22); }
 .screen-gap-24 { gap: var(--space-24); }
 .screen-reader {
+  position: relative;
   gap: 0;
   padding: var(--content-top) 0 0;
   overflow: hidden;
+}
+.phone:has(.tabbar-wrap) .screen-reader::after {
+  display: none;
 }
 .footer { margin-top: auto; display: flex; flex-direction: column; gap: var(--space-12); padding-top: var(--space-8); }
 .screen-frame .footer { gap: var(--space-20); }
@@ -1445,29 +1449,40 @@ html.sheet-open .screen {
 .reader-continues { margin: 0; color: var(--faint); font-size: 13px; font-style: italic; }
 .reader-copy { margin: 0; color: var(--faint); font-size: 11px; line-height: 1.45; }
 .reader-actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--space-16) + var(--safe-bottom));
+  z-index: 4;
   display: flex;
   align-items: center;
   gap: var(--space-10);
-  padding: var(--space-12) var(--space-24);
-  border-top: 1px solid var(--line);
-  background: var(--surface);
+  padding: 0 var(--space-16);
+  background: transparent;
+  pointer-events: none;
 }
+.phone:has(.tabbar-wrap) .reader-actions {
+  bottom: calc(var(--nav-height) + var(--nav-inset) + var(--space-10));
+}
+.phone:has(.tabbar-wrap) .reader-body {
+  padding-bottom: calc(var(--nav-clearance) + var(--space-40) + var(--space-28));
+}
+.reader-actions > * { pointer-events: auto; }
 .reader-reflect {
+  --glass-radius: 26px;
   display: inline-flex;
   align-items: center;
   gap: var(--space-8);
   height: 52px;
   padding: 0 var(--space-18);
-  border-radius: 26px;
-  border: 1px solid var(--line);
-  background: transparent;
+  border-radius: var(--glass-radius);
   color: var(--ink);
   font-size: 15px;
   font-weight: 600;
   flex: none;
 }
 .reader-reflect svg { color: var(--warm-ink); }
-.reader-actions .btn { flex: 1; min-height: 52px; }
+.reader-actions .btn { flex: 1; min-height: 52px; box-shadow: var(--shadow); }
 .next-list { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
 .next-choice {
   width: 100%;
@@ -2412,23 +2427,23 @@ input.range-box:focus { border-color: var(--accent); outline: none; }
 }
 .note-share span:last-child { color: var(--muted); font-size: 13px; font-weight: 400; }
 
-.report-form {
+.sheet-form {
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
   padding-bottom: var(--space-12);
 }
-.report-form textarea {
+.sheet-form textarea {
   resize: vertical;
   min-height: 112px;
 }
-.report-hint,
-.report-count {
+.field-hint,
+.field-count {
   color: var(--faint);
   font-size: 13px;
 }
-.report-count { text-align: right; }
-.report-details {
+.field-count { text-align: right; }
+.disclosure {
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--bg);
@@ -2437,33 +2452,33 @@ input.range-box:focus { border-color: var(--accent); outline: none; }
   flex-direction: column;
   gap: var(--space-8);
 }
-.report-details summary {
+.disclosure summary {
   cursor: pointer;
   color: var(--muted);
   font-size: 13px;
   font-weight: 500;
 }
-.report-details p { font-size: 13px; }
-.report-diag {
+.disclosure p { font-size: 13px; }
+.kv-list {
   margin: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
   font-size: 13px;
 }
-.report-diag > div {
+.kv-list > div {
   display: flex;
   justify-content: space-between;
   gap: var(--space-12);
 }
-.report-diag dt { color: var(--faint); flex: none; }
-.report-diag dd {
+.kv-list dt { color: var(--faint); flex: none; }
+.kv-list dd {
   margin: 0;
   color: var(--ink);
   text-align: right;
   word-break: break-word;
 }
-.report-honeypot {
+.honeypot {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -2474,7 +2489,7 @@ input.range-box:focus { border-color: var(--accent); outline: none; }
   white-space: nowrap;
   border: 0;
 }
-.report-done {
+.sheet-confirm {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2482,7 +2497,7 @@ input.range-box:focus { border-color: var(--accent); outline: none; }
   gap: var(--space-12);
   padding: var(--space-12) 0 var(--space-20);
 }
-.report-done-badge {
+.confirm-badge {
   width: 52px;
   height: 52px;
   border-radius: 26px;
@@ -2491,7 +2506,7 @@ input.range-box:focus { border-color: var(--accent); outline: none; }
   display: grid;
   place-items: center;
 }
-.report-ref {
+.badge-pill {
   font-size: 13px;
   font-weight: 600;
   color: var(--accent);

@@ -416,3 +416,63 @@ function BookGroup({
     </div>
   );
 }
+
+export function DisclosureCard({
+  summary,
+  children,
+}: {
+  summary: string;
+  children: ReactNode;
+}) {
+  return (
+    <details
+      className="disclosure"
+      onToggle={(event) => {
+        if (event.currentTarget.open) {
+          event.currentTarget.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }
+      }}
+    >
+      <summary>{summary}</summary>
+      {children}
+    </details>
+  );
+}
+
+export function KeyValueList({
+  rows,
+}: {
+  rows: ReadonlyArray<{ label: string; value: string }>;
+}) {
+  if (rows.length === 0) return null;
+  return (
+    <dl className="kv-list">
+      {rows.map((row) => (
+        <div key={row.label}>
+          <dt>{row.label}</dt>
+          <dd>{row.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+export function SheetConfirm({
+  icon,
+  message,
+  badge,
+}: {
+  icon: ReactNode;
+  message: string;
+  badge?: string | null;
+}) {
+  return (
+    <div className="sheet-confirm">
+      <span className="confirm-badge" aria-hidden="true">
+        {icon}
+      </span>
+      <p className="lede">{message}</p>
+      {badge ? <p className="badge-pill">{badge}</p> : null}
+    </div>
+  );
+}
