@@ -33,6 +33,7 @@ export function PassageView({
   onRead,
   onPlanRef,
   onReadInApp,
+  onReadDetourInApp,
 }: {
   passage: Extract<ResolvedPassage, { kind: "book" | "plan" | "detour" }>;
   onAdjust: () => void;
@@ -44,6 +45,7 @@ export function PassageView({
   onRead: () => void;
   onPlanRef: (ref: string) => void;
   onReadInApp?: () => void;
+  onReadDetourInApp?: (ref: string) => void;
 }) {
   const { snapshot, today, online } = useApp();
   const bookName = getBook(snapshot.prefs.bookId)?.name ?? "Mark";
@@ -59,6 +61,7 @@ export function PassageView({
         onBackToBook={onBackToBook}
         onReflect={onReflect}
         onRead={onRead}
+        onReadInApp={onReadDetourInApp}
       />
     );
   }

@@ -48,6 +48,9 @@ export function OpenPassageLink({
 }
 
 function launchContext(): LaunchContext {
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
+    return { userAgent: "", standalone: false, touchPoints: 0 };
+  }
   const nav = navigator as Navigator & { standalone?: boolean };
   return {
     userAgent: nav.userAgent,

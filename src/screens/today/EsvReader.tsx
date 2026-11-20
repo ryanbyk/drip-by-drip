@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ALargeSmall, BookmarkPlus, ChevronLeft, NotebookPen } from "../../components/Icons";
+import { ALargeSmall, ArrowUpRight, BookmarkPlus, ChevronLeft, NotebookPen } from "../../components/Icons";
 import { OpenPassageLink } from "../../components/OpenPassageLink";
 import { Button } from "../../components/ui";
+import { bibleSourceLabel, normalizeBiblePrefs } from "../../domain/bibleSource";
 import { cachedEsvPassage, fetchEsvPassage, type EsvBlock, type EsvPassage, type EsvRun } from "../../lib/esvApi";
 import { useApp } from "../../state/AppState";
 
@@ -24,7 +25,8 @@ export function EsvReader({
   passage?: EsvPassage;
   continues?: string;
 }) {
-  const { snapshot, today, dispatch } = useApp();
+  const { snapshot, today, dispatch, online } = useApp();
+  const bible = normalizeBiblePrefs(snapshot.prefs);
   const day = snapshot.days[today];
   const tags = day?.verseTags ?? [];
   const [passage, setPassage] = useState<EsvPassage | null>(provided ?? cachedEsvPassage(reference));
@@ -86,7 +88,14 @@ export function EsvReader({
         </button>
         <div className="reader-title">
           <strong>{reference}</strong>
-          <span>ESV · in app</span>
+          <span className="reader-sub">
+            <span>ESV</span>
+            <span aria-hidden="true">·</span>
+            <OpenPassageLink reference={reference} className="reader-source-link" online={online}>
+              Open in {bibleSourceLabel(bible.bibleSource)}
+              <ArrowUpRight size={12} aria-hidden="true" />
+            </OpenPassageLink>
+          </span>
         </div>
         <button
           type="button"
