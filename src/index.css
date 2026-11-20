@@ -50,6 +50,12 @@
   --caution: #9a6b4f;
   --scrim: #1e2a2d59;
   --glass: #fffdf8d9;
+  --glass-tint-top: #ffffffb8;
+  --glass-tint-bottom: #fffdf88f;
+  --glass-edge: #ffffffd9;
+  --glass-highlight: #fffffff0;
+  --glass-ring: #1e2a2d18;
+  --glass-quiet: #fffdf8b3;
   --shell-width: 520px;
   /* 16px on the pills, 10px on the status strip. */
   --glass-blur: 16px;
@@ -128,6 +134,12 @@
   --caution: #d9a283;
   --scrim: #000000a6;
   --glass: #1a2427d9;
+  --glass-tint-top: #2a3a3eb3;
+  --glass-tint-bottom: #1a24278c;
+  --glass-edge: #ece6da29;
+  --glass-highlight: #ffffff26;
+  --glass-ring: #00000059;
+  --glass-quiet: #1a2427a6;
   --knob: #ece6da;
   --on-accent: #0e1d1f;
   --apple-bg: #ffffff;
@@ -157,6 +169,12 @@
     --caution: #d9a283;
     --scrim: #000000a6;
     --glass: #1a2427d9;
+  --glass-tint-top: #2a3a3eb3;
+  --glass-tint-bottom: #1a24278c;
+  --glass-edge: #ece6da29;
+  --glass-highlight: #ffffff26;
+  --glass-ring: #00000059;
+  --glass-quiet: #1a2427a6;
     --knob: #ece6da;
     --on-accent: #0e1d1f;
     --apple-bg: #ffffff;
@@ -226,7 +244,7 @@ a { color: var(--accent); }
 /* Frost only the status-bar inset. Headings start 8px below it, so at rest
    the strip does not cover them. Blur turns on after content travels into it. */
 .status-glass {
-  --glass-filter: blur(var(--glass-blur-soft));
+  --glass-filter: blur(var(--glass-blur-soft)) saturate(150%);
   position: absolute;
   isolation: isolate;
   overflow: hidden;
@@ -241,6 +259,8 @@ a { color: var(--accent); }
 .phone.is-scrolled .status-glass {
   opacity: var(--status-glass, 0);
   background: linear-gradient(to bottom, var(--glass), transparent);
+  mask-image: linear-gradient(to bottom, #000 62%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent 100%);
 }
 .screen {
   flex: 1;
@@ -672,7 +692,7 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
    Firefox) without a 200% pseudo-element bleeding above the pill. The
    element's own box-shadow and focus-visible outline stay outside the clip. */
 .glass {
-  --glass-filter: blur(var(--glass-blur));
+  --glass-filter: blur(var(--glass-blur)) saturate(180%);
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -681,7 +701,16 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
   box-shadow: var(--shadow);
 }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass,
+  .glass {
+    background: linear-gradient(180deg, var(--glass-tint-top), var(--glass-tint-bottom));
+    border-color: var(--glass-edge);
+    box-shadow:
+      inset 0 1px 0 var(--glass-highlight),
+      0 0 0 1px var(--glass-ring),
+      var(--shadow);
+    backdrop-filter: var(--glass-filter);
+    -webkit-backdrop-filter: var(--glass-filter);
+  }
   .phone.is-scrolled .status-glass {
     backdrop-filter: var(--glass-filter);
     -webkit-backdrop-filter: var(--glass-filter);
@@ -785,11 +814,16 @@ html.sheet-open .screen {
   flex: none;
   margin: 0;
   padding: var(--space-20) var(--space-24) calc(var(--space-32) + var(--safe-bottom));
-  background: linear-gradient(to bottom, transparent, var(--surface) 28%);
+  background: transparent;
   pointer-events: none;
 }
 .sheet > .footer > * { pointer-events: auto; }
 .sheet > .footer .btn-primary:not(.btn-caution) { color: var(--accent); }
+.sheet > .footer .btn-quiet {
+  background: var(--glass-quiet);
+  backdrop-filter: blur(var(--glass-blur-soft)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-soft)) saturate(140%);
+}
 .handle { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: var(--space-4) auto var(--space-8); }
 .sheet h2 { font-size: 26px; letter-spacing: -0.2px; margin: 0; font-weight: 400; }
 .sheet-ref { font-size: 1.8rem; margin: 0; }
