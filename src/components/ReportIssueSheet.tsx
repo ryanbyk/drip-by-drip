@@ -203,7 +203,14 @@ export function ReportIssueSheet({
           />
         </label>
 
-        <details className="report-details">
+        <details
+          className="report-details"
+          onToggle={(event) => {
+            if (event.currentTarget.open) {
+              event.currentTarget.scrollIntoView({ block: "nearest", behavior: "smooth" });
+            }
+          }}
+        >
           <summary>Basic device info is attached</summary>
           <p className="soft">
             Helps us reproduce issues. Never includes your answers, reading notes, or book.

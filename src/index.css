@@ -227,9 +227,9 @@ a { color: var(--accent); }
    the strip does not cover them. Blur turns on after content travels into it. */
 .status-glass {
   --glass-filter: blur(var(--glass-blur-soft));
-  --glass-mask: linear-gradient(to bottom, #000 0% 50%, transparent 50% 100%);
   position: absolute;
   isolation: isolate;
+  overflow: hidden;
   z-index: 5;
   top: 0;
   left: 0;
@@ -667,41 +667,15 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
   pointer-events: none;
 }
 /* Frosted glass for the nav pill and the sheet's primary button.
-   The tint, border, and shadow stay on the element, so the label stays sharp
-   and the shadow is not part of the clipped layer. Without backdrop-filter,
-   that tint still reads.
-   iOS Safari ignores mask-image on a backdrop-filter layer. A ::before that
-   is taller than the pill then paints a hard rectangle above it, and an edge
-   layer draws a line outside the radius. WebKit blurs the element itself and
-   clips descendants with overflow, which follows the pill's border-radius.
-   The element's own shadow is outside that clip. Elsewhere, where the mask
-   does trim the filter, ::before hangs past the surface and samples color
-   that has not reached it yet: pills upward, the status strip downward. */
+   Blur the element itself and clip descendants with overflow: hidden so the
+   frost follows the pill's border-radius on every browser (Safari, Chrome,
+   Firefox) without a 200% pseudo-element bleeding above the pill. The
+   element's own box-shadow and focus-visible outline stay outside the clip. */
 .glass {
   --glass-filter: blur(var(--glass-blur));
-  --glass-mask:
-    linear-gradient(#000, #000),
-    linear-gradient(#000, #000),
-    radial-gradient(circle var(--glass-radius) at bottom right, #000 99%, transparent 100%),
-    radial-gradient(circle var(--glass-radius) at bottom left, #000 99%, transparent 100%),
-    radial-gradient(circle var(--glass-radius) at top right, #000 99%, transparent 100%),
-    radial-gradient(circle var(--glass-radius) at top left, #000 99%, transparent 100%);
-  --glass-mask-size:
-    calc(100% - 2 * var(--glass-radius)) 50%,
-    100% calc(50% - 2 * var(--glass-radius)),
-    var(--glass-radius) var(--glass-radius),
-    var(--glass-radius) var(--glass-radius),
-    var(--glass-radius) var(--glass-radius),
-    var(--glass-radius) var(--glass-radius);
-  --glass-mask-position:
-    left var(--glass-radius) top 50%,
-    left 0 top calc(50% + var(--glass-radius)),
-    left 0 top 50%,
-    right 0 top 50%,
-    left 0 bottom 0,
-    right 0 bottom 0;
   position: relative;
   isolation: isolate;
+  overflow: hidden;
   background: var(--glass);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
@@ -711,50 +685,6 @@ button.note-card { width: 100%; text-align: left; display: flex; flex-direction:
   .phone.is-scrolled .status-glass {
     backdrop-filter: var(--glass-filter);
     -webkit-backdrop-filter: var(--glass-filter);
-  }
-}
-@supports (-webkit-hyphens: none) {
-  .glass,
-  .status-glass {
-    overflow: hidden;
-  }
-}
-@supports (backdrop-filter: blur(1px)) and (mask-image: linear-gradient(#000, #000)) and (not (-webkit-hyphens: none)) {
-  .glass,
-  .phone.is-scrolled .status-glass {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-  .glass::before,
-  .status-glass::before {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    left: 0;
-    right: 0;
-    height: 200%;
-    pointer-events: none;
-    border-radius: 0;
-    backdrop-filter: var(--glass-filter);
-    -webkit-backdrop-filter: var(--glass-filter);
-    mask-image: var(--glass-mask);
-    -webkit-mask-image: var(--glass-mask);
-    mask-repeat: no-repeat;
-    -webkit-mask-repeat: no-repeat;
-  }
-  .glass::before {
-    top: auto;
-    bottom: 0;
-    mask-size: var(--glass-mask-size);
-    -webkit-mask-size: var(--glass-mask-size);
-    mask-position: var(--glass-mask-position);
-    -webkit-mask-position: var(--glass-mask-position);
-    mask-composite: add, add, add, add, add;
-    -webkit-mask-composite: source-over, source-over, source-over, source-over, source-over;
-  }
-  .status-glass::before {
-    top: 0;
-    bottom: auto;
   }
 }
 .tabbar {
@@ -855,7 +785,7 @@ html.sheet-open .screen {
   flex: none;
   margin: 0;
   padding: var(--space-20) var(--space-24) calc(var(--space-32) + var(--safe-bottom));
-  background: transparent;
+  background: linear-gradient(to bottom, transparent, var(--surface) 28%);
   pointer-events: none;
 }
 .sheet > .footer > * { pointer-events: auto; }
@@ -2452,6 +2382,7 @@ input.range-box:focus { border-color: var(--accent); outline: none; }
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
+  padding-bottom: var(--space-12);
 }
 .report-form textarea {
   resize: vertical;
@@ -2515,7 +2446,7 @@ input.range-box:focus { border-color: var(--accent); outline: none; }
   align-items: center;
   text-align: center;
   gap: var(--space-12);
-  padding: var(--space-12) 0 var(--space-4);
+  padding: var(--space-12) 0 var(--space-20);
 }
 .report-done-badge {
   width: 52px;
