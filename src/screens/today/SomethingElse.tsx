@@ -13,6 +13,7 @@ export function SomethingElse({
   onBackToBook,
   onReflect,
   onRead,
+  onReadInApp,
 }: {
   bookName: string;
   backupLabel: string;
@@ -21,6 +22,7 @@ export function SomethingElse({
   onBackToBook: () => void;
   onReflect: () => void;
   onRead: () => void;
+  onReadInApp?: (ref: string) => void;
 }) {
   const { snapshot, today, online } = useApp();
   const ideas = useMemo(() => detourIdeas(today, snapshot.days), [today, snapshot.days]);
@@ -108,6 +110,19 @@ export function SomethingElse({
         <ChevronRight size={16} aria-hidden="true" />
       </button>
       <div className="footer">
+        {onReadInApp ? (
+          <button
+            type="button"
+            className="btn btn-quiet btn-open"
+            disabled={!ref}
+            onClick={() => {
+              commit(ref);
+              onReadInApp(ref);
+            }}
+          >
+            Read in app
+          </button>
+        ) : null}
         <OpenPassageLink reference={ref} className="btn btn-quiet btn-open" online={online} />
         <Button
           className="btn-yes"

@@ -190,12 +190,14 @@ export function DetourView({
   onBack,
   onReflect,
   onRead,
+  onReadInApp,
   backup,
 }: {
   onUse: (ref: string) => void;
   onBack: () => void;
   onReflect: () => void;
   onRead: () => void;
+  onReadInApp?: (ref: string) => void;
   backup: string;
 }) {
   const { snapshot, today } = useApp();
@@ -209,6 +211,7 @@ export function DetourView({
       onBackToBook={onBack}
       onReflect={onReflect}
       onRead={onRead}
+      onReadInApp={onReadInApp}
     />
   );
 }

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { ReportIssueSheet, type ReportIssuePreview } from "../components/ReportIssueSheet";
 import { BibleSource } from "./BibleSource";
 import { Settings } from "./Settings";
 import type { GroupValue } from "../state/group-context";
@@ -86,4 +87,47 @@ export const MainDark: Story = {
 export const BibleSourceStory: Story = {
   name: "V · Settings — Bible source",
   render: () => <BibleSourceScreen />,
+};
+
+const sampleReportDiagnostics = {
+  appUrl: "https://app.drip-by-drip.com",
+  path: "/",
+  displayMode: "standalone" as const,
+  appearance: "System",
+  signedIn: true,
+  syncEnabled: true,
+  notificationsEnabled: true,
+  viewport: "390×844",
+  timeZone: "America/Chicago",
+};
+
+function ReportIssueStoryScreen({ preview }: { preview: ReportIssuePreview }) {
+  const snapshot = useFixture(settingsSnapshot);
+  return (
+    <StoryApp
+      snapshot={snapshot}
+      authUser={{ id: "story-user", email: "ryan@example.com", provider: "email", displayName: "Ryan Bykowski" }}
+    >
+      <Phone tab="settings">
+        <Settings />
+        <ReportIssueSheet onClose={() => undefined} preview={{ diagnostics: sampleReportDiagnostics, ...preview }} />
+      </Phone>
+    </StoryApp>
+  );
+}
+
+export const ReportIssue: Story = {
+  name: "Settings — Report an issue",
+  render: () => <ReportIssueStoryScreen preview={{ category: "bug" }} />,
+};
+
+export const ReportIssueDark: Story = {
+  name: "Dark · Settings — Report an issue",
+  globals: { theme: "dark" },
+  render: () => <ReportIssueStoryScreen preview={{ category: "suggestion" }} />,
+};
+
+export const ReportIssueSent: Story = {
+  name: "Settings — Report sent",
+  render: () => <ReportIssueStoryScreen preview={{ submitted: true, identifier: "CW-93" }} />,
 };
