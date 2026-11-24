@@ -23,6 +23,7 @@ export const DEFAULT_LINEAR_PROJECT_ID = "769c2e65-a296-4de6-9c27-7532121ebb2d";
 export const DEFAULT_LINEAR_STATE_ID = "29e99c5f-64b8-4b39-8010-06081fcb613f";
 export const DEFAULT_LINEAR_BUG_LABEL_ID = "17fb425e-48c7-41fa-bba6-5a9f37ca878c";
 export const DEFAULT_LINEAR_SUGGESTION_LABEL_ID = "8b804aec-126c-43ba-b45c-c58edae61b4b";
+export const DEFAULT_LINEAR_USER_FEEDBACK_LABEL_ID = "a274a6d5-3df3-47fd-9e11-59628a1c17b3";
 
 export type IssueDiagnostics = {
   appUrl?: string;
@@ -64,6 +65,7 @@ export type LinearRoutingConfig = {
   stateId?: string;
   bugLabelId?: string;
   suggestionLabelId?: string;
+  userFeedbackLabelId?: string;
 };
 
 export type LinearIssueCreateInput = {
@@ -277,7 +279,10 @@ export function buildLinearIssueInput(
   report: NormalizedIssueReport,
   config: LinearRoutingConfig,
 ): LinearIssueCreateInput {
-  const labelId = report.category === "bug" ? config.bugLabelId : config.suggestionLabelId;
+  const categoryLabelId = report.category === "bug" ? config.bugLabelId : config.suggestionLabelId;
+  const labelIds = Array.from(
+    new Set([categoryLabelId, config.userFeedbackLabelId].filter((id): id is string => Boolean(id))),
+  );
   const input: LinearIssueCreateInput = {
     teamId: config.teamId,
     title: issueTitleFromDescription(report.category, report.description),
@@ -285,7 +290,7 @@ export function buildLinearIssueInput(
   };
   if (config.projectId) input.projectId = config.projectId;
   if (config.stateId) input.stateId = config.stateId;
-  if (labelId) input.labelIds = [labelId];
+  if (labelIds.length > 0) input.labelIds = labelIds;
   return input;
 }
 

@@ -7,6 +7,7 @@ import {
   DEFAULT_LINEAR_STATE_ID,
   DEFAULT_LINEAR_SUGGESTION_LABEL_ID,
   DEFAULT_LINEAR_TEAM_ID,
+  DEFAULT_LINEAR_USER_FEEDBACK_LABEL_ID,
   extractClientIp,
   formatLinearDescription,
   issueTitleFromDescription,
@@ -123,11 +124,12 @@ describe("issue report validation and Linear formatting", () => {
       stateId: DEFAULT_LINEAR_STATE_ID,
       bugLabelId: DEFAULT_LINEAR_BUG_LABEL_ID,
       suggestionLabelId: DEFAULT_LINEAR_SUGGESTION_LABEL_ID,
+      userFeedbackLabelId: DEFAULT_LINEAR_USER_FEEDBACK_LABEL_ID,
     });
     expect(input.teamId).toBe(DEFAULT_LINEAR_TEAM_ID);
     expect(input.projectId).toBe(DEFAULT_LINEAR_PROJECT_ID);
     expect(input.stateId).toBe(DEFAULT_LINEAR_STATE_ID);
-    expect(input.labelIds).toEqual([DEFAULT_LINEAR_SUGGESTION_LABEL_ID]);
+    expect(input.labelIds).toEqual([DEFAULT_LINEAR_SUGGESTION_LABEL_ID, DEFAULT_LINEAR_USER_FEEDBACK_LABEL_ID]);
 
     const markdown = formatLinearDescription(validated.report);
     expect(markdown).toContain("Add a shortcut to jump back to today.");
