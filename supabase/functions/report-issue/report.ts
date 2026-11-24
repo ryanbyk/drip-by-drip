@@ -1,7 +1,7 @@
 /**
- * Shared validation, formatting, and fallback rate-limiting for in-app issue reports.
- * Pure TypeScript (no DOM or Deno globals) so both the report-issue Edge Function
- * and Vitest can import and test the exact same rules.
+ * Shared validation, formatting, attachment rules, and fallback rate-limiting
+ * for in-app issue reports. Pure TypeScript (no DOM or Deno globals) so both
+ * the report-issue Edge Function and Vitest can import and test the exact same rules.
  */
 
 export const ISSUE_CATEGORIES = ["bug", "suggestion"] as const;
@@ -13,6 +13,52 @@ export const MAX_EMAIL_LENGTH = 254;
 export const MAX_TITLE_LENGTH = 88;
 export const RATE_LIMIT_MAX_REQUESTS = 5;
 export const RATE_LIMIT_WINDOW_SECONDS = 900;
+export const UPLOAD_PREPARE_MAX_REQUESTS = 15;
+
+export const ISSUE_ATTACHMENTS_BUCKET = "issue-attachments";
+export const MAX_ATTACHMENTS = 3;
+export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+export const MAX_FILENAME_LENGTH = 120;
+
+export const ALLOWED_ATTACHMENT_MIME_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+  "image/heic",
+  "image/heif",
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+] as const;
+
+export type AllowedAttachmentMimeType = (typeof ALLOWED_ATTACHMENT_MIME_TYPES)[number];
+
+const MIME_TO_EXT: Record<AllowedAttachmentMimeType, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "image/heic": "heic",
+  "image/heif": "heif",
+  "video/mp4": "mp4",
+  "video/quicktime": "mov",
+  "video/webm": "webm",
+};
+
+const EXT_TO_MIME: Record<string, AllowedAttachmentMimeType> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  gif: "image/gif",
+  heic: "image/heic",
+  heif: "image/heif",
+  mp4: "video/mp4",
+  m4v: "video/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
+};
 
 /**
  * Default Linear routing IDs for Crossway-Milwaukee -> Drip by drip (P-CW-6).
@@ -39,12 +85,26 @@ export type IssueDiagnostics = {
   appVersion?: string;
 };
 
+export type IssueAttachmentRequest = {
+  name: string;
+  contentType: AllowedAttachmentMimeType;
+  size: number;
+};
+
+export type IssueAttachment = {
+  name: string;
+  contentType: AllowedAttachmentMimeType;
+  size: number;
+  url: string;
+};
+
 export type IssueReportInput = {
   category: IssueCategory;
   description: string;
   contactEmail?: string;
   website?: string;
   diagnostics?: IssueDiagnostics;
+  attachments?: IssueAttachment[];
 };
 
 export type NormalizedIssueReport = {
@@ -52,12 +112,17 @@ export type NormalizedIssueReport = {
   description: string;
   contactEmail: string | null;
   diagnostics: IssueDiagnostics;
+  attachments: IssueAttachment[];
 };
 
 export type IssueValidationResult =
   | { ok: true; report: NormalizedIssueReport }
   | { ok: false; spam: true }
   | { ok: false; spam: false; error: string };
+
+export type AttachmentValidationResult =
+  | { ok: true; files: IssueAttachmentRequest[] }
+  | { ok: false; error: string };
 
 export type LinearRoutingConfig = {
   teamId: string;
@@ -119,6 +184,118 @@ export function issueCategoryLabel(category: IssueCategory): string {
   }
 }
 
+export function isAllowedAttachmentMimeType(value: string): value is AllowedAttachmentMimeType {
+  return (ALLOWED_ATTACHMENT_MIME_TYPES as readonly string[]).includes(value);
+}
+
+export function normalizeAttachmentContentType(rawType: string, filename = ""): AllowedAttachmentMimeType | null {
+  const normalized = rawType.split(";")[0]?.trim().toLowerCase() ?? "";
+  if (normalized === "image/jpg") return "image/jpeg";
+  if (isAllowedAttachmentMimeType(normalized)) return normalized;
+  const ext = filename.split(".").pop()?.trim().toLowerCase() ?? "";
+  return EXT_TO_MIME[ext] ?? null;
+}
+
+export function extensionForAttachment(contentType: AllowedAttachmentMimeType): string {
+  return MIME_TO_EXT[contentType];
+}
+
+export function isImageContentType(contentType: string): boolean {
+  return contentType.startsWith("image/");
+}
+
+export function isInlineMarkdownImageType(contentType: string): boolean {
+  return (
+    contentType === "image/png" ||
+    contentType === "image/jpeg" ||
+    contentType === "image/webp" ||
+    contentType === "image/gif"
+  );
+}
+
+export function isVideoContentType(contentType: string): boolean {
+  return contentType.startsWith("video/");
+}
+
+export function formatAttachmentSize(bytes: number): string {
+  if (bytes < 1024) return `${Math.max(0, Math.round(bytes))} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function cleanAttachmentFilename(raw: unknown, fallbackExt: string): string {
+  const rawName = typeof raw === "string" ? raw : "";
+  const base = rawName.split(/[\\/]/).pop()?.replace(/[\r\n[\]()<>`]/g, "").trim() ?? "";
+  if (!base) return `attachment.${fallbackExt}`;
+  return base.slice(0, MAX_FILENAME_LENGTH);
+}
+
+export function validateAttachmentRequests(raw: unknown): AttachmentValidationResult {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return { ok: false, error: "Choose at least one screenshot or recording to upload." };
+  }
+  if (raw.length > MAX_ATTACHMENTS) {
+    return { ok: false, error: `You can attach up to ${MAX_ATTACHMENTS} files per report.` };
+  }
+  const files: IssueAttachmentRequest[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") {
+      return { ok: false, error: "One of the selected files couldn’t be read." };
+    }
+    const candidate = item as Record<string, unknown>;
+    const rawType = typeof candidate.contentType === "string" ? candidate.contentType : "";
+    const rawName = typeof candidate.name === "string" ? candidate.name : "";
+    const contentType = normalizeAttachmentContentType(rawType, rawName);
+    if (!contentType) {
+      return {
+        ok: false,
+        error: "Only screenshots (PNG, JPEG, WebP, GIF, HEIC) and recordings (MP4, MOV, WebM) can be attached.",
+      };
+    }
+    const size = typeof candidate.size === "number" ? candidate.size : Number.NaN;
+    if (!Number.isFinite(size) || size <= 0) {
+      return { ok: false, error: "One of the selected files appears to be empty." };
+    }
+    if (size > MAX_ATTACHMENT_BYTES) {
+      return { ok: false, error: "Each file must be 25 MB or smaller." };
+    }
+    files.push({
+      name: cleanAttachmentFilename(rawName, extensionForAttachment(contentType)),
+      contentType,
+      size: Math.round(size),
+    });
+  }
+  return { ok: true, files };
+}
+
+export function sanitizeAttachments(raw: unknown, allowedUrlPrefix?: string): IssueAttachment[] {
+  if (!Array.isArray(raw)) return [];
+  const prefix = allowedUrlPrefix?.trim() ?? "";
+  const attachments: IssueAttachment[] = [];
+  for (const item of raw.slice(0, MAX_ATTACHMENTS)) {
+    if (!item || typeof item !== "object") continue;
+    const candidate = item as Record<string, unknown>;
+    const url = typeof candidate.url === "string" ? candidate.url.trim() : "";
+    if (!url || !/^https?:\/\//i.test(url)) continue;
+    if (prefix && !url.startsWith(prefix)) continue;
+    const rawType = typeof candidate.contentType === "string" ? candidate.contentType : "";
+    const rawName = typeof candidate.name === "string" ? candidate.name : "";
+    const contentType = normalizeAttachmentContentType(rawType, rawName);
+    if (!contentType) continue;
+    const size =
+      typeof candidate.size === "number" && Number.isFinite(candidate.size) && candidate.size > 0
+        ? Math.min(Math.round(candidate.size), MAX_ATTACHMENT_BYTES)
+        : 0;
+    attachments.push({
+      name: cleanAttachmentFilename(rawName, extensionForAttachment(contentType)),
+      contentType,
+      size,
+      url,
+    });
+  }
+  return attachments;
+}
+
 export function sanitizeDiagnostics(raw: unknown): IssueDiagnostics {
   if (!raw || typeof raw !== "object") return {};
   const source = raw as Record<string, unknown>;
@@ -150,7 +327,10 @@ export function sanitizeDiagnostics(raw: unknown): IssueDiagnostics {
   return out;
 }
 
-export function validateIssueReport(raw: unknown): IssueValidationResult {
+export function validateIssueReport(
+  raw: unknown,
+  options?: { allowedAttachmentPrefix?: string },
+): IssueValidationResult {
   if (!raw || typeof raw !== "object") {
     return { ok: false, spam: false, error: "Please include a short note about what happened." };
   }
@@ -193,6 +373,7 @@ export function validateIssueReport(raw: unknown): IssueValidationResult {
       description,
       contactEmail,
       diagnostics: sanitizeDiagnostics(body.diagnostics),
+      attachments: sanitizeAttachments(body.attachments, options?.allowedAttachmentPrefix),
     },
   };
 }
@@ -220,15 +401,30 @@ function escapeInlineCode(value: string): string {
 }
 
 export function formatLinearDescription(report: NormalizedIssueReport): string {
-  const lines: string[] = [
-    report.description,
+  const lines: string[] = [report.description];
+
+  if (report.attachments.length > 0) {
+    lines.push("", "### Attachments");
+    for (const attachment of report.attachments) {
+      const sizeText = attachment.size > 0 ? ` (${formatAttachmentSize(attachment.size)})` : "";
+      if (isInlineMarkdownImageType(attachment.contentType)) {
+        lines.push("", `![${attachment.name}](${attachment.url})`, `*${attachment.name}${sizeText}*`);
+      } else if (isVideoContentType(attachment.contentType)) {
+        lines.push(`- [Screen recording: ${attachment.name}${sizeText}](${attachment.url})`);
+      } else {
+        lines.push(`- [Screenshot: ${attachment.name}${sizeText}](${attachment.url})`);
+      }
+    }
+  }
+
+  lines.push(
     "",
     "---",
     "",
     `**Reported from:** Drip by drip (in-app)`,
     `**Category:** ${issueCategoryLabel(report.category)}`,
     `**Contact:** ${report.contactEmail ?? "Not provided"}`,
-  ];
+  );
 
   const diag = report.diagnostics;
   const contextRows: string[] = [];

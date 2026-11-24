@@ -131,3 +131,19 @@ export const ReportIssueSent: Story = {
   name: "Settings — Report sent",
   render: () => <ReportIssueStoryScreen preview={{ submitted: true, identifier: "CW-93" }} />,
 };
+
+export const ReportIssueWithAttachments: Story = {
+  name: "Settings — Report with attachments",
+  render: () => (
+    <ReportIssueStoryScreen
+      preview={{
+        category: "bug",
+        description: "The bottom bar overlapped the last verse on iPhone.",
+        attachments: [
+          { id: "shot", name: "IMG_4021.png", sizeLabel: "1.4 MB", kind: "image" },
+          { id: "rec", name: "screen-recording.mov", sizeLabel: "6.8 MB", kind: "video" },
+        ],
+      }}
+    />
+  ),
+};

@@ -142,7 +142,7 @@ Partner nudges are not sent as Web Push in this change.
 
 ### Issue reporting
 
-Settings → **Report an issue** lets both guests and signed-in readers send a bug report or suggestion directly into Linear (**Crossway-Milwaukee → Drip by drip**) through the `report-issue` Edge Function. Only basic device context is attached (page, Home Screen vs browser, appearance, signed-in/sync status, viewport, time zone, user agent) — never reading answers, notes, or book progress.
+Settings → **Report an issue** lets both guests and signed-in readers send a bug report or suggestion — with up to 3 optional screenshots or screen recordings (PNG, JPEG, WebP, GIF, HEIC/HEIF, MP4, MOV, WebM; 25 MB each) — directly into Linear (**Crossway-Milwaukee → Drip by drip**) through the `report-issue` Edge Function. Uploads go directly to the `issue-attachments` Supabase Storage bucket via one-time server-signed upload URLs, so `LINEAR_API_KEY` stays restricted to `Create issues` only. Only basic device context is attached (page, Home Screen vs browser, appearance, signed-in/sync status, viewport, time zone, user agent) — never reading answers, notes, or book progress.
 
 **Secrets — do not commit the values.** Create a Linear personal API key and store it as an Edge Function secret on project `gfacmaaehvlhbskrajyj`:
 

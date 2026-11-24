@@ -50,11 +50,20 @@ describe("issue reporting UI", () => {
     expect(html).toContain("About Drip by drip");
   });
 
-  it("renders the report form with category chips, optional email, and privacy reassurance", () => {
-    const html = renderSheet();
+  it("renders the report form with category chips, attachment picker, optional email, and privacy reassurance", () => {
+    const html = renderSheet({
+      attachments: [
+        { id: "a", name: "IMG_4021.png", sizeLabel: "1.4 MB", kind: "image" },
+        { id: "b", name: "repro.mov", sizeLabel: "6.8 MB", kind: "video" },
+      ],
+    });
     expect(html).toContain("Report an issue");
     expect(html).toContain("Bug");
     expect(html).toContain("Suggestion");
+    expect(html).toContain("Screenshots or recording (optional)");
+    expect(html).toContain("Add screenshot or recording");
+    expect(html).toContain("IMG_4021.png");
+    expect(html).toContain("repro.mov");
     expect(html).toContain("Email (optional)");
     expect(html).toContain("reader@example.com");
     expect(html).toContain("Never includes your answers, reading notes, or book.");
