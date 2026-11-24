@@ -790,9 +790,14 @@ html.sheet-open .screen {
 .sheet:has(> .footer) {
   padding-bottom: 0;
 }
+/* Bleed the scroll container to the sheet's left/right edges so the scrollbar
+   sits along the outer edge of the sheet (never over fields) and focus rings
+   on inputs/textareas have full breathing room inside overflow-x: hidden. */
 .sheet-body {
   flex: 1 1 auto;
   min-height: 0;
+  margin-inline: calc(var(--space-24) * -1);
+  padding: var(--space-4) var(--space-24) 0;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
