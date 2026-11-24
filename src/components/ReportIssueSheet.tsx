@@ -1,13 +1,23 @@
 import { useId, useMemo, useState } from "react";
 import { Check } from "./Icons";
-import { Button, DisclosureCard, KeyValueList, Sheet, SheetConfirm } from "./ui";
+import {
+  AttachmentPicker,
+  Button,
+  DisclosureCard,
+  KeyValueList,
+  Sheet,
+  SheetConfirm,
+  type AttachmentPreviewItem,
+} from "./ui";
 import {
   collectIssueDiagnostics,
   diagnosticsSummaryRows,
   ISSUE_CATEGORIES,
   issueCategoryLabel,
+  MAX_ATTACHMENTS,
   MAX_DESCRIPTION_LENGTH,
   submitIssueReport,
+  validatePickedFiles,
   type IssueCategory,
   type IssueDiagnostics,
 } from "../lib/issueReport";
@@ -23,6 +33,7 @@ export type ReportIssuePreview = {
   identifier?: string | null;
   error?: string | null;
   diagnostics?: IssueDiagnostics;
+  attachments?: ReadonlyArray<AttachmentPreviewItem>;
 };
 
 export function ReportIssueSheet({
@@ -43,12 +54,14 @@ export function ReportIssueSheet({
   const [category, setCategory] = useState<IssueCategory>(preview?.category ?? "bug");
   const [description, setDescription] = useState(preview?.description ?? "");
   const [contactEmail, setContactEmail] = useState(defaultEmail);
+  const [files, setFiles] = useState<File[]>([]);
   const [website, setWebsite] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [submittingLabel, setSubmittingLabel] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(preview?.error ?? null);
   const [sent, setSent] = useState<{ identifier: string | null } | null>(
     preview?.submitted ? { identifier: preview.identifier ?? null } : null,
   );
+  const submitting = submittingLabel !== null;
 
   const diagnostics = useMemo(
     () =>
@@ -71,6 +84,21 @@ export function ReportIssueSheet({
   );
   const diagnosticRows = useMemo(() => diagnosticsSummaryRows(diagnostics), [diagnostics]);
 
+  function handleAddFiles(picked: File[]) {
+    const check = validatePickedFiles(files.length, picked);
+    if (!check.ok) {
+      setError(check.error);
+      return;
+    }
+    setError(null);
+    setFiles((current) => [...current, ...picked].slice(0, MAX_ATTACHMENTS));
+  }
+
+  function handleRemoveFile(index: number) {
+    setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    if (error) setError(null);
+  }
+
   async function handleSubmit() {
     if (submitting) return;
     if (preview) {
@@ -78,16 +106,22 @@ export function ReportIssueSheet({
       setSent({ identifier: preview.identifier ?? "CW-93" });
       return;
     }
-    setSubmitting(true);
+    setSubmittingLabel(files.length > 0 ? "Uploading attachment…" : "Sending…");
     setError(null);
-    const result = await submitIssueReport({
-      category,
-      description,
-      contactEmail,
-      website,
-      diagnostics,
-    });
-    setSubmitting(false);
+    const result = await submitIssueReport(
+      {
+        category,
+        description,
+        contactEmail,
+        website,
+        diagnostics,
+        files,
+      },
+      {
+        onProgress: (label) => setSubmittingLabel(label),
+      },
+    );
+    setSubmittingLabel(null);
     if (!result.ok) {
       setError(result.message);
       return;
@@ -170,6 +204,19 @@ export function ReportIssueSheet({
           ) : null}
         </label>
 
+        <div className="field">
+          <span>Screenshots or recording (optional)</span>
+          <AttachmentPicker
+            files={files}
+            onAdd={handleAddFiles}
+            onRemove={handleRemoveFile}
+            maxFiles={MAX_ATTACHMENTS}
+            disabled={submitting}
+            hint={`Up to ${MAX_ATTACHMENTS} images or videos · 25 MB each`}
+            previewItems={preview?.attachments}
+          />
+        </div>
+
         <label className="field">
           <span>Email (optional)</span>
           <input
@@ -216,7 +263,7 @@ export function ReportIssueSheet({
       </form>
       <div className="footer">
         <Button type="submit" form={formId} disabled={submitting}>
-          {submitting ? "Sending…" : "Send report"}
+          {submittingLabel ?? "Send report"}
         </Button>
         <Button type="button" variant="quiet" onClick={onClose} disabled={submitting}>
           Cancel

@@ -16,7 +16,7 @@ import { APPEARANCES, appearanceLabel, type Appearance } from "../domain/appeara
 import { BOOKS } from "../domain/books";
 import { formatAskTime } from "../domain/dates";
 import type { DripSize } from "../domain/types";
-import { CalendarDays, Check, ChevronRight, Droplet, Settings2, SunMoon } from "./Icons";
+import { CalendarDays, Check, ChevronRight, Droplet, Film, Paperclip, Settings2, SunMoon, X } from "./Icons";
 
 export function Button({
   variant = "primary",
@@ -475,4 +475,128 @@ export function SheetConfirm({
       {badge ? <p className="badge-pill">{badge}</p> : null}
     </div>
   );
+}
+
+export type AttachmentPreviewItem = {
+  id: string;
+  name: string;
+  sizeLabel: string;
+  kind: "image" | "video";
+  previewUrl?: string;
+};
+
+export function AttachmentPicker({
+  files,
+  onAdd,
+  onRemove,
+  accept = "image/*,video/*",
+  maxFiles = 3,
+  disabled = false,
+  buttonLabel = "Add screenshot or recording",
+  hint,
+  previewItems,
+}: {
+  files: ReadonlyArray<File>;
+  onAdd: (next: File[]) => void;
+  onRemove: (index: number) => void;
+  accept?: string;
+  maxFiles?: number;
+  disabled?: boolean;
+  buttonLabel?: string;
+  hint?: string;
+  /** Optional static items for Storybook previews without browser File objects. */
+  previewItems?: ReadonlyArray<AttachmentPreviewItem>;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [urls, setUrls] = useState<Array<string | undefined>>([]);
+
+  useEffect(() => {
+    if (previewItems || typeof URL === "undefined" || typeof URL.createObjectURL !== "function") {
+      setUrls([]);
+      return;
+    }
+    const created = files.map((file) => (file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined));
+    setUrls(created);
+    return () => {
+      for (const url of created) {
+        if (url) URL.revokeObjectURL(url);
+      }
+    };
+  }, [files, previewItems]);
+
+  const items: AttachmentPreviewItem[] = previewItems
+    ? [...previewItems]
+    : files.map((file, index) => ({
+        id: `${file.name}-${file.size}-${index}`,
+        name: file.name,
+        sizeLabel: formatByteSize(file.size),
+        kind: file.type.startsWith("video/") ? "video" : "image",
+        previewUrl: urls[index],
+      }));
+
+  return (
+    <div className="attachment-picker">
+      <input
+        ref={inputRef}
+        type="file"
+        accept={accept}
+        multiple
+        className="sr-only"
+        disabled={disabled}
+        onChange={(event) => {
+          const picked = Array.from(event.target.files ?? []);
+          event.target.value = "";
+          if (picked.length > 0) onAdd(picked);
+        }}
+      />
+      {items.length > 0 ? (
+        <ul className="attachment-list">
+          {items.map((item, index) => (
+            <li key={item.id} className="attachment-item">
+              <span className="attachment-thumb" aria-hidden="true">
+                {item.kind === "image" && item.previewUrl ? (
+                  <img src={item.previewUrl} alt="" />
+                ) : item.kind === "video" ? (
+                  <Film size={18} />
+                ) : (
+                  <Paperclip size={18} />
+                )}
+              </span>
+              <span className="attachment-meta">
+                <strong>{item.name}</strong>
+                <span>{item.sizeLabel}</span>
+              </span>
+              <button
+                type="button"
+                className="attachment-remove"
+                aria-label={`Remove ${item.name}`}
+                disabled={disabled}
+                onClick={() => onRemove(index)}
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {items.length < maxFiles ? (
+        <button
+          type="button"
+          className="attachment-add"
+          disabled={disabled}
+          onClick={() => inputRef.current?.click()}
+        >
+          <Paperclip size={16} aria-hidden="true" />
+          {buttonLabel}
+        </button>
+      ) : null}
+      {hint ? <span className="field-hint">{hint}</span> : null}
+    </div>
+  );
+}
+
+function formatByteSize(bytes: number): string {
+  if (bytes < 1024) return `${Math.max(0, Math.round(bytes))} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

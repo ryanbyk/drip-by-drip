@@ -9,9 +9,13 @@ import {
   DEFAULT_LINEAR_SUGGESTION_LABEL_ID,
   DEFAULT_LINEAR_TEAM_ID,
   DEFAULT_LINEAR_USER_FEEDBACK_LABEL_ID,
+  extensionForAttachment,
   extractClientIp,
+  ISSUE_ATTACHMENTS_BUCKET,
   RATE_LIMIT_MAX_REQUESTS,
   RATE_LIMIT_WINDOW_SECONDS,
+  UPLOAD_PREPARE_MAX_REQUESTS,
+  validateAttachmentRequests,
   validateIssueReport,
   type LinearRoutingConfig,
   type RateLimitDecision,
@@ -37,7 +41,8 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const fallbackLimiter = createMemoryRateLimiter(RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_SECONDS * 1000);
+const fallbackReportLimiter = createMemoryRateLimiter(RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_SECONDS * 1000);
+const fallbackUploadLimiter = createMemoryRateLimiter(UPLOAD_PREPARE_MAX_REQUESTS, RATE_LIMIT_WINDOW_SECONDS * 1000);
 
 function json(body: unknown, status = 200, extraHeaders?: Record<string, string>): Response {
   return new Response(JSON.stringify(body), {
@@ -93,6 +98,8 @@ async function optionalUserId(req: Request, supabaseUrl: string | undefined, ano
 
 async function checkRateLimit(
   fingerprint: string,
+  limit: number,
+  fallback: ReturnType<typeof createMemoryRateLimiter>,
   supabaseUrl: string | undefined,
   serviceKey: string | undefined,
 ): Promise<RateLimitDecision> {
@@ -103,7 +110,7 @@ async function checkRateLimit(
       });
       const { data, error } = await admin.rpc("consume_issue_report_slot", {
         p_fingerprint: fingerprint,
-        p_limit: RATE_LIMIT_MAX_REQUESTS,
+        p_limit: limit,
         p_window_seconds: RATE_LIMIT_WINDOW_SECONDS,
       });
       if (!error && data && typeof data === "object") {
@@ -120,7 +127,81 @@ async function checkRateLimit(
       // Fall back to isolate-level rate limiting if the migration has not been pushed yet.
     }
   }
-  return fallbackLimiter.consume(fingerprint);
+  return fallback.consume(fingerprint);
+}
+
+function allowedAttachmentPrefix(supabaseUrl: string | undefined): string | undefined {
+  if (!supabaseUrl) return undefined;
+  return `${supabaseUrl.replace(/\/+$/, "")}/storage/v1/object/public/${ISSUE_ATTACHMENTS_BUCKET}/reports/`;
+}
+
+async function handlePrepareUploads(
+  body: Record<string, unknown>,
+  fingerprint: string,
+  supabaseUrl: string | undefined,
+  serviceKey: string | undefined,
+): Promise<Response> {
+  if (!supabaseUrl || !serviceKey) {
+    return json({ error: "Attachment uploads are not configured on the server." }, 503);
+  }
+  const validated = validateAttachmentRequests(body.files);
+  if (!validated.ok) {
+    return json({ error: validated.error }, 400);
+  }
+
+  const uploadFingerprint = await sha256Hex(`upload:${fingerprint}`);
+  const limitDecision = await checkRateLimit(
+    uploadFingerprint,
+    UPLOAD_PREPARE_MAX_REQUESTS,
+    fallbackUploadLimiter,
+    supabaseUrl,
+    serviceKey,
+  );
+  if (!limitDecision.allowed) {
+    return json(
+      {
+        error: "You’ve uploaded several attachments recently. Please wait a bit before trying again.",
+        retryAfterSeconds: limitDecision.retryAfterSeconds,
+      },
+      429,
+      { "Retry-After": String(limitDecision.retryAfterSeconds) },
+    );
+  }
+
+  const admin = createClient(supabaseUrl, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const monthPrefix = new Date().toISOString().slice(0, 7);
+  const uploads: Array<{
+    name: string;
+    contentType: string;
+    size: number;
+    path: string;
+    signedUrl: string;
+    token: string;
+    publicUrl: string;
+  }> = [];
+
+  for (const file of validated.files) {
+    const ext = extensionForAttachment(file.contentType);
+    const path = `reports/${monthPrefix}/${crypto.randomUUID()}.${ext}`;
+    const { data, error } = await admin.storage.from(ISSUE_ATTACHMENTS_BUCKET).createSignedUploadUrl(path);
+    if (error || !data?.signedUrl || !data.token) {
+      return json({ error: "Could not prepare file upload right now. Please try again in a moment." }, 502);
+    }
+    const { data: pub } = admin.storage.from(ISSUE_ATTACHMENTS_BUCKET).getPublicUrl(path);
+    uploads.push({
+      name: file.name,
+      contentType: file.contentType,
+      size: file.size,
+      path,
+      signedUrl: data.signedUrl,
+      token: data.token,
+      publicUrl: pub.publicUrl,
+    });
+  }
+
+  return json({ ok: true, uploads }, 200);
 }
 
 Deno.serve(async (req: Request) => {
@@ -140,12 +221,6 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Invalid request payload." }, 400);
   }
 
-  const validated = validateIssueReport(payload);
-  if (!validated.ok) {
-    if (validated.spam) return json({ ok: true, identifier: null }, 200);
-    return json({ error: validated.error }, 400);
-  }
-
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -155,7 +230,25 @@ Deno.serve(async (req: Request) => {
   const identity = userId ? `user:${userId}` : `ip:${extractClientIp(req.headers)}`;
   const fingerprint = await sha256Hex(`${salt}:${identity}`);
 
-  const limitDecision = await checkRateLimit(fingerprint, supabaseUrl, serviceKey);
+  if (payload && typeof payload === "object" && (payload as Record<string, unknown>).mode === "prepare-uploads") {
+    return handlePrepareUploads(payload as Record<string, unknown>, fingerprint, supabaseUrl, serviceKey);
+  }
+
+  const validated = validateIssueReport(payload, {
+    allowedAttachmentPrefix: allowedAttachmentPrefix(supabaseUrl),
+  });
+  if (!validated.ok) {
+    if (validated.spam) return json({ ok: true, identifier: null }, 200);
+    return json({ error: validated.error }, 400);
+  }
+
+  const limitDecision = await checkRateLimit(
+    fingerprint,
+    RATE_LIMIT_MAX_REQUESTS,
+    fallbackReportLimiter,
+    supabaseUrl,
+    serviceKey,
+  );
   if (!limitDecision.allowed) {
     return json(
       {

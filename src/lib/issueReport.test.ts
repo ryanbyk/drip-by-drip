@@ -11,13 +11,17 @@ import {
   extractClientIp,
   formatLinearDescription,
   issueTitleFromDescription,
+  MAX_ATTACHMENT_BYTES,
   MAX_DESCRIPTION_LENGTH,
+  normalizeAttachmentContentType,
+  validateAttachmentRequests,
   validateIssueReport,
 } from "../../supabase/functions/report-issue/report";
 import {
   collectIssueDiagnostics,
   diagnosticsSummaryRows,
   submitIssueReport,
+  validatePickedFiles,
   type IssueReportFetcher,
 } from "./issueReport";
 import { SUPABASE_ANON_KEY } from "./supabaseConfig";
@@ -246,5 +250,123 @@ describe("issueReport client", () => {
       },
     );
     expect(offline).toMatchObject({ ok: false, reason: "network" });
+  });
+
+  it("validates image/video attachments, filters untrusted URLs, and embeds them in Linear markdown", () => {
+    expect(normalizeAttachmentContentType("", "IMG_1234.HEIC")).toBe("image/heic");
+    expect(normalizeAttachmentContentType("", "demo.mov")).toBe("video/quicktime");
+    expect(normalizeAttachmentContentType("image/jpg", "shot.jpg")).toBe("image/jpeg");
+    expect(normalizeAttachmentContentType("application/pdf", "doc.pdf")).toBeNull();
+
+    expect(
+      validateAttachmentRequests([
+        { name: "shot.png", contentType: "image/png", size: 2048 },
+        { name: "clip.mov", contentType: "video/quicktime", size: 5_000_000 },
+      ]),
+    ).toMatchObject({ ok: true });
+
+    expect(
+      validateAttachmentRequests([{ name: "huge.mp4", contentType: "video/mp4", size: MAX_ATTACHMENT_BYTES + 1 }]),
+    ).toMatchObject({ ok: false });
+
+    expect(
+      validatePickedFiles(2, [
+        { name: "a.png", type: "image/png", size: 100 },
+        { name: "b.png", type: "image/png", size: 100 },
+      ]),
+    ).toMatchObject({ ok: false });
+
+    const allowedPrefix = "https://example.supabase.co/storage/v1/object/public/issue-attachments/reports/";
+    const validated = validateIssueReport(
+      {
+        category: "bug",
+        description: "See attached screenshot and recording.",
+        attachments: [
+          {
+            name: "screen[1].png",
+            contentType: "image/png",
+            size: 1_500_000,
+            url: `${allowedPrefix}2026-11/abc.png`,
+          },
+          {
+            name: "repro.mov",
+            contentType: "video/quicktime",
+            size: 4_200_000,
+            url: `${allowedPrefix}2026-11/def.mov`,
+          },
+          {
+            name: "evil.png",
+            contentType: "image/png",
+            size: 1000,
+            url: "https://evil.example/evil.png",
+          },
+        ],
+      },
+      { allowedAttachmentPrefix: allowedPrefix },
+    );
+    expect(validated.ok).toBe(true);
+    if (!validated.ok) return;
+    expect(validated.report.attachments).toHaveLength(2);
+    const md = formatLinearDescription(validated.report);
+    expect(md).toContain("### Attachments");
+    expect(md).toContain(`![screen1.png](${allowedPrefix}2026-11/abc.png)`);
+    expect(md).toContain(`- [Screen recording: repro.mov (4.0 MB)](${allowedPrefix}2026-11/def.mov)`);
+    expect(md).not.toContain("evil.example");
+  });
+
+  it("prepares signed upload URLs, PUTs files, and includes attachment metadata on submit", async () => {
+    const requests: Array<{ url: string; method: string; body: unknown }> = [];
+    const progress: string[] = [];
+    const fetchImpl: IssueReportFetcher = vi.fn(async (input, init) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      requests.push({ url, method, body: init?.body });
+      if (method === "POST" && typeof init?.body === "string" && init.body.includes("prepare-uploads")) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            uploads: [
+              {
+                name: "bug.png",
+                contentType: "image/png",
+                size: 4,
+                path: "reports/2026-11/u1.png",
+                signedUrl: "https://storage.example/upload/u1?token=t1",
+                token: "t1",
+                publicUrl: "https://storage.example/public/u1.png",
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (method === "PUT") {
+        return new Response("", { status: 200 });
+      }
+      return new Response(JSON.stringify({ ok: true, identifier: "CW-97" }), {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    const file = new File(["test"], "bug.png", { type: "image/png" });
+    const result = await submitIssueReport(
+      {
+        category: "bug",
+        description: "Attached a screenshot of the overlap.",
+        files: [file],
+      },
+      {
+        fetchImpl,
+        accessToken: null,
+        onProgress: (label) => progress.push(label),
+      },
+    );
+
+    expect(result).toEqual({ ok: true, identifier: "CW-97" });
+    expect(requests.map((req) => req.method)).toEqual(["POST", "PUT", "POST"]);
+    expect(requests[1]?.url).toBe("https://storage.example/upload/u1?token=t1");
+    expect(String(requests[2]?.body)).toContain("https://storage.example/public/u1.png");
+    expect(progress).toEqual(["Uploading attachment…", "Sending…"]);
   });
 });
