@@ -151,7 +151,7 @@ supabase secrets set --project-ref gfacmaaehvlhbskrajyj \
   LINEAR_API_KEY="lin_api_..."
 ```
 
-Optional overrides (defaults already point at team `CW`, project `Drip by drip`, `Backlog` state, and the `Bug` / `Improvement` labels): `LINEAR_TEAM_ID`, `LINEAR_PROJECT_ID`, `LINEAR_STATE_ID`, `LINEAR_BUG_LABEL_ID`, `LINEAR_SUGGESTION_LABEL_ID`, `REPORT_RATE_LIMIT_SALT`.
+Optional overrides (defaults already point at team `CW`, project `Drip by drip`, `Backlog` state, and the `Bug` / `Improvement` + `User Feedback` labels): `LINEAR_TEAM_ID`, `LINEAR_PROJECT_ID`, `LINEAR_STATE_ID`, `LINEAR_BUG_LABEL_ID`, `LINEAR_SUGGESTION_LABEL_ID`, `LINEAR_USER_FEEDBACK_LABEL_ID`, `REPORT_RATE_LIMIT_SALT`.
 
 Deploy the function and push the server-only rate-limit migration (5 reports per 15 minutes per hashed IP or signed-in user):
 

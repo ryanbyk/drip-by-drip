@@ -8,6 +8,7 @@ import {
   DEFAULT_LINEAR_STATE_ID,
   DEFAULT_LINEAR_SUGGESTION_LABEL_ID,
   DEFAULT_LINEAR_TEAM_ID,
+  DEFAULT_LINEAR_USER_FEEDBACK_LABEL_ID,
   extractClientIp,
   RATE_LIMIT_MAX_REQUESTS,
   RATE_LIMIT_WINDOW_SECONDS,
@@ -58,6 +59,8 @@ function linearRoutingFromEnv(): LinearRoutingConfig {
     stateId: envOrDefault("LINEAR_STATE_ID", DEFAULT_LINEAR_STATE_ID) || undefined,
     bugLabelId: envOrDefault("LINEAR_BUG_LABEL_ID", DEFAULT_LINEAR_BUG_LABEL_ID) || undefined,
     suggestionLabelId: envOrDefault("LINEAR_SUGGESTION_LABEL_ID", DEFAULT_LINEAR_SUGGESTION_LABEL_ID) || undefined,
+    userFeedbackLabelId:
+      envOrDefault("LINEAR_USER_FEEDBACK_LABEL_ID", DEFAULT_LINEAR_USER_FEEDBACK_LABEL_ID) || undefined,
   };
 }
 
